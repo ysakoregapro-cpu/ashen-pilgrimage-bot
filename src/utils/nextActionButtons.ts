@@ -17,6 +17,7 @@ export type NextActionContext =
   | 'facility'
   | 'upgrade'
   | 'guide'
+  | 'story_event'
   | 'error'
   | 'generic';
 
@@ -151,6 +152,18 @@ export function nextActionButtons(
           btn('town:guide', '別の章', ButtonStyle.Secondary),
           btn('town:home', '町へ戻る', ButtonStyle.Secondary),
           btn('town:explore', '探索へ向かう', ButtonStyle.Success),
+        ),
+      ];
+
+    case 'story_event':
+      return [
+        row(
+          btn('town:facilities', '町を歩く', ButtonStyle.Primary),
+          btn('town:npcs', '人と話す', ButtonStyle.Primary),
+          btn('town:explore', '探索へ向かう', ButtonStyle.Success),
+        ),
+        row(
+          btn('town:guide', '巡礼手帳', ButtonStyle.Secondary),
         ),
       ];
 

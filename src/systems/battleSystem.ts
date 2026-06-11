@@ -165,7 +165,7 @@ export function processBattleAction(
   sessionId: string,
   action: string,
   opts?: { skillId?: string; inventoryId?: number },
-): { done: boolean; status: BattleStatus; message: string; sessionId: string; notify?: string; skillLearned?: Array<{ jobName: string; skills: string[] }> } {
+): { done: boolean; status: BattleStatus; message: string; sessionId: string; notify?: string; skillLearned?: Array<{ jobName: string; skills: string[] }>; jobLeveledUp?: string[] } {
   const session = getSession(sessionId, userId);
   if (!session || session.status !== 'active') {
     return { done: true, status: 'defeat', message: '戦闘が見つかりません。', sessionId };
@@ -474,8 +474,10 @@ function resolveVictory(sessionId: string, userId: string, session: SessionRow, 
   }
 
   const skillLearned: Array<{ jobName: string; skills: string[] }> = [];
+  const jobLeveledUp: string[] = [];
   for (const jr of jobResults) {
     if (jr.newSkills.length) skillLearned.push({ jobName: jr.jobName, skills: jr.newSkills });
+    if (jr.leveledUp) jobLeveledUp.push(jr.jobName);
   }
 
   pushLog(state, 'info', '勝利。');
@@ -485,6 +487,7 @@ function resolveVictory(sessionId: string, userId: string, session: SessionRow, 
     message: lines.join('\n'),
     sessionId,
     skillLearned: skillLearned.length ? skillLearned : undefined,
+    jobLeveledUp: jobLeveledUp.length ? jobLeveledUp : undefined,
   };
 }
 

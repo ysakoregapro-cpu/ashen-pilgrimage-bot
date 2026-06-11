@@ -2,6 +2,7 @@ import { getDb } from '../db/database';
 import { requirePlayer } from './playerSystem';
 import { nowIso } from '../types';
 import { JOB_INITIAL_SKILL, JOB_SKILL_UNLOCKS, getNextUnlock, getUnlocksUpToLevel } from '../db/seedData/jobSkillData';
+import { checkJobQuests } from './storySystem';
 
 export const JOB_LEVEL_CAP = 70;
 /** メイン職能への職能経験値倍率 */
@@ -82,6 +83,10 @@ export function addJobExp(userId: string, jobName: string, exp: number, isMain: 
 
   getDb().prepare('UPDATE player_job_levels SET job_level=?, job_exp=?, updated_at=? WHERE user_id=? AND job_name=?')
     .run(jobLevel, jobExp, nowIso(), userId, jobName);
+
+  if (leveledUp) {
+    checkJobQuests(userId, jobName);
+  }
 
   const nextReq = jobLevel >= JOB_LEVEL_CAP ? 0 : jobExpRequired(jobLevel);
   return { jobName, expGained: exp, leveledUp, newLevel: jobLevel, expToNext: Math.max(0, nextReq - jobExp), newSkills };

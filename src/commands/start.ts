@@ -6,6 +6,8 @@ import { getPlayer, createPlayer, updatePrivateChannel } from '../systems/player
 import { setupPlayerChannel } from '../utils/channels';
 import { baseEmbed, successEmbed } from '../utils/embeds';
 import { safeDefer, safeEdit, commandError } from '../utils/interaction';
+import { triggerStartComplete } from '../systems/storySystem';
+import { getSendableChannel } from '../utils/messageFlow';
 
 export const data = new SlashCommandBuilder()
   .setName('start')
@@ -50,6 +52,13 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       updatePrivateChannel(userId, channel.id);
     } else {
       createPlayer(userId, guild.id, name, channel.id);
+      const storyEvents = triggerStartComplete(userId);
+      const sendChannel = getSendableChannel(channel);
+      if (sendChannel) {
+        for (const ev of storyEvents) {
+          await sendChannel.send({ embeds: ev.embeds, components: ev.components });
+        }
+      }
     }
 
     await safeEdit(interaction, {

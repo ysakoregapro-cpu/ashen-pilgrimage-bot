@@ -66,7 +66,16 @@ import {
   sendJourneyLogAfterSelect,
   disableOldComponents,
   getSendableChannel,
+  stampPanelPayload,
 } from './utils/messageFlow';
+import {
+  triggerFirstVictory,
+  triggerFirstDefeat,
+  triggerBossDefeated,
+  triggerFirstJobLevelUp,
+  triggerTownFirstArrival,
+  type StoryEventPayload,
+} from './systems/storySystem';
 
 
 
@@ -206,9 +215,28 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
 
     }
 
-    const { arriveAndShowHub } = await import('./systems/townActionSystem');
+    const { travelToTownWithResult, buildTownHub } = await import('./systems/townActionSystem');
 
-    await sendJourneyLogAfterSelect(interaction, arriveAndShowHub(userId, value));
+    const travel = travelToTownWithResult(userId, value);
+    if (!travel.ok) {
+      await sendJourneyLogAfterSelect(interaction, {
+        embeds: [(await import('./utils/townUi')).townHubEmbed('道', travel.message)],
+        components: (await import('./utils/townUi')).townHubButtons(),
+      });
+      return;
+    }
+
+    await disableOldComponents(interaction.message);
+    const channel = getSendableChannel(interaction.channel);
+    if (!channel) return;
+    await interaction.deferUpdate();
+
+    const storyEvents = triggerTownFirstArrival(userId, value);
+    await sendStoryPayloads(channel, storyEvents);
+    await channel.send(stampPanelPayload(userId, buildTownHub(userId, {
+      isFirstVisit: travel.isFirstVisit,
+      intro: `${travel.message}\n`,
+    })));
 
     return;
 
@@ -364,6 +392,15 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
 
 
 
+async function sendStoryPayloads(
+  channel: NonNullable<ReturnType<typeof getSendableChannel>>,
+  payloads: StoryEventPayload[],
+): Promise<void> {
+  for (const p of payloads) {
+    await channel.send({ embeds: p.embeds, components: p.components });
+  }
+}
+
 async function handleBattleResult(
   interaction: ButtonInteraction | StringSelectMenuInteraction,
   sessionId: string,
@@ -381,6 +418,22 @@ async function handleBattleResult(
     if (result.status === 'victory') {
 
       await channel.send(buildPostVictory(result.message));
+
+      const session = getDb().prepare('SELECT monster_id FROM battle_sessions WHERE id = ?').get(sessionId) as { monster_id: string } | undefined;
+      const storyEvents: StoryEventPayload[] = [
+        ...triggerFirstVictory(interaction.user.id),
+        ...(session ? triggerBossDefeated(interaction.user.id, session.monster_id) : []),
+      ];
+      if (result.jobLeveledUp?.length) {
+        for (const jobName of result.jobLeveledUp) {
+          storyEvents.push(...triggerFirstJobLevelUp(interaction.user.id, jobName));
+        }
+      } else if (result.skillLearned?.length) {
+        for (const sl of result.skillLearned) {
+          storyEvents.push(...triggerFirstJobLevelUp(interaction.user.id, sl.jobName));
+        }
+      }
+      await sendStoryPayloads(channel, storyEvents);
 
       if (result.skillLearned?.length) {
 
@@ -401,6 +454,7 @@ async function handleBattleResult(
     if (result.status === 'defeat') {
 
       await channel.send(buildPostDefeat(result.message));
+      await sendStoryPayloads(channel, triggerFirstDefeat(interaction.user.id));
 
       return;
 

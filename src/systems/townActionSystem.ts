@@ -21,6 +21,13 @@ import {
 import { nextActionButtons } from '../utils/nextActionButtons';
 import { formatTownIntro, formatExploreResult, formatVictoryMessage, formatSpeech, formatSpeechOnly } from '../utils/formatters';
 import { townMenuEmbed } from '../utils/embeds';
+import {
+  triggerTownFirstArrival,
+  getPostBossTownDescription,
+  getNpcDialogueForPlayer,
+  advanceNpcDialogue,
+  getPilgrimageJournal,
+} from './storySystem';
 
 const TOWN_GUIDE_NPC: Record<string, string> = {
   start_starfield: 'npc_aoi',
@@ -65,7 +72,8 @@ export function buildTownHub(userId: string, opts?: { intro?: string; isFirstVis
   if (isFirst && !intro) {
     intro = buildFirstVisitIntro(userId, town.id, town.name);
   } else if (!intro) {
-    intro = `${town.name}の風が、静かに頬を撫でる。\n今日はどうする？`;
+    const mood = getPostBossTownDescription(userId, town.id, town.description);
+    intro = `${town.name}の風が、静かに頬を撫でる。\n${mood}\n今日はどうする？`;
   }
 
   const facNames = facilities.slice(0, 8).map((f) => f.name);
@@ -171,6 +179,18 @@ export function buildNpcView(userId: string, npcId: string): UiPayload {
 export function buildNpcDialogue(userId: string, npcId: string, type: 'smalltalk' | 'explain' | 'hint' | 'request'): UiPayload {
   const npc = getNpc(npcId);
   if (!npc) return buildTownHub(userId);
+
+  if (type === 'smalltalk') {
+    const storyLine = getNpcDialogueForPlayer(userId, npcId);
+    if (storyLine) {
+      advanceNpcDialogue(userId, npcId);
+      return {
+        embeds: [townHubEmbed(storyLine.title, storyLine.body)],
+        components: nextActionButtons('npc_talk', { npcId }),
+      };
+    }
+  }
+
   const dtype = type === 'request' ? 'explain' : type;
   const speech = getDialogue(npcId, dtype);
   return {
@@ -179,10 +199,11 @@ export function buildNpcDialogue(userId: string, npcId: string, type: 'smalltalk
   };
 }
 
-export function buildGuideHome(): UiPayload {
+export function buildGuideHome(userId: string): UiPayload {
+  const journal = getPilgrimageJournal(userId);
   return {
-    embeds: [townHubEmbed('巡礼手帳', '旅の手引き。読みたい章を選んでください。')],
-    components: [guideSectionButtons()],
+    embeds: journal.embeds,
+    components: [...journal.components, guideSectionButtons()],
   };
 }
 
@@ -250,4 +271,8 @@ export function arriveAndShowHub(userId: string, townId: string): UiPayload {
     return { embeds: [townHubEmbed('道', result.message)], components: townHubButtons() };
   }
   return buildTownHub(userId, { isFirstVisit: result.isFirstVisit, intro: `${result.message}\n` });
+}
+
+export function getTownArrivalStoryEvents(userId: string, townId: string) {
+  return triggerTownFirstArrival(userId, townId);
 }

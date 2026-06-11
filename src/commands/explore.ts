@@ -4,6 +4,7 @@ import { buildExploreList } from '../systems/townActionSystem';
 import { exploreArea } from '../systems/explorationSystem';
 import { buildBattleReply } from '../systems/battleSystem';
 import { buildPostExplore } from '../systems/townActionSystem';
+import { triggerFirstExplore, triggerFirstBattle } from '../systems/storySystem';
 import { errorEmbed } from '../utils/embeds';
 import { safeDefer, safeEdit } from '../utils/interaction';
 import { stampPanelPayload, getSendableChannel } from '../utils/messageFlow';
@@ -39,5 +40,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 }
 
 export async function handleExploreSelect(userId: string, areaId: string) {
-  return exploreArea(userId, areaId);
+  triggerFirstExplore(userId);
+  const result = exploreArea(userId, areaId);
+  if (result.type === 'battle' && result.battleId) {
+    triggerFirstBattle(userId);
+  }
+  return result;
 }

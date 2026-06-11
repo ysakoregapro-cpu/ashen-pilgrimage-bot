@@ -37,5 +37,5 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     await safeEdit(interaction, stampPanelPayload(interaction.user.id, buildGuideView(chapter)));
     return;
   }
-  await safeEdit(interaction, stampPanelPayload(interaction.user.id, buildGuideHome()));
+  await safeEdit(interaction, stampPanelPayload(interaction.user.id, buildGuideHome(interaction.user.id)));
 }

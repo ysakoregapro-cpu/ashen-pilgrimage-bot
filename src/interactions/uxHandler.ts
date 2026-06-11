@@ -135,7 +135,7 @@ export async function handleUxButton(interaction: ButtonInteraction): Promise<bo
   }
 
   if (base === 'town:guide') {
-    const payload = buildGuideHome();
+    const payload = buildGuideHome(userId);
     if (requirePanelSession(interaction, userId)) {
       await updateActionPanel(interaction, payload, userId);
     } else {

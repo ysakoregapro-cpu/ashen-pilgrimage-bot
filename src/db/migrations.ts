@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import { seedBattleSkills, ensurePlayerSkillTables } from './seedData/battleSkills';
+import { seedStoryTables } from '../systems/storySystem';
 
 function addColumn(db: Database.Database, table: string, column: string, def: string): void {
   try {
@@ -67,4 +68,5 @@ export function runMigrations(db: Database.Database): void {
 
   ensurePlayerSkillTables(db);
   seedBattleSkills(db);
+  seedStoryTables(db);
 }
