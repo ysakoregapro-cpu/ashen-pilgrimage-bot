@@ -1,7 +1,8 @@
 import { getDb } from '../db/database';
 import { getUnlockedTowns, requirePlayer, addExp } from './playerSystem';
 import { finalizeExplorationLoot } from './inventorySystem';
-import { calcExploreReturnBonus } from './expSystem';
+import { calcExploreReturnBonus, formatExpProgressBlock } from './expSystem';
+import { canTravelToTown } from './progressionGates';
 import { nowIso } from '../types';
 
 export function setPlayerTown(userId: string, townId: string): void {
@@ -69,17 +70,17 @@ function grantExploreReturnBonus(userId: string, townId: string): string {
   if (bonus <= 0) return '';
   const result = addExp(userId, bonus);
   let msg = `探索から無事帰還。探索完了ボーナス: 経験値 +${bonus}`;
-  if (result.levelUpMessage) msg += `\n${result.levelUpMessage}`;
+  msg += `\n${formatExpProgressBlock(bonus, result)}`;
   return msg;
 }
 
 export function travelToTown(userId: string, townId: string): string {
+  const gate = canTravelToTown(userId, townId);
+  if (!gate.ok) return gate.reason ?? 'その町へは、まだ道が通っていない。';
+
   const player = requirePlayer(userId);
   const town = getTown(townId) as { id: string; name: string; required_level: number } | undefined;
   if (!town) return 'その町は見つかりません。';
-  const unlocked = getUnlockedTowns(userId);
-  if (!unlocked.includes(townId)) return `${town.name}へは、まだ道が通っていない。`;
-  if (player.level < town.required_level) return `${town.name}へ向かうには、もう少し旅の経験が必要だ。`;
 
   const loot = finalizeExplorationLoot(userId);
   setPlayerTown(userId, townId);

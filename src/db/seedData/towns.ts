@@ -22,7 +22,7 @@ const TOWNS = [
   { id: 'black_lantern_lane', name: '黒灯りの路地', desc: '黒い灯りだけが灯る路地。', level: 52, defaultUnlock: 0 },
   { id: 'buried_aqueduct', name: '埋没水路', desc: '地中に沈んだ古い水路。', level: 22, defaultUnlock: 0 },
   { id: 'starfall_observatory', name: '星落ちの観測所', desc: '星の軌跡を記録する観測所。', level: 55, defaultUnlock: 0 },
-  { id: 'valhalla_fortress', name: '空中要塞ヴァルハラ', desc: '雲の上に浮かぶ最終要塞。', level: 60, defaultUnlock: 0 },
+  { id: 'valhalla_fortress', name: '空中要塞ヴァルハラ', desc: '雲の上に浮かぶ最終要塞。', level: 80, defaultUnlock: 0 },
 ];
 
 const NPCS: { id: string; town: string; name: string; role: string; desc: string; services?: string[] }[] = [
@@ -60,6 +60,23 @@ const NPCS: { id: string; town: string; name: string; role: string; desc: string
   { id: 'npc_stargazer', town: 'starfall_observatory', name: '星読みの観測士', role: '観測士', desc: '星の軌跡を読む。', services: ['observe'] },
   { id: 'npc_valhalla_guard', town: 'valhalla_fortress', name: 'ヴァルハラ守衛', role: '守衛', desc: '要塞への入り口を守る。', services: ['raid'] },
 ];
+
+/** Sync town metadata (required_level etc.) on existing DBs */
+export function ensureTownsSeed(db: Database.Database): void {
+  const upd = db.prepare(`
+    UPDATE towns SET name = ?, description = ?, required_level = ?, unlock_condition_text = ?
+    WHERE id = ?
+  `);
+  for (const t of TOWNS) {
+    upd.run(
+      t.name,
+      t.desc,
+      t.level,
+      t.defaultUnlock ? '初期解放' : `Lv${t.level}以上で解放`,
+      t.id,
+    );
+  }
+}
 
 export function seedTownsAndNpcs(db: Database.Database): void {
   const insTown = db.prepare(`

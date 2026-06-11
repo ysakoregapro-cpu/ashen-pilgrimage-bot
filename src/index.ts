@@ -408,9 +408,48 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
       ...(sell.reason ? [sell.reason] : []),
       ...(sell.warning ? [sell.warning] : []),
     ];
+    const row = getDb().prepare(`
+      SELECT pi.quantity, i.category FROM player_inventory pi JOIN items i ON pi.item_id = i.id
+      WHERE pi.id = ? AND pi.user_id = ?
+    `).get(invId, userId) as { quantity: number; category: string } | undefined;
+    const payload = buildItemDetailView(userId, { inventoryId: invId, context: 'shop_sell', warnings });
+    const qty = row?.quantity ?? 1;
+    const stackable = row && row.category !== 'equipment' && qty > 1;
+    if (stackable) {
+      const opts = [
+        { label: '1個', value: '1' },
+        { label: '5個', value: '5' },
+        { label: '10個', value: '10' },
+        { label: '半分', value: String(Math.max(1, Math.floor(qty / 2))) },
+        { label: '全部', value: String(qty) },
+      ].filter((o) => Number(o.value) <= qty && Number(o.value) >= 1).slice(0, 25);
+      payload.components.unshift(
+        selectMenu(`shop:sell_qty:${invId}`, `売却個数（所持 ${qty}）`, opts),
+      );
+    } else {
+      payload.components.unshift(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId(`shop:confirm_sell:${invId}:1`).setLabel('売却する').setStyle(ButtonStyle.Danger).setDisabled(!sell.ok),
+      ));
+    }
+    await sendSelectResultLog(interaction, payload);
+    return;
+  }
+
+  if (prefix === 'shop' && action === 'sell_qty' && extra) {
+    const invId = Number(extra);
+    const qty = Number(value);
+    const { buildItemDetailView, getActionWarnings, canSellItem } = await import('./systems/itemDetailSystem');
+    const sell = canSellItem(userId, invId);
+    const warnings = [
+      ...getActionWarnings(userId, invId, 'sell'),
+      ...(sell.reason ? [sell.reason] : []),
+      ...(sell.warning ? [sell.warning] : []),
+      `売却個数: ${qty}個`,
+    ];
     const payload = buildItemDetailView(userId, { inventoryId: invId, context: 'shop_sell', warnings });
     payload.components.unshift(new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`shop:confirm_sell:${invId}`).setLabel('売却する').setStyle(ButtonStyle.Danger).setDisabled(!sell.ok),
+      new ButtonBuilder().setCustomId(`shop:confirm_sell:${invId}:${qty}`).setLabel(`${qty}個売却する`).setStyle(ButtonStyle.Danger).setDisabled(!sell.ok),
+      new ButtonBuilder().setCustomId(`shop:sell_pick:${invId}`).setLabel('個数を選び直す').setStyle(ButtonStyle.Secondary),
     ));
     await sendSelectResultLog(interaction, payload);
     return;
@@ -866,6 +905,7 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
 
   if (parts[0] === 'shop' && parts[1] === 'confirm_sell') {
     const invId = Number(parts[2]);
+    const qty = Math.max(1, Number(parts[3] ?? 1));
     const { canSellItem, assertInventoryOwned } = await import('./systems/itemDetailSystem');
     const owned = assertInventoryOwned(userId, invId);
     const sell = canSellItem(userId, invId);
@@ -877,8 +917,13 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
       await channel.send({ embeds: [errorEmbed(sell.reason ?? owned.reason ?? '売却できません。')], components: nextActionButtons('facility') });
       return;
     }
+    const stock = getDb().prepare('SELECT quantity FROM player_inventory WHERE id = ? AND user_id = ?').get(invId, userId) as { quantity: number } | undefined;
+    if (!stock || stock.quantity < qty) {
+      await channel.send({ embeds: [errorEmbed('在庫が足りません。')], components: nextActionButtons('facility') });
+      return;
+    }
     const { sellInventoryItem } = await import('./systems/shopSystem');
-    const r = sellInventoryItem(userId, invId);
+    const r = sellInventoryItem(userId, invId, qty);
     await channel.send({ embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
     return;
   }

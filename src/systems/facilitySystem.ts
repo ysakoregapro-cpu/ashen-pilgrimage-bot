@@ -2,6 +2,8 @@ import { getDb } from '../db/database';
 import { getDialogue, getNpc, buildNpcBody } from './npcConversationSystem';
 import { requirePlayer, getPlayer, recalculatePlayerStats } from './playerSystem';
 import { getEnhanceableEquipment } from './upgradeSystem';
+import { getAwakeningCandidates } from './awakeningSystem';
+import { getKaiUniqueCandidates, getKaiSrcCandidates } from './kaiForgeSystem';
 import { getUniqueWeapons } from './srcWeaponSystem';
 import { getJobs } from './jobSystem';
 import { formatEquipmentDisplay } from './equipmentSystem';
@@ -59,15 +61,21 @@ export function getFacilityActions(facility: FacilityRow): FacAction[] {
     case 'inn':
       return [{ id: 'rest', label: '休む' }, talk, explain, home];
     case 'blacksmith':
-    case 'repair_shop':
-      return [
+    case 'repair_shop': {
+      const actions: FacAction[] = [
         { id: 'enhance', label: '装備を強化する' },
+        { id: 'awaken', label: '武器を覚醒する' },
         { id: 'repair', label: '装備を修理する' },
         { id: 'dismantle', label: '装備を分解する' },
-        talk,
-        explain,
-        home,
       ];
+      if (facility.npc_id === 'npc_kai') {
+        actions.splice(2, 0,
+          { id: 'kai_unique', label: 'カイに見せる（ユニーク昇華）' },
+          { id: 'kai_src', label: 'Srcへ昇華する' },
+        );
+      }
+      return [...actions, talk, explain, home];
+    }
     case 'guild_board':
       return [
         { id: 'job', label: '職能を選ぶ' },
@@ -206,6 +214,9 @@ export function executeFacilityAction(userId: string, facilityId: string, action
   }
 
   if (actionId === 'enhance') return { type: 'upgrade_select', message: 'どの装備を鍛えますか？', extra: 'enhance' };
+  if (actionId === 'awaken') return { type: 'upgrade_select', message: 'どの武器を覚醒しますか？（同名合成）', extra: 'awaken' };
+  if (actionId === 'kai_unique') return { type: 'upgrade_select', message: 'カイに見せる武器を選んでください。', extra: 'kai_unique' };
+  if (actionId === 'kai_src') return { type: 'upgrade_select', message: 'Src昇華するユニーク武器を選んでください。', extra: 'kai_src' };
   if (actionId === 'repair') return { type: 'upgrade_select', message: 'どの装備を修理しますか？', extra: 'repair' };
   if (actionId === 'dismantle') return { type: 'upgrade_select', message: 'どの装備を分解しますか？', extra: 'dismantle' };
   if (actionId === 'job') return { type: 'job_select', message: 'どの職能を選びますか？' };
@@ -244,6 +255,17 @@ export function executeFacilityAction(userId: string, facilityId: string, action
 }
 
 export function getUpgradeSelectOptions(userId: string, mode: string) {
+  if (mode === 'awaken') {
+    return getAwakeningCandidates(userId).map((i) => ({
+      id: i.id, name: i.name, rarity: i.rarity, src_level: 0,
+    }));
+  }
+  if (mode === 'kai_unique') {
+    return getKaiUniqueCandidates(userId).map((i) => ({ id: i.id, name: i.name, rarity: 'N', src_level: 0 }));
+  }
+  if (mode === 'kai_src') {
+    return getKaiSrcCandidates(userId).map((i) => ({ id: i.id, name: i.name, rarity: 'SR', src_level: 0 }));
+  }
   const items = getEnhanceableEquipment(userId) as Array<{ id: number; name: string; rarity: string; src_level: number }>;
   const filtered = mode === 'src'
     ? items.filter((i) => i.rarity === 'Src' || i.src_level > 0)

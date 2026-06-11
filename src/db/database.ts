@@ -7,6 +7,8 @@ import { runMigrations } from './migrations';
 import { ensureMonstersIsBossColumn } from './monsterSchema';
 import { ensurePhase2Seed } from './seedData/phase2Seed';
 import { ensureMasterDataSeed } from './seedData/masterDataSeed';
+import { ensureMaterialsSeed } from './seedData/materials';
+import { ensureTownsSeed } from './seedData/towns';
 
 let db: Database.Database | null = null;
 
@@ -24,6 +26,8 @@ export function getDb(): Database.Database {
     ensureMonstersIsBossColumn(db);
     runMigrations(db);
     seedDatabase(db);
+    ensureMaterialsSeed(db);
+    ensureTownsSeed(db);
     ensurePhase2Seed(db);
     ensureMasterDataSeed(db);
   }

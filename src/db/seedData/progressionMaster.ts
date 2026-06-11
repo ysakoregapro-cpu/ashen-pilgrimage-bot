@@ -46,17 +46,17 @@ export const FEATURE_UNLOCKS: FeatureUnlockDef[] = [
   {
     feature: 'raid',
     label: '共闘探索（レイド）',
-    requiredFlag: 'chapter_completed:ch7_furnace',
+    requiredFlag: 'valhalla_unlocked',
     requiredTown: 'valhalla_fortress',
-    hintWhenLocked: 'ヴァルハラ解放後',
+    hintWhenLocked: 'Src武器を得てから',
     hintWhenAvailable: 'レイド募集・共闘報酬',
   },
   {
     feature: 'valhalla',
     label: 'ヴァルハラ',
-    requiredFlag: 'chapter_completed:ch7_furnace',
+    requiredFlag: 'valhalla_unlocked',
     requiredTown: 'valhalla_fortress',
-    hintWhenLocked: '深層炉クリア後に解放',
+    hintWhenLocked: 'カイによるSrc昇華後に解放',
     hintWhenAvailable: '空中要塞ヴァルハラへ向かう',
   },
   {
@@ -97,7 +97,7 @@ export const STORY_TOWN_UNLOCKS: Record<string, string> = {
   'chapter_completed:ch4_library': 'forgotten_market',
   'chapter_completed:ch5_market': 'hourglass_city',
   'chapter_completed:ch6_hourglass': 'deep_furnace_outpost',
-  'chapter_completed:ch7_furnace': 'valhalla_fortress',
+  valhalla_unlocked: 'valhalla_fortress',
 };
 
 export const DEFAULT_UNLOCKED_TOWNS = ['start_starfield', 'old_road_village'];

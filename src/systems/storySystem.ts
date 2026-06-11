@@ -174,6 +174,11 @@ export function triggerBossDefeated(userId: string, monsterId: string): StoryEve
     }
   }
 
+  if (bossKey === 'boss_old_furnace_keeper') {
+    setStoryFlag(userId, 'pre_valhalla_boss_farmed');
+    setStoryFlag(userId, 'kai_unique_unlocked');
+  }
+
   if (bossKey === 'boss_old_king_echo') {
     setStoryFlag(userId, 'valhalla_first_clear');
     setCurrentChapter(userId, 'epilogue_connectors', 'はじまりの星原へ戻る');

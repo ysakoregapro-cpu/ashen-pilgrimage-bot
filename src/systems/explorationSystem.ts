@@ -5,11 +5,33 @@ import { addItem } from './inventorySystem';
 import { incrementWeeklyProgress } from './weeklySystem';
 import { underlevelWarning } from './difficultySystem';
 import { incrementExploreAction } from './townSystem';
-import { isBossMonsterById } from './monsterBossSystem';
+import { getMonsterThreatTier, getThreatLabel } from './combatMath';
 import { weightedChoice, roll, randomInt } from '../utils/random';
 
 export function getAreasForTown(townId: string) {
   return getDb().prepare('SELECT * FROM exploration_areas WHERE town_id = ? ORDER BY recommended_min_level').all(townId);
+}
+
+function canDropEquipment(userId: string, itemId: string, areaMinLv: number): boolean {
+  const player = requirePlayer(userId);
+  const item = getDb().prepare(`
+    SELECT i.category, e.required_level FROM items i
+    LEFT JOIN equipment e ON i.id = e.item_id
+    WHERE i.id = ?
+  `).get(itemId) as { category: string; required_level: number | null } | undefined;
+  if (!item || item.category !== 'equipment') return true;
+  const reqLv = item.required_level ?? 1;
+  const deficit = areaMinLv - player.level;
+  if (deficit <= 0) return true;
+  if (deficit >= 4) return roll(0.12);
+  if (deficit >= 2) return roll(0.35);
+  return roll(0.55);
+}
+
+function pickRewardItem(userId: string, pool: Array<{ item_id: string; weight: number }>, areaMinLv: number): string | null {
+  const eligible = pool.filter((p) => canDropEquipment(userId, p.item_id, areaMinLv));
+  if (!eligible.length) return null;
+  return weightedChoice(eligible).item_id;
 }
 
 export function exploreArea(userId: string, areaId: string): {
@@ -30,9 +52,13 @@ export function exploreArea(userId: string, areaId: string): {
 
   const warning = underlevelWarning(player.level, area.recommended_min_level);
   const prefix = warning ? `${warning}\n\n` : '';
+  const levelDeficit = Math.max(0, area.recommended_min_level - player.level);
 
   const events = JSON.parse(area.event_pool_json) as Array<{ type: string; weight: number }>;
-  const event = weightedChoice(events);
+  let event = weightedChoice(events);
+  if (levelDeficit >= 3 && event.type === 'treasure' && roll(0.35)) {
+    event = { type: 'battle', weight: 1 };
+  }
 
   incrementWeeklyProgress(userId, 'explore_count');
   incrementExploreAction(userId);
@@ -41,28 +67,47 @@ export function exploreArea(userId: string, areaId: string): {
     case 'battle': {
       const pool = JSON.parse(area.monster_pool_json) as Array<{ monster_id: string; weight: number }>;
       const pick = weightedChoice(pool);
-      const isBoss = isBossMonsterById(pick.monster_id);
-      const battleId = createBattle(userId, pick.monster_id, areaId, { isBoss });
+      const threat = getMonsterThreatTier(pick.monster_id);
+      const battleId = createBattle(userId, pick.monster_id, areaId, { isBoss: threat === 'boss' });
       const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(pick.monster_id) as { name: string };
-      const bossPrefix = isBoss ? '強敵の気配…\n' : '';
-      return { type: 'battle', message: `${prefix}${bossPrefix}${area.name}で${mon.name}に遭遇した。`, battleId };
+      const threatLine = getThreatLabel(threat, mon.name);
+      const lines = [`${prefix}${area.name}で${mon.name}に遭遇した。`];
+      if (threatLine) lines.push(threatLine);
+      if (levelDeficit >= 3) lines.push('⚠ 推奨Lvより低い — 敵の刃が鋭い。');
+      return { type: 'battle', message: lines.join('\n'), battleId };
     }
     case 'material': {
       const pool = JSON.parse(area.reward_pool_json) as Array<{ item_id: string; weight: number }>;
-      const pick = pool[randomInt(0, pool.length - 1)]!;
-      addItem(userId, pick.item_id, randomInt(1, 3), { pending: true });
-      const item = getDb().prepare('SELECT name FROM items WHERE id = ?').get(pick.item_id) as { name: string };
+      const itemId = pickRewardItem(userId, pool, area.recommended_min_level);
+      if (!itemId) {
+        return { type: 'nothing', message: `${prefix}${area.name}を調べたが、今の足取りでは手に入れられそうにない。` };
+      }
+      addItem(userId, itemId, randomInt(1, 3), { pending: true });
+      const item = getDb().prepare('SELECT name FROM items WHERE id = ?').get(itemId) as { name: string };
       return { type: 'material', message: `${prefix}${area.name}で${item.name}を見つけた。` };
     }
     case 'treasure': {
       const pool = JSON.parse(area.reward_pool_json) as Array<{ item_id: string; weight: number }>;
-      const pick = pool[randomInt(0, pool.length - 1)]!;
-      if (roll(0.3)) {
-        addItem(userId, pick.item_id, 1, { pending: true });
-        const item = getDb().prepare('SELECT name FROM items WHERE id = ?').get(pick.item_id) as { name: string };
-        return { type: 'treasure', message: `${prefix}古い箱を見つけた。${item.name}を手に入れた。` };
+      if (levelDeficit >= 2 && roll(0.25 + levelDeficit * 0.05)) {
+        const poolM = JSON.parse(area.monster_pool_json) as Array<{ monster_id: string; weight: number }>;
+        const pick = weightedChoice(poolM);
+        const battleId = createBattle(userId, pick.monster_id, areaId);
+        const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(pick.monster_id) as { name: string };
+        return {
+          type: 'battle',
+          message: `${prefix}箱を開けようとしたが、${mon.name}が待ち構えていた！`,
+          battleId,
+        };
       }
-      const gold = randomInt(10, 50);
+      if (roll(0.3)) {
+        const itemId = pickRewardItem(userId, pool, area.recommended_min_level);
+        if (itemId) {
+          addItem(userId, itemId, 1, { pending: true });
+          const item = getDb().prepare('SELECT name FROM items WHERE id = ?').get(itemId) as { name: string };
+          return { type: 'treasure', message: `${prefix}古い箱を見つけた。${item.name}を手に入れた。` };
+        }
+      }
+      const gold = randomInt(10, 40 + area.recommended_min_level);
       getDb().prepare('UPDATE players SET gold = gold + ? WHERE user_id = ?').run(gold, userId);
       return { type: 'treasure', message: `${prefix}古い箱を見つけた。${gold}Gを拾った。` };
     }

@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { nowIso } from '../../types';
 
 type Mat = { id: string; name: string; cat: string; rarity: string; desc: string; source: string; usage: string; price: number; trade?: number };
 
@@ -50,6 +51,7 @@ const MATERIALS: Mat[] = [
   { id: 'boss_ash_knight', name: '灰冠騎士の紋章', cat: 'boss_material', rarity: 'SSR', desc: '灰冠騎士の紋章。', source: '灰冠騎士', usage: 'Src', price: 350 },
   { id: 'boss_black_iron', name: '黒鉄処刑人の鎖', cat: 'boss_material', rarity: 'SSR', desc: '黒鉄の鎖。', source: '黒鉄処刑人', usage: 'Src', price: 350 },
   { id: 'boss_furnace_core', name: '炉熱の番人核', cat: 'boss_material', rarity: 'UR', desc: '炉熱の核。', source: '炉熱の番人', usage: 'Src+7', price: 500 },
+  { id: 'mat_star_pilgrim_echo', name: '星巡の残響', cat: 'boss_material', rarity: 'UR', desc: '深層炉の番人が残す、巡礼の残響。カイのSrc昇華に使う。', source: '炉熱の番人（低確率・周回）', usage: 'カイSrc昇華', price: 0, trade: 0 },
   { id: 'boss_silent_page', name: '無答の守護者の頁', cat: 'boss_material', rarity: 'UR', desc: '禁書の頁。', source: '無答の守護者', usage: 'Src', price: 500 },
   { id: 'raid_valhalla_plate', name: 'ヴァルハラ装甲片', cat: 'raid_material', rarity: 'UR', desc: 'レイド報酬。', source: 'ヴァルハラレイド', usage: 'Src+10', price: 400, trade: 1 },
   { id: 'raid_sky_core', name: '空塞機兵の中枢', cat: 'raid_material', rarity: 'UR', desc: '空塞機兵の中枢。', source: 'ヴァルハラレイド', usage: 'Src強化', price: 450, trade: 1 },
@@ -90,5 +92,26 @@ export function seedMaterials(db: Database.Database, ts: string): void {
   `);
   for (const m of MATERIALS) {
     ins.run(m.id, m.name, m.cat, m.rarity, m.desc, m.source, m.usage, m.price, m.trade ?? 1, ts);
+  }
+}
+
+/** Idempotent upsert for new/changed materials on existing DBs */
+export function ensureMaterialsSeed(db: Database.Database): void {
+  const ts = nowIso();
+  const upsert = db.prepare(`
+    INSERT INTO items (id, name, category, rarity, description, source_text, usage_text, sell_price, tradeable, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      category = excluded.category,
+      rarity = excluded.rarity,
+      description = excluded.description,
+      source_text = excluded.source_text,
+      usage_text = excluded.usage_text,
+      sell_price = excluded.sell_price,
+      tradeable = excluded.tradeable
+  `);
+  for (const m of MATERIALS) {
+    upsert.run(m.id, m.name, m.cat, m.rarity, m.desc, m.source, m.usage, m.price, m.trade ?? 1, ts);
   }
 }

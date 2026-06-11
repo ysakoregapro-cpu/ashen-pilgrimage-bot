@@ -1,6 +1,7 @@
 import { getDb } from '../db/database';
 import { getDifficultyModifiers } from './difficultySystem';
 import { calcBattleExp, calcBossExp } from './expSystem';
+import { PRE_VALHALA_BOSS_MONSTER, SRC_FORGE_MATERIAL_ID, SRC_FORGE_MATERIAL_DROP_RATE } from '../db/seedData/awakeningMaster';
 import { calcElementDamageMultiplier, applyElementToDamage, resolveAttackElement, getPlayerElementResistances, applyPlayerElementResist } from './elementSystem';
 import {
   applyStatusEffect, tickStatusEffects, isEnemyActionBlocked, isPlayerActionBlocked,
@@ -17,6 +18,10 @@ import { roll, uuid, randomInt } from '../utils/random';
 import { nowIso, type BattleStatus } from '../types';
 import { formatBattleLine, type BattleLogType } from '../utils/formatters';
 import { battleButtons, battleEmbed, selectMenu } from '../utils/embeds';
+import {
+  scaleMonsterForBattle, calcPhysicalDamage, calcEnemyDamageToPlayer,
+  getThreatLabel, type ScaledMonster,
+} from './combatMath';
 
 export interface BattleState extends BattleStatusState {
   defending: boolean;
@@ -32,12 +37,14 @@ export interface BattleState extends BattleStatusState {
   hitBonus: number;
   breakBonus: number;
   guardStrong: boolean;
+  combatScale?: ScaledMonster;
 }
 
 type MonsterRow = {
-  name: string; level: number; attack: number; magic: number; defense: number; spirit: number; speed: number;
+  id: string; name: string; level: number; attack: number; magic: number; defense: number; spirit: number; speed: number;
   break_max: number; exp_reward: number; gold_reward: number; drop_pool_json: string; ai_pattern_json: string; hp: number;
   area_tag?: string; element?: string | null; weaknesses_json?: string | null; resistances_json?: string | null;
+  is_boss?: number;
 };
 
 type SessionRow = {
@@ -70,22 +77,31 @@ export function createBattle(userId: string, monsterId: string, areaId: string |
   const isEvent = opts?.isEvent ?? false;
   const canFlee = (!isBoss && !isRaid && !isEvent) ? 1 : 0;
   const tutorialBattle = monsterId === 'mon_star_slime' && countCompletedBattles(userId) === 0;
+  const scaled = scaleMonsterForBattle(
+    { ...monster, id: monsterId, area_tag: monster.area_tag ?? 'starfield' },
+    { forceBoss: isBoss, isStoryBoss: isBoss },
+  );
   const id = uuid();
+  const threatLine = getThreatLabel(scaled.threatTier, monster.name);
   const state: BattleState = {
     ...mergeStatusState({}),
     defending: false, enemyBroken: false, usedRevive: false,
     fleeBonus: 0, atkBuff: 0, magBuff: 0, defBuff: 0, trapActive: false,
     hitBonus: 0, breakBonus: 0, guardStrong: false,
+    combatScale: scaled,
     log: tutorialBattle
       ? [formatBattleLine('info', monster.name + 'が現れた。…最初の一歩。油断は禁物だ。')]
-      : [formatBattleLine('info', monster.name + 'が現れた！')],
+      : [
+        formatBattleLine('info', monster.name + 'が現れた！'),
+        ...(threatLine && scaled.threatTier !== 'normal' ? [formatBattleLine('info', threatLine)] : []),
+      ],
     tutorialBattle,
   };
 
   getDb().prepare(`
     INSERT INTO battle_sessions (id, user_id, area_id, monster_id, player_hp, player_mp, enemy_hp, enemy_break, status_json, is_boss, is_raid, is_event_battle, can_flee, status, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, 'active', ?, ?)
-  `).run(id, userId, areaId, monsterId, p.hp, p.mp, monster.hp, JSON.stringify(state),
+  `).run(id, userId, areaId, monsterId, p.hp, p.mp, scaled.hp, JSON.stringify(state),
     isBoss ? 1 : 0, isRaid ? 1 : 0, isEvent ? 1 : 0, canFlee, nowIso(), nowIso());
   return id;
 }
@@ -107,7 +123,15 @@ function parseState(json: string): BattleState {
     hitBonus: s.hitBonus ?? 0,
     breakBonus: s.breakBonus ?? 0,
     guardStrong: s.guardStrong ?? false,
+    combatScale: s.combatScale,
   };
+}
+
+function getCombatScale(state: BattleState, monster: MonsterRow): ScaledMonster {
+  if (state.combatScale) return state.combatScale;
+  return scaleMonsterForBattle(
+    { ...monster, id: monster.id, area_tag: monster.area_tag ?? 'starfield' },
+  );
 }
 
 function getPlayerWeaponElement(userId: string): string | null {
@@ -173,7 +197,7 @@ function calcFleeRate(player: ReturnType<typeof requirePlayer>, monster: Monster
 function calcDamage(atk: number, def: number, critRate: number, critDmg: number, multiplier: number, hitRate: number, bonusCrit = 0, bonusHit = 0): { hit: boolean; damage: number; crit: boolean } {
   if (!roll(hitRate + bonusHit)) return { hit: false, damage: 0, crit: false };
   const crit = roll(critRate + bonusCrit);
-  let base = Math.max(1, Math.floor((atk * multiplier - def * 0.45) * (0.9 + Math.random() * 0.2)));
+  let base = calcPhysicalDamage(atk, def, multiplier);
   if (crit) base = Math.floor(base * critDmg);
   return { hit: true, damage: base, crit };
 }
@@ -315,6 +339,7 @@ function executePlayerAction(
   isBoss: boolean,
 ) {
   const statusMods = getDefensiveModifiers(state, isBoss);
+  const scale = getCombatScale(state, monster);
 
   if (action === 'defend') {
     state.defending = true;
@@ -324,7 +349,7 @@ function executePlayerAction(
 
   if (action === 'attack') {
     const mult = diff.playerDamage * (1 + state.atkBuff);
-    const def = Math.floor(monster.defense * statusMods.enemyDefMult);
+    const def = Math.floor(scale.defense * statusMods.enemyDefMult);
     const result = calcDamage(player.attack, def, player.crit_rate, player.crit_damage, mult, diff.playerHitRate + state.hitBonus + statusMods.hitPenalty, 0, state.hitBonus);
     if (result.hit) {
       const wpnEl = getPlayerWeaponElement(userId);
@@ -353,6 +378,7 @@ function applySkill(skill: SkillRow, player: ReturnType<typeof requirePlayer>, m
   const effect = skill.effect_type ?? '';
   const fx = resolveSkillEffect(skill.id, skill.effect_type, skill.status_effect);
   const statusMods = getDefensiveModifiers(state, isBoss);
+  const scale = getCombatScale(state, monster);
 
   if (skill.skill_type === 'recovery' || effect === 'heal') {
     const heal = Math.floor(getScalingStat(player, skill.scaling_stat) * skill.power + player.level * 2);
@@ -399,7 +425,7 @@ function applySkill(skill: SkillRow, player: ReturnType<typeof requirePlayer>, m
 
   const hits = skill.hits ?? 1;
   const isMag = ['magic', 'divine', 'machine'].includes(skill.skill_type);
-  const def = Math.floor((isMag ? monster.spirit : monster.defense) * statusMods.enemyDefMult);
+  const def = Math.floor((isMag ? scale.spirit * statusMods.enemyMagMult : scale.defense) * statusMods.enemyDefMult);
   let stat = getScalingStat(player, skill.scaling_stat);
   if (skill.secondary_scaling_stat) stat = Math.floor((stat + getScalingStat(player, skill.secondary_scaling_stat)) / 2);
   const mult = diff.playerDamage * skill.power * (1 + (isMag ? state.magBuff : state.atkBuff));
@@ -449,25 +475,36 @@ function executeEnemyTurn(monster: MonsterRow, player: ReturnType<typeof require
   }
 
   const statusMods = getDefensiveModifiers(state, isBoss);
-  const ai = JSON.parse(monster.ai_pattern_json || '{}') as { poison_chance?: number; tracker?: boolean };
-  const atk = Math.floor(monster.attack * statusMods.enemyAtkMult);
-  const result = calcDamage(atk, player.defense + state.defBuff * 10, 0.05, 1.5, 1, diff.enemyHitRate, 0, state.hitBonus * -0.5 + statusMods.hitPenalty);
-  if (result.hit) {
-    let dmg = Math.floor(result.damage * diff.playerTaken * statusMods.playerTakenMult);
-    if (tutorial) dmg = Math.max(1, Math.floor(dmg * 0.45));
-    if (state.defending) dmg = Math.floor(dmg * (state.guardStrong ? 0.40 : 0.55));
-    if (state.enemyBroken) dmg = Math.floor(dmg * 0.75);
-    const resists = getPlayerElementResistances(player.user_id);
-    const mit = applyPlayerElementResist(dmg, monster.element, resists);
-    dmg = mit.damage;
-    pHp -= dmg;
-    pushLog(state, 'enemy_attack', `${monster.name}の攻撃。\n　あなたに **${dmg}** ダメージ。`);
-    if (mit.logText) pushLog(state, 'status', mit.logText);
-    if (ai.poison_chance && roll(ai.poison_chance)) {
-      applyStatusEffect(state, 'player', 'poison', 3, false);
-      pushLog(state, 'status', '毒を受けた。');
-    }
-  } else pushLog(state, 'enemy_attack', `${monster.name}の攻撃。\n　外れた。`);
+  const scale = getCombatScale(state, monster);
+  const ai = JSON.parse(monster.ai_pattern_json || '{}') as { poison_chance?: number; heavy_chance?: number };
+  const atk = Math.floor(scale.attack * statusMods.enemyAtkMult);
+  const heavy = !!(ai.heavy_chance && roll(ai.heavy_chance)) || scale.threatTier === 'elite';
+  if (!roll(diff.enemyHitRate)) {
+    pushLog(state, 'enemy_attack', `${monster.name}の攻撃。\n　外れた。`);
+    return { pHp, eHp, eBreak, state };
+  }
+
+  let dmg = calcEnemyDamageToPlayer({
+    attack: atk,
+    playerDefense: player.defense + state.defBuff * 10,
+    playerMaxHp: player.max_hp,
+    threatTier: scale.threatTier,
+    takenMult: diff.playerTaken * statusMods.playerTakenMult,
+    heavy,
+  });
+  if (tutorial) dmg = Math.max(1, Math.floor(dmg * 0.55));
+  if (state.defending) dmg = Math.floor(dmg * (state.guardStrong ? 0.40 : 0.55));
+  if (state.enemyBroken) dmg = Math.floor(dmg * 0.75);
+  const resists = getPlayerElementResistances(player.user_id);
+  const mit = applyPlayerElementResist(dmg, monster.element, resists);
+  dmg = mit.damage;
+  pHp -= dmg;
+  pushLog(state, 'enemy_attack', `${monster.name}の攻撃${heavy ? '（強）' : ''}。\n　あなたに **${dmg}** ダメージ。`);
+  if (mit.logText) pushLog(state, 'status', mit.logText);
+  if (ai.poison_chance && roll(ai.poison_chance + diff.statusAccBonus)) {
+    applyStatusEffect(state, 'player', 'poison', 3, false);
+    pushLog(state, 'status', '毒を受けた。');
+  }
 
   return { pHp, eHp, eBreak, state };
 }
@@ -538,6 +575,11 @@ function resolveVictory(sessionId: string, userId: string, session: SessionRow, 
     const item = getDb().prepare('SELECT name FROM items WHERE id = ?').get(drop.item_id) as { name: string };
     dropMsgs.push(item.name);
   }
+  if (session.monster_id === PRE_VALHALA_BOSS_MONSTER && roll(SRC_FORGE_MATERIAL_DROP_RATE)) {
+    addItem(userId, SRC_FORGE_MATERIAL_ID, 1, { pending: true });
+    const mat = getDb().prepare('SELECT name FROM items WHERE id = ?').get(SRC_FORGE_MATERIAL_ID) as { name: string };
+    dropMsgs.push(mat.name);
+  }
   if (session.is_boss) incrementWeeklyProgress(userId, 'boss_kills');
   incrementWeeklyProgress(userId, 'explore_count');
 
@@ -545,18 +587,21 @@ function resolveVictory(sessionId: string, userId: string, session: SessionRow, 
   lines.push('🔵 ' + monster.name + 'を倒した。');
   lines.push('');
   lines.push('**得たもの**');
-  lines.push('・経験値 +' + exp);
+  lines.push(`・経験値 +${exp}`);
   for (const jr of jobResults) {
     if (jr.expGained > 0) lines.push('・' + jr.jobName + '経験 +' + jr.expGained);
   }
   lines.push('・' + gold + 'G');
   if (dropMsgs.length) lines.push('・' + dropMsgs.join('、'));
-  if (levelResult.leveledUp) lines.push('');
-  if (levelResult.levelUpMessage) lines.push(levelResult.levelUpMessage);
-  else if (levelResult.leveledUp) lines.push('✦ Lv' + levelResult.newLevel + 'へ踏み上げた。');
+  lines.push('');
+  if (levelResult.leveledUp && levelResult.levelUpMessage) {
+    lines.push(levelResult.levelUpMessage);
+    lines.push('');
+  }
+  lines.push(`Lv${levelResult.newLevel} まであと ${levelResult.expToNext} EXP`);
   for (const jr of jobResults) {
     if (jr.leveledUp) lines.push('✦ ' + jr.jobName + ' Lv' + jr.newLevel + 'へ深まった。');
-    else if (jr.expGained > 0 && jr.newLevel < 70) lines.push('*' + getJobProgressText(userId, jr.jobName) + '*');
+    else if (jr.expGained > 0 && jr.newLevel < 70) lines.push(getJobProgressText(userId, jr.jobName));
   }
 
   const skillLearned: Array<{ jobName: string; skills: string[] }> = [];

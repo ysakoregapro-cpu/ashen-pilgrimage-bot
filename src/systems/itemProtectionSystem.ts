@@ -21,13 +21,14 @@ export interface InventoryProtectRow {
   is_unique: number;
   src_weapon_id: string | null;
   src_level: number;
+  metadata_json: string | null;
 }
 
 export function getInventoryProtectRow(inventoryId: number, userId: string): InventoryProtectRow | undefined {
   return getDb().prepare(`
     SELECT pi.id AS inventory_id, pi.item_id, i.name, i.category, i.rarity, i.tradeable,
       pi.is_equipped, pi.is_pending_reward, COALESCE(pi.is_listed, 0) AS is_listed,
-      COALESCE(e.is_unique, 0) AS is_unique, e.src_weapon_id, pi.src_level
+      COALESCE(e.is_unique, 0) AS is_unique, e.src_weapon_id, pi.src_level, pi.metadata_json
     FROM player_inventory pi
     JOIN items i ON pi.item_id = i.id
     LEFT JOIN equipment e ON pi.item_id = e.item_id
@@ -53,7 +54,7 @@ export function isProtectedInventory(row: InventoryProtectRow, action: ItemActio
       return '伝承の名が刻まれた武器は、手放すことはできない。';
     }
   }
-  if (row.is_unique) {
+  if (row.is_unique || row.metadata_json?.includes('kai_unique')) {
     if (action === 'sell' || action === 'dismantle' || action === 'trade' || action === 'market_list') {
       return 'それは、この旅に深く結びついた品だ。手放すことはできない。';
     }

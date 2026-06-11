@@ -102,6 +102,10 @@ export const ACQUISITION_OVERRIDES: Record<string, AcquisitionSource[]> = {
     { type: 'shop', detail: 'はじまりの星原（間接）' },
   ],
   wpn_traveler_sword: [{ type: 'start', detail: '冒険開始時' }],
+  mat_star_pilgrim_echo: [
+    { type: 'boss_reward', detail: '炉熱の番人（低確率・周回）' },
+    { type: 'craft', detail: 'カイSrc昇華に使用' },
+  ],
 };
 
 export function formatAcquisitionHint(sources: AcquisitionSource[]): string {

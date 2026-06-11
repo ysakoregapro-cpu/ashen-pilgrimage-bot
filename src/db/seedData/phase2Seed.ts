@@ -58,7 +58,7 @@ const CONSUMABLE_EXTRAS = [
 const BOSS_STATS: Record<string, { hp: number; atk: number; mag?: number; def: number; lv: number }> = {
   mon_night_shadow: { lv: 8, hp: 80, atk: 16, def: 8 },
   mon_lighthouse_jelly: { lv: 12, hp: 100, atk: 10, mag: 20, def: 6 },
-  mon_silver_golem: { lv: 16, hp: 180, atk: 18, def: 22 },
+  mon_silver_golem: { lv: 16, hp: 200, atk: 28, def: 20 },
   mon_tree_guardian: { lv: 26, hp: 280, atk: 28, def: 24 },
   mon_silent_guardian: { lv: 36, hp: 450, atk: 30, mag: 36, def: 26 },
   mon_black_iron_exec: { lv: 36, hp: 320, atk: 36, def: 20 },
@@ -85,6 +85,16 @@ export function ensurePhase2Seed(db: Database.Database): void {
       WHERE id=?
     `).run(stats.lv, stats.hp, stats.atk, stats.mag ?? Math.floor(stats.atk * 0.5), stats.def, id);
   }
+
+  const AI_OVERRIDES: Record<string, Record<string, unknown>> = {
+    mon_silver_golem: { pattern: 'normal', heavy_chance: 0.35, poison_chance: 0 },
+    mon_crystal_spider: { pattern: 'normal', poison_chance: 0.28, heavy_chance: 0.15 },
+    mon_rust_miner: { pattern: 'normal', heavy_chance: 0.22 },
+    mon_mine_bat: { pattern: 'normal', poison_chance: 0.08 },
+    mon_drift_undead: { pattern: 'normal', poison_chance: 0.12 },
+  };
+  const updAi = db.prepare('UPDATE monsters SET ai_pattern_json = ? WHERE id = ?');
+  for (const [id, ai] of Object.entries(AI_OVERRIDES)) updAi.run(JSON.stringify(ai), id);
 
   // Event pools per area tier
   const areas = db.prepare('SELECT id, town_id, recommended_max_level FROM exploration_areas').all() as Array<{

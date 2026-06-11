@@ -3,8 +3,9 @@ import type { Player, StatModifiers } from '../types';
 import { nowIso } from '../types';
 import { addItem } from './inventorySystem';
 import { equipItem } from './equipmentSystem';
-import { calcUpgradeStatBonuses } from './enhanceSystem';
-import { levelExpRequired, formatLevelUpMessage } from './expSystem';
+import { calcUpgradeStatBonuses, getPrimaryStatKey } from './enhanceSystem';
+import { getAwakeningStatFlatBonus } from './awakeningSystem';
+import { levelExpRequired, formatLevelUpMessage, expToNextLevel, type AddExpResult } from './expSystem';
 
 export function getPlayer(userId: string): Player | null {
   return getDb().prepare('SELECT * FROM players WHERE user_id = ?').get(userId) as Player | null;
@@ -91,18 +92,18 @@ export function recalculatePlayerStats(userId: string): Player {
   }
 
   const equipped = db.prepare(`
-    SELECT pi.*, e.*, i.rarity
+    SELECT pi.*, e.*, i.rarity, pi.awakening_level
     FROM player_equipment pe
     JOIN player_inventory pi ON pe.inventory_id = pi.id
     JOIN equipment e ON pi.item_id = e.item_id
     JOIN items i ON pi.item_id = i.id
     WHERE pe.user_id = ?
   `).all(userId) as Array<{
-    upgrade_level: number; durability_state: string; src_level: number;
+    upgrade_level: number; awakening_level: number; durability_state: string; src_level: number;
     attack_bonus: number; magic_bonus: number; defense_bonus: number;
     spirit_bonus: number; speed_bonus: number; hp_bonus: number; mp_bonus: number;
     crit_rate_bonus: number; crit_damage_bonus: number; accuracy_bonus: number; evasion_bonus: number;
-    series_id: string | null; slot: string; rarity: string;
+    series_id: string | null; slot: string; rarity: string; weapon_type: string | null;
   }>;
 
   const setCounts: Record<string, number> = {};
@@ -129,6 +130,20 @@ export function recalculatePlayerStats(userId: string): Player {
     base.crit_damage += eq.crit_damage_bonus;
     base.accuracy += eq.accuracy_bonus;
     base.evasion += eq.evasion_bonus;
+    const primary = getPrimaryStatKey({
+      attack_bonus: eq.attack_bonus, magic_bonus: eq.magic_bonus,
+      defense_bonus: eq.defense_bonus, spirit_bonus: eq.spirit_bonus,
+      speed_bonus: eq.speed_bonus, hp_bonus: eq.hp_bonus,
+      weapon_type: eq.weapon_type, slot: eq.slot,
+    });
+    const awBonus = getAwakeningStatFlatBonus(eq.awakening_level ?? 0, primary);
+    if (awBonus > 0) {
+      if (primary === 'attack') base.attack += awBonus;
+      else if (primary === 'magic') base.magic += awBonus;
+      else if (primary === 'defense') base.defense += awBonus;
+      else base.spirit += awBonus;
+      base.max_hp += awBonus;
+    }
     if (eq.series_id) setCounts[eq.series_id] = (setCounts[eq.series_id] ?? 0) + 1;
   }
 
@@ -200,7 +215,7 @@ function applySetBonuses(setCounts: Record<string, number>): StatModifiers {
   return mods;
 }
 
-export function addExp(userId: string, exp: number): { leveledUp: boolean; newLevel: number; oldLevel?: number; levelUpMessage?: string } {
+export function addExp(userId: string, exp: number): AddExpResult {
   const player = requirePlayer(userId);
   const oldLevel = player.level;
   let newExp = player.exp + exp;
@@ -217,20 +232,29 @@ export function addExp(userId: string, exp: number): { leveledUp: boolean; newLe
   getDb().prepare('UPDATE players SET exp=?, level=?, total_exp=?, updated_at=? WHERE user_id=?')
     .run(newExp, newLevel, totalExp, nowIso(), userId);
 
+  let levelUpMessage: string | undefined;
   if (leveledUp) {
     const p = recalculatePlayerStats(userId);
     getDb().prepare('UPDATE players SET hp=max_hp, mp=max_mp WHERE user_id=?').run(userId);
     const extras: string[] = [];
     if (newLevel >= 20) extras.push('副職が選べるようになる');
     if (newLevel >= 15) extras.push('白銀鉱山街の推奨Lv圏内');
+    levelUpMessage = formatLevelUpMessage(oldLevel, newLevel, extras);
     return {
       leveledUp: true,
       newLevel: p.level,
       oldLevel,
-      levelUpMessage: formatLevelUpMessage(oldLevel, newLevel, extras),
+      levelUpMessage,
+      expGained: exp,
+      expToNext: expToNextLevel(p.level, newExp),
     };
   }
-  return { leveledUp: false, newLevel };
+  return {
+    leveledUp: false,
+    newLevel,
+    expGained: exp,
+    expToNext: expToNextLevel(newLevel, newExp),
+  };
 }
 
 export { levelExpRequired };

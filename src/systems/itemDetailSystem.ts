@@ -21,6 +21,7 @@ import { resolveSkillEffect } from '../db/seedData/skillEffectMaster';
 import { getSkill, skillTypeLabel, scalingLabel } from './skillSystem';
 import { AREAS } from '../db/seedData/areas';
 import { DURABILITY_PENALTY, RARITY_EMOJI, SLOT_LABELS, type DurabilityState, type Rarity } from '../types';
+import { awakeningLabel, MAX_AWAKENING_LEVEL, AWAKENING_DUP_COST } from '../db/seedData/awakeningMaster';
 import { ButtonBuilder, ButtonStyle, ActionRowBuilder, type MessageActionRowComponentBuilder } from 'discord.js';
 
 export type DetailContext = 'inventory' | 'shop_buy' | 'shop_sell' | 'market' | 'upgrade' | 'equip' | 'skill' | 'general';
@@ -31,6 +32,10 @@ const UPGRADE_STONE_USAGE: Record<string, string> = {
   upg_fine_stone: '装備 +7〜+9 強化',
   upg_rare_stone: '装備 +10 以降の強化',
   upg_deep_core_stone: '高級装備・Src強化',
+};
+
+const SPECIAL_MATERIAL_USAGE: Record<string, string> = {
+  mat_star_pilgrim_echo: 'カイによるSrc昇華（売却不可）',
 };
 
 const WEAPON_TYPE_LABELS: Record<string, string> = {
@@ -86,6 +91,7 @@ export function getItemAcquisitionHint(userId: string, itemId: string): string {
 }
 
 export function getItemUsageHint(itemId: string, category: string): string {
+  if (SPECIAL_MATERIAL_USAGE[itemId]) return SPECIAL_MATERIAL_USAGE[itemId];
   if (UPGRADE_STONE_USAGE[itemId]) return UPGRADE_STONE_USAGE[itemId];
   if (itemId.startsWith('rep_')) return '装備の修理';
   if (category === 'upgrade_stone') return '装備強化';
@@ -298,6 +304,19 @@ function buildEquipmentDetail(userId: string, inventoryId: number): string {
     enhanceBlock += `\nSrc +${srcLv}`;
   }
 
+  const awLv = (row.awakening_level as number) ?? 0;
+  let awakenBlock = awakeningLabel(awLv);
+  if (awLv < MAX_AWAKENING_LEVEL && ['N', 'R'].includes(rarity) && !(row.is_unique as number)) {
+    const need = AWAKENING_DUP_COST[awLv] ?? 0;
+    awakenBlock += `\n次の覚醒: 同名武器 ${need} 本`;
+  } else if (awLv >= MAX_AWAKENING_LEVEL && slot === 'weapon' && !(row.is_unique as number)) {
+    awakenBlock += '\nカイに見せればユニーク昇華可能';
+  }
+  const meta = row.metadata_json as string | null;
+  const kaiUnique = meta?.includes('kai_unique');
+  const typeTags: string[] = [];
+  if (rarity === 'Src' || srcLv > 0) typeTags.push('Src武器');
+  else if ((row.is_unique as number) || kaiUnique) typeTags.push('ユニーク武器');
   const reqLv = (row.required_level as number) ?? 1;
   const reqJob = row.required_job as string | null;
   const cond = [`Lv${reqLv}以上`, reqJob ? `${reqJob}向け` : null].filter(Boolean).join(' / ');
@@ -305,7 +324,7 @@ function buildEquipmentDetail(userId: string, inventoryId: number): string {
   const sellPrice = isOwner ? getInventorySellPrice(row.item_id as string, upg, dur, row.metadata_json as string | null) : 0;
 
   const sections = [
-    `${RARITY_EMOJI[rarity as Rarity] ?? ''} **${name}**${upg ? ` +${upg}` : ''}${srcLv ? ` Src+${srcLv}` : ''}`,
+    `${RARITY_EMOJI[rarity as Rarity] ?? ''} **${name}**${upg ? ` +${upg}` : ''}${srcLv ? ` Src+${srcLv}` : ''}${typeTags.length ? `（${typeTags.join('・')}）` : ''}`,
     `種別: ${slot === 'weapon' ? '武器' : '防具'}${wtype ? ` / ${WEAPON_TYPE_LABELS[wtype] ?? wtype}` : ''}`,
     `レアリティ: ${rarity} | 部位: ${SLOT_LABELS[slot as keyof typeof SLOT_LABELS] ?? slot}`,
     `属性: ${ELEMENT_LABELS[element]}`,
@@ -318,6 +337,9 @@ function buildEquipmentDetail(userId: string, inventoryId: number): string {
     '',
     formatFieldTitle('強化'),
     enhanceBlock,
+    '',
+    formatFieldTitle('覚醒'),
+    awakenBlock,
     '',
     formatFieldTitle('耐久'),
     `${durabilityLabel(dur)}${durPen < 1 ? `（-${Math.round((1 - durPen) * 100)}%）` : ' — ペナルティなし'}`,

@@ -25,7 +25,7 @@ export const BOSS_CHAPTER_REWARDS: Record<string, { chapterFlag: string; unlockT
   boss_page_shadow: { chapterFlag: 'chapter_completed:ch4_library', unlockTown: 'forgotten_market', starShard: 5 },
   boss_forget_seller: { chapterFlag: 'chapter_completed:ch5_market', unlockTown: 'hourglass_city', starShard: 6 },
   boss_unwinding_shadow: { chapterFlag: 'chapter_completed:ch6_hourglass', unlockTown: 'deep_furnace_outpost', starShard: 7 },
-  boss_old_furnace_keeper: { chapterFlag: 'chapter_completed:ch7_furnace', unlockTown: 'valhalla_fortress', starShard: 8 },
+  boss_old_furnace_keeper: { chapterFlag: 'chapter_completed:ch7_furnace', starShard: 8 },
   boss_old_king_echo: { chapterFlag: 'chapter_completed:ch8_valhalla', starShard: 0 },
 };
 

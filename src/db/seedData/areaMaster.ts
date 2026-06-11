@@ -1,4 +1,5 @@
 import type { GameElement } from './elementMaster';
+import { getMonsterElementDef } from './monsterElementMaster';
 
 export type AreaMasterEntry = {
   areaId: string;
@@ -27,6 +28,28 @@ const TOWN_ELEMENTS: Record<string, GameElement[]> = {
 
 export function getUsefulElementsForTown(townId: string): GameElement[] {
   return TOWN_ELEMENTS[townId] ?? ['neutral'];
+}
+
+/** Derive 2–3 recommended elements from monster weaknesses in an area pool */
+export function getRecommendedElementsFromMonsters(
+  entries: Array<{ monsterId: string; areaTag: string }>,
+  townId: string,
+): GameElement[] {
+  const counts = new Map<GameElement, number>();
+  for (const { monsterId, areaTag } of entries) {
+    const def = getMonsterElementDef(monsterId, areaTag);
+    for (const w of def.weaknesses) {
+      counts.set(w, (counts.get(w) ?? 0) + 1);
+    }
+  }
+  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([el]) => el);
+  if (sorted.length >= 2) return sorted.slice(0, 3);
+  const townFallback = getUsefulElementsForTown(townId);
+  const merged = [...sorted];
+  for (const el of townFallback) {
+    if (!merged.includes(el) && merged.length < 3) merged.push(el);
+  }
+  return merged.slice(0, 3);
 }
 
 export function buildAreaMasterEntry(areaId: string, townId: string): AreaMasterEntry {

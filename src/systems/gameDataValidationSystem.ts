@@ -142,6 +142,28 @@ export function validateGameData(opts?: { userId?: string }): ValidationIssue[] 
     if (!f.requiredFlag) issues.push({ severity: 'error', category: 'progression', message: `機能 ${f.feature} に requiredFlag なし` });
   }
 
+  const valhallaTown = db.prepare(`SELECT required_level FROM towns WHERE id = 'valhalla_fortress'`).get() as { required_level: number } | undefined;
+  if (valhallaTown && valhallaTown.required_level < 80) {
+    issues.push({ severity: 'warn', category: 'progression', message: 'ヴァルハラの required_level が Lv80 未満です' });
+  }
+
+  if (!itemIds.has('mat_star_pilgrim_echo')) {
+    issues.push({ severity: 'error', category: 'src', message: 'Src化素材 mat_star_pilgrim_echo が存在しません' });
+  }
+
+  const sample = db.prepare(`SELECT id, attack, hp, area_tag FROM monsters WHERE id = 'mon_silver_golem'`).get() as {
+    attack: number; hp: number;
+  } | undefined;
+  if (sample && sample.attack < 20) {
+    issues.push({ severity: 'warn', category: 'combat', message: '白銀ゴーレムの基礎攻撃力が低すぎる可能性' });
+  }
+
+  for (const s of skills) {
+    if (!s.element) {
+      issues.push({ severity: 'warn', category: 'skill', message: `スキル ${s.name} (${s.id}) に属性未設定` });
+    }
+  }
+
   return issues;
 }
 

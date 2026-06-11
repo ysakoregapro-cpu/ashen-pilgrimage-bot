@@ -14,14 +14,18 @@ export type BattleStatusState = {
   enemySilence: number;
   enemyDefDown: number;
   enemyAtkDown: number;
+  enemyMagDown: number;
+  enemySpiDown: number;
   enemyVulnerable: number;
   playerDefDown: number;
+  playerDefUp: number;
 };
 
 export const DEFAULT_STATUS_STATE: BattleStatusState = {
   poisonTurns: 0, burnTurns: 0, playerSilence: 0, playerBlind: 0, playerBind: 0, playerRegen: 0,
   enemyPoison: 0, enemyBurn: 0, enemySlow: 0, enemyBind: 0, enemySilence: 0,
-  enemyDefDown: 0, enemyAtkDown: 0, enemyVulnerable: 0, playerDefDown: 0,
+  enemyDefDown: 0, enemyAtkDown: 0, enemyMagDown: 0, enemySpiDown: 0,
+  enemyVulnerable: 0, playerDefDown: 0, playerDefUp: 0,
 };
 
 export function mergeStatusState(existing: Partial<BattleStatusState>): BattleStatusState {
@@ -69,6 +73,18 @@ export function applyStatusEffect(
     case 'attack_down':
       state.enemyAtkDown = Math.max(state.enemyAtkDown, dur);
       return '攻撃力が落ちた。';
+    case 'magic_down':
+      state.enemyMagDown = Math.max(state.enemyMagDown, dur);
+      return isBoss ? '魔力が削がれた（ボス効果）。' : '魔力が削がれた。';
+    case 'spirit_down':
+      state.enemySpiDown = Math.max(state.enemySpiDown, dur);
+      return isBoss ? '精神が揺らいだ（ボス効果）。' : '精神が揺らいだ。';
+    case 'guard_up':
+      if (target === 'player') {
+        state.playerDefUp = Math.max(state.playerDefUp, dur);
+        return '防御が高まった。';
+      }
+      return '';
     case 'vulnerable':
       state.enemyVulnerable = Math.max(state.enemyVulnerable, dur);
       return '被ダメージが増えやすくなった。';
@@ -121,7 +137,11 @@ export function tickStatusEffects(
   if (state.playerSilence > 0) state.playerSilence--;
   if (state.playerBlind > 0) state.playerBlind--;
   if (state.enemyDefDown > 0) state.enemyDefDown--;
+  if (state.enemyAtkDown > 0) state.enemyAtkDown--;
+  if (state.enemyMagDown > 0) state.enemyMagDown--;
+  if (state.enemySpiDown > 0) state.enemySpiDown--;
   if (state.enemyVulnerable > 0) state.enemyVulnerable--;
+  if (state.playerDefUp > 0) state.playerDefUp--;
 
   return { pHp, eHp, logs };
 }
@@ -136,18 +156,22 @@ export function isPlayerActionBlocked(state: BattleStatusState): boolean {
 }
 
 export function getDefensiveModifiers(state: BattleStatusState, isBoss: boolean): {
-  enemyDefMult: number; enemyAtkMult: number; playerTakenMult: number; hitPenalty: number;
+  enemyDefMult: number; enemyAtkMult: number; enemyMagMult: number; playerTakenMult: number; hitPenalty: number;
 } {
   let enemyDefMult = 1;
   let enemyAtkMult = 1;
+  let enemyMagMult = 1;
   let playerTakenMult = 1;
   let hitPenalty = 0;
 
   if (state.enemyDefDown > 0) enemyDefMult *= 0.85;
   if (state.enemyAtkDown > 0) enemyAtkMult *= 0.85;
+  if (state.enemyMagDown > 0) enemyMagMult *= isBoss ? 0.9 : 0.85;
+  if (state.enemySpiDown > 0) enemyMagMult *= isBoss ? 0.92 : 0.88;
   if (state.enemyVulnerable > 0) enemyDefMult *= isBoss ? 0.92 : 0.8;
   if (state.playerBlind > 0) hitPenalty -= 0.15;
   if (state.playerDefDown > 0) playerTakenMult *= 1.1;
+  if (state.playerDefUp > 0) playerTakenMult *= 0.9;
 
-  return { enemyDefMult, enemyAtkMult, playerTakenMult, hitPenalty };
+  return { enemyDefMult, enemyAtkMult, enemyMagMult, playerTakenMult, hitPenalty };
 }
