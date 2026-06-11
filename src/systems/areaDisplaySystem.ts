@@ -1,6 +1,8 @@
 import { getDb } from '../db/database';
 import { getDifficultyModifiers } from './difficultySystem';
 import { requirePlayer } from './playerSystem';
+import { getUsefulElementsForTown } from '../db/seedData/areaMaster';
+import { formatElementHint } from './progressionSystem';
 import { getMonsterRow, isBossMonster } from './monsterBossSystem';
 
 export function getAreaTier(areaId: string): 'early' | 'mid' | 'late' | 'valhalla' {
@@ -64,16 +66,20 @@ export function formatAreaDetail(userId: string, areaId: string): string {
   }
 
   const danger = getDangerStars(player.level, area.recommended_min_level, area.recommended_max_level, hasBoss, tier);
+  const usefulEl = formatElementHint(getUsefulElementsForTown(area.town_id));
 
   const lines = [
     `**${area.name}**`,
     `推奨Lv: ${area.recommended_min_level}〜${area.recommended_max_level} | 危険度: ${danger}`,
+    `有効属性: ${usefulEl}`,
     `主な敵: ${monNames.slice(0, 3).join('、') || '—'}`,
     `主な素材: ${matNames.slice(0, 4).join('、') || '—'}`,
   ];
   if (equipHints.length) lines.push(`主な装備: ${equipHints.slice(0, 3).join('、')}`);
   lines.push(`強敵: ${hasBoss ? 'あり' : 'なし'}`);
+  if (hasBoss) lines.push('ボス: 初回撃破で大きな経験値');
   if (rareHint) lines.push('希少素材の気配: あり');
+  if (player.level < area.recommended_min_level) lines.push('⚠ 推奨Lvより低い — 苦戦しやすい');
   return lines.join('\n');
 }
 

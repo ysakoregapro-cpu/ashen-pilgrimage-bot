@@ -87,6 +87,9 @@ export function nextActionButtons(
           btn('town:explore', 'もう一度', ButtonStyle.Success),
           btn('town:home', '町へ戻る', ButtonStyle.Secondary),
           btn('flow:inventory', '所持品', ButtonStyle.Secondary),
+          btn('detail:open:inventory', '品の詳細', ButtonStyle.Secondary),
+        ),
+        row(
           btn('flow:equip', '身支度', ButtonStyle.Secondary),
         ),
       ];
@@ -97,6 +100,9 @@ export function nextActionButtons(
           btn('town:explore', '探索を続ける', ButtonStyle.Success),
           btn('town:home', '町へ戻る', ButtonStyle.Secondary),
           btn('flow:inventory', '所持品', ButtonStyle.Secondary),
+          btn('detail:open:inventory', '品の詳細', ButtonStyle.Secondary),
+        ),
+        row(
           btn('flow:equip', '身支度', ButtonStyle.Secondary),
         ),
       ];

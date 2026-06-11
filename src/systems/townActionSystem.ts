@@ -8,6 +8,7 @@ import { getAreasForTown } from './explorationSystem';
 import { buildExploreAreaOptions, formatAreaDetail } from './areaDisplaySystem';
 import { returnToTownHub } from './townSystem';
 import { buildGuideSection } from './dialogueSystem';
+import { getRoadmapHints } from './progressionSystem';
 import {
   townHubButtons,
   townHubEmbed,
@@ -97,12 +98,7 @@ export function buildTownHub(userId: string, opts?: { intro?: string; isFirstVis
 }
 
 function suggestActionList(townId: string, userId: string): string[] {
-  const player = getPlayer(userId);
-  const hints: string[] = [];
-  if (player?.main_job === '未選択') hints.push('冒険者受付で職能を決める');
-  if (player && player.hp < player.max_hp * 0.5) hints.push('宿で休む');
-  hints.push('探索へ向かう');
-  return hints;
+  return getRoadmapHints(userId).now.slice(0, 4);
 }
 
 function buildFirstVisitIntro(userId: string, townId: string, townName: string): string {

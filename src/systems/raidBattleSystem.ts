@@ -8,6 +8,7 @@ import { generateRaidAccessoryMetadata } from '../db/seedData/phase2Seed';
 import { roll, randomInt, uuid } from '../utils/random';
 import { nowIso } from '../types';
 import { formatBattleLine } from '../utils/formatters';
+import { getPlayerElementResistances, applyPlayerElementResist } from './elementSystem';
 
 type ParticipantState = {
   user_id: string; hp: number; mp: number; max_hp: number; max_mp: number;
@@ -38,7 +39,7 @@ export function startRaidBattle(raidSessionId: string): { ok: boolean; message: 
   const participants = JSON.parse(raid.participants_json) as string[];
   const mult = getRaidMultiplier(participants.length);
   const monster = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(RAID_BOSS) as {
-    hp: number; name: string; attack: number; magic: number; defense: number; spirit: number; break_max: number;
+    hp: number; name: string; attack: number; magic: number; defense: number; spirit: number; break_max: number; element?: string | null;
   };
   const enemyMaxHp = Math.floor(monster.hp * mult.hp * 1.15);
   const states: ParticipantState[] = [];
@@ -85,7 +86,7 @@ export function setRaidAction(battleId: string, userId: string, action: string, 
 function processRaidTurn(battleId: string): string {
   const battle = getDb().prepare('SELECT * FROM raid_battle_sessions WHERE id = ?').get(battleId) as RaidBattleRow;
   const monster = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(battle.monster_id) as {
-    name: string; attack: number; defense: number; spirit: number; break_max: number; exp_reward: number; gold_reward: number;
+    name: string; attack: number; defense: number; spirit: number; break_max: number; exp_reward: number; gold_reward: number; element?: string | null;
   };
   let states = JSON.parse(battle.participant_states_json) as ParticipantState[];
   const status = JSON.parse(battle.status_json) as { log: string[]; enemyBroken: boolean };
@@ -114,9 +115,11 @@ function processRaidTurn(battleId: string): string {
     const alive = states.filter((s) => s.hp > 0);
     const target = alive[randomInt(0, alive.length - 1)]!;
     const rawDmg = Math.max(1, Math.floor(monster.attack * 1.15 - target.defense * 0.4));
-    const dmg = target.action === 'defend' ? Math.floor(rawDmg * 0.45) : rawDmg;
-    target.hp -= dmg;
-    status.log.push(formatBattleLine('enemy_attack', `${monster.name}の攻撃。\n　<@${target.user_id}>に **${dmg}** ダメージ。`));
+    const baseDmg = target.action === 'defend' ? Math.floor(rawDmg * 0.45) : rawDmg;
+    const mit = applyPlayerElementResist(baseDmg, monster.element, getPlayerElementResistances(target.user_id));
+    target.hp -= mit.damage;
+    status.log.push(formatBattleLine('enemy_attack', `${monster.name}の攻撃。\n　<@${target.user_id}>に **${mit.damage}** ダメージ。`));
+    if (mit.logText) status.log.push(formatBattleLine('status', mit.logText));
     for (const s of states) { s.action = null; s.ready = 0; }
   }
 

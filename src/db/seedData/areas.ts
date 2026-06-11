@@ -1,8 +1,8 @@
 import type Database from 'better-sqlite3';
 
-type Area = { id: string; town: string; name: string; desc: string; min: number; max: number; monsters: string[]; rewards: string[] };
+export type AreaDef = { id: string; town: string; name: string; desc: string; min: number; max: number; monsters: string[]; rewards: string[] };
 
-const AREAS: Area[] = [
+export const AREAS: AreaDef[] = [
   // はじまりの星原
   { id: 'area_star_outskirts', town: 'start_starfield', name: '星原の外れ', desc: '星屑が散らばる平原の外れ。', min: 1, max: 5, monsters: ['mon_star_slime', 'mon_grass_imp'], rewards: ['mat_starfield_grass', 'mat_iron_scrap'] },
   { id: 'area_star_dust_path', town: 'start_starfield', name: '星屑の草道', desc: '星屑を踏む細い道。', min: 2, max: 6, monsters: ['mon_star_slime', 'mon_chip_wolf'], rewards: ['mat_starfield_grass', 'mat_cloth_scrap'] },

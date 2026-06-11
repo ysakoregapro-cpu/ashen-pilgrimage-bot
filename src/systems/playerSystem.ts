@@ -3,6 +3,8 @@ import type { Player, StatModifiers } from '../types';
 import { nowIso } from '../types';
 import { addItem } from './inventorySystem';
 import { equipItem } from './equipmentSystem';
+import { calcUpgradeStatBonuses } from './enhanceSystem';
+import { levelExpRequired, formatLevelUpMessage } from './expSystem';
 
 export function getPlayer(userId: string): Player | null {
   return getDb().prepare('SELECT * FROM players WHERE user_id = ?').get(userId) as Player | null;
@@ -106,14 +108,23 @@ export function recalculatePlayerStats(userId: string): Player {
   const setCounts: Record<string, number> = {};
   for (const eq of equipped) {
     const durPenalty = eq.durability_state === '破損' ? 0.7 : eq.durability_state === '損傷' ? 0.85 : eq.durability_state === '摩耗' ? 0.95 : 1;
-    const upgBonus = 1 + eq.upgrade_level * 0.05 + eq.src_level * 0.08;
-    base.attack += Math.floor(eq.attack_bonus * durPenalty * upgBonus);
-    base.magic += Math.floor(eq.magic_bonus * durPenalty * upgBonus);
-    base.defense += Math.floor(eq.defense_bonus * durPenalty * upgBonus);
-    base.spirit += Math.floor(eq.spirit_bonus * durPenalty * upgBonus);
-    base.speed += Math.floor(eq.speed_bonus * durPenalty * upgBonus);
-    base.max_hp += Math.floor(eq.hp_bonus * durPenalty * upgBonus);
-    base.max_mp += Math.floor(eq.mp_bonus * durPenalty * upgBonus);
+    const stats = calcUpgradeStatBonuses(
+      {
+        attack_bonus: eq.attack_bonus, magic_bonus: eq.magic_bonus, defense_bonus: eq.defense_bonus,
+        spirit_bonus: eq.spirit_bonus, speed_bonus: eq.speed_bonus, hp_bonus: eq.hp_bonus,
+        slot: eq.slot,
+      },
+      eq.upgrade_level,
+      eq.src_level,
+      durPenalty,
+    );
+    base.attack += stats.attack;
+    base.magic += stats.magic;
+    base.defense += stats.defense;
+    base.spirit += stats.spirit;
+    base.speed += stats.speed;
+    base.max_hp += stats.hp;
+    base.max_mp += Math.floor(eq.mp_bonus * durPenalty);
     base.crit_rate += eq.crit_rate_bonus;
     base.crit_damage += eq.crit_damage_bonus;
     base.accuracy += eq.accuracy_bonus;
@@ -189,8 +200,9 @@ function applySetBonuses(setCounts: Record<string, number>): StatModifiers {
   return mods;
 }
 
-export function addExp(userId: string, exp: number): { leveledUp: boolean; newLevel: number } {
+export function addExp(userId: string, exp: number): { leveledUp: boolean; newLevel: number; oldLevel?: number; levelUpMessage?: string } {
   const player = requirePlayer(userId);
+  const oldLevel = player.level;
   let newExp = player.exp + exp;
   let newLevel = player.level;
   let totalExp = player.total_exp + exp;
@@ -208,14 +220,20 @@ export function addExp(userId: string, exp: number): { leveledUp: boolean; newLe
   if (leveledUp) {
     const p = recalculatePlayerStats(userId);
     getDb().prepare('UPDATE players SET hp=max_hp, mp=max_mp WHERE user_id=?').run(userId);
-    return { leveledUp: true, newLevel: p.level };
+    const extras: string[] = [];
+    if (newLevel >= 20) extras.push('副職が選べるようになる');
+    if (newLevel >= 15) extras.push('白銀鉱山街の推奨Lv圏内');
+    return {
+      leveledUp: true,
+      newLevel: p.level,
+      oldLevel,
+      levelUpMessage: formatLevelUpMessage(oldLevel, newLevel, extras),
+    };
   }
   return { leveledUp: false, newLevel };
 }
 
-function levelExpRequired(level: number): number {
-  return Math.floor(50 * Math.pow(level, 1.5));
-}
+export { levelExpRequired };
 
 export function addGold(userId: string, amount: number): void {
   getDb().prepare('UPDATE players SET gold = gold + ?, updated_at = ? WHERE user_id = ?').run(amount, nowIso(), userId);

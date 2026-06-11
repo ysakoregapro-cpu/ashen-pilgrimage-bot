@@ -283,10 +283,13 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
 
   if (prefix === 'equip') {
 
-    const msg = handleEquip(userId, Number(value));
-
-    await sendSelectResultLog(interaction, { embeds: [successEmbed(msg)], components: nextActionButtons('equip') });
-
+    const invId = Number(value);
+    const { buildEquipmentDetailView } = await import('./systems/itemDetailSystem');
+    const payload = buildEquipmentDetailView(userId, invId, { compare: true, context: 'equip' });
+    payload.components.unshift(new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`equip:confirm:${invId}`).setLabel('装備する').setStyle(ButtonStyle.Success),
+    ));
+    await sendSelectResultLog(interaction, payload);
     return;
 
   }
@@ -371,12 +374,46 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
 
     }
 
+    if (action === 'dismantle') {
+      const invId = Number(value);
+      const { buildItemDetailView, getActionWarnings, canDismantleItem } = await import('./systems/itemDetailSystem');
+      const dis = canDismantleItem(userId, invId);
+      const warnings = [
+        ...getActionWarnings(userId, invId, 'dismantle'),
+        ...(dis.reason ? [dis.reason] : []),
+        ...(dis.warning ? [dis.warning] : []),
+      ];
+      const payload = buildItemDetailView(userId, { inventoryId: invId, context: 'upgrade', warnings });
+      payload.components.unshift(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId(`upgrade:confirm_dismantle:${invId}`).setLabel('分解する').setStyle(ButtonStyle.Danger).setDisabled(!dis.ok),
+      ));
+      await sendSelectResultLog(interaction, payload);
+      return;
+    }
+
     const result = handleUpgradeAction(userId, action!, Number(value));
 
     await sendSelectResultLog(interaction, { ...result, components: nextActionButtons('upgrade') });
 
     return;
 
+  }
+
+  if (prefix === 'shop' && action === 'sell') {
+    const invId = Number(value);
+    const { buildItemDetailView, getActionWarnings, canSellItem } = await import('./systems/itemDetailSystem');
+    const sell = canSellItem(userId, invId);
+    const warnings = [
+      ...getActionWarnings(userId, invId, 'sell'),
+      ...(sell.reason ? [sell.reason] : []),
+      ...(sell.warning ? [sell.warning] : []),
+    ];
+    const payload = buildItemDetailView(userId, { inventoryId: invId, context: 'shop_sell', warnings });
+    payload.components.unshift(new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`shop:confirm_sell:${invId}`).setLabel('売却する').setStyle(ButtonStyle.Danger).setDisabled(!sell.ok),
+    ));
+    await sendSelectResultLog(interaction, payload);
+    return;
   }
 
   if (prefix === 'shop' && action === 'buy') {
@@ -388,27 +425,67 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
     return;
   }
 
-  if (prefix === 'shop' && action === 'sell') {
-    const { sellInventoryItem } = await import('./systems/shopSystem');
-    const r = sellInventoryItem(userId, Number(value));
-    await sendSelectResultLog(interaction, { embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
-    return;
+  if (prefix === 'detail') {
+    if (action === 'inv') {
+      const invId = Number(value);
+      const { buildItemDetailView, getActionWarnings } = await import('./systems/itemDetailSystem');
+      await sendSelectResultLog(interaction, buildItemDetailView(userId, {
+        inventoryId: invId,
+        context: 'inventory',
+        warnings: getActionWarnings(userId, invId, 'sell'),
+      }));
+      return;
+    }
+    if (action === 'skill') {
+      const { buildSkillDetailView } = await import('./systems/itemDetailSystem');
+      await sendSelectResultLog(interaction, buildSkillDetailView(userId, value));
+      return;
+    }
+    if (action === 'shop') {
+      const { buildItemDetailView } = await import('./systems/itemDetailSystem');
+      const { getCurrentTown } = await import('./systems/townSystem');
+      const { getShopCatalog } = await import('./systems/shopSystem');
+      const town = getCurrentTown(userId) as { id: string } | undefined;
+      const catalog = getShopCatalog(town?.id ?? 'start_starfield');
+      const item = catalog.find((c) => c.item_id === value);
+      await sendSelectResultLog(interaction, buildItemDetailView(userId, {
+        itemId: value,
+        context: 'shop_buy',
+        shopBuyPrice: item?.buy_price,
+      }));
+      return;
+    }
+    if (action === 'listing') {
+      const { buildListingDetailView } = await import('./systems/itemDetailSystem');
+      await sendSelectResultLog(interaction, buildListingDetailView(userId, value));
+      return;
+    }
   }
 
   if (prefix === 'market' && action === 'buy') {
-    const { buyListing } = await import('./systems/marketSystem');
-    const r = buyListing(userId, value);
-    await sendSelectResultLog(interaction, { embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    const { buildListingDetailView } = await import('./systems/itemDetailSystem');
+    await sendSelectResultLog(interaction, buildListingDetailView(userId, value));
     return;
   }
 
   if (prefix === 'market' && action === 'list') {
-    const { createListing } = await import('./systems/marketSystem');
+    const invId = Number(value);
+    const { buildItemDetailView, getActionWarnings, canListItem } = await import('./systems/itemDetailSystem');
     const { getMarketPriceHint } = await import('./systems/itemValueSystem');
-    const row = getDb().prepare('SELECT item_id FROM player_inventory WHERE id = ? AND user_id = ?').get(Number(value), userId) as { item_id: string } | undefined;
+    const row = getDb().prepare('SELECT item_id FROM player_inventory WHERE id = ? AND user_id = ?').get(invId, userId) as { item_id: string } | undefined;
     const hint = getMarketPriceHint(row?.item_id ?? '');
-    const r = createListing(userId, Number(value), hint.base);
-    await sendSelectResultLog(interaction, { embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    const list = canListItem(userId, invId);
+    const warnings = [
+      ...getActionWarnings(userId, invId, 'sell'),
+      ...(list.reason ? [list.reason] : []),
+      ...(list.warning ? [list.warning] : []),
+      `目安価格: ${hint.min}〜${Math.round(hint.base * 1.5)}G`,
+    ];
+    const payload = buildItemDetailView(userId, { inventoryId: invId, context: 'market', warnings });
+    payload.components.unshift(new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`market:confirm_list:${invId}`).setLabel(`出品する（${hint.base}G）`).setStyle(ButtonStyle.Primary).setDisabled(!list.ok),
+    ));
+    await sendSelectResultLog(interaction, payload);
     return;
   }
 
@@ -422,26 +499,35 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
   if (prefix === 'prep' && action === 'slot') {
     const { getPrepSlotOptions } = await import('./systems/prepSystem');
     const opts = getPrepSlotOptions(userId, value as import('./types').EquipmentSlot);
+    const pickOpts = opts.filter((o) => !o.disabled).slice(0, 25);
     await sendSelectResultLog(interaction, {
       embeds: [townHubEmbed('装備変更', `**${value}** の装備候補`)],
-      components: opts.length ? [selectMenu('prep:equip', '装備を選ぶ', opts.filter((o) => !o.disabled).map((o) => ({
-        label: o.label, value: String(o.inventoryId), description: o.description,
-      })))] : nextActionButtons('equip'),
+      components: pickOpts.length ? [
+        selectMenu('prep:equip', '装備を選ぶ', pickOpts.map((o) => ({
+          label: o.label, value: String(o.inventoryId), description: o.description,
+        }))),
+        selectMenu('detail:inv', '詳細を見る', pickOpts.map((o) => ({
+          label: o.label, value: String(o.inventoryId), description: o.description,
+        }))),
+      ] : nextActionButtons('equip'),
     });
     return;
   }
 
   if (prefix === 'prep' && action === 'equip') {
-    const { equipWithDiff } = await import('./systems/prepSystem');
-    const r = equipWithDiff(userId, Number(value));
-    await sendSelectResultLog(interaction, {
-      embeds: [successEmbed(r.message)],
-      components: nextActionButtons('equip'),
-    });
+    const invId = Number(value);
+    const { buildEquipmentDetailView } = await import('./systems/itemDetailSystem');
+    const payload = buildEquipmentDetailView(userId, invId, { compare: true, context: 'equip' });
+    payload.components.unshift(new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`prep:confirm_equip:${invId}`).setLabel('この装備に変更').setStyle(ButtonStyle.Success),
+    ));
+    await sendSelectResultLog(interaction, payload);
     return;
   }
 
-
+  if (prefix === 'prep' && action === 'confirm') {
+    return;
+  }
 
   await interaction.update({ embeds: [errorEmbed('不明な選択です。')], components: [] });
 
@@ -725,6 +811,153 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
   }
 
 
+
+  if (parts[0] === 'equip' && parts[1] === 'confirm') {
+    const invId = Number(parts[2]);
+    const { assertInventoryOwned } = await import('./systems/itemDetailSystem');
+    const owned = assertInventoryOwned(userId, invId);
+    await disableOldComponents(interaction.message);
+    const channel = getSendableChannel(interaction.channel);
+    if (!channel) return;
+    await interaction.deferUpdate();
+    if (!owned.ok) {
+      await channel.send({ embeds: [errorEmbed(owned.reason ?? '装備できません。')], components: nextActionButtons('equip') });
+      return;
+    }
+    const msg = handleEquip(userId, invId);
+    await channel.send({ embeds: [successEmbed(msg)], components: nextActionButtons('equip') });
+    return;
+  }
+
+  if (parts[0] === 'detail') {
+    if (parts[1] === 'open') {
+      const { buildInventoryDetailPickView, buildSkillDetailPickView, buildShopDetailPickView } = await import('./systems/itemDetailSystem');
+      const { getCurrentTown } = await import('./systems/townSystem');
+      const ctx = parts[2] ?? 'inventory';
+      let payload: UiPayload;
+      if (ctx === 'skill') payload = buildSkillDetailPickView(userId);
+      else if (ctx === 'shop_buy' || ctx === 'shop_sell') {
+        const town = getCurrentTown(userId) as { id: string } | undefined;
+        payload = buildShopDetailPickView(userId, town?.id ?? 'start_starfield', ctx === 'shop_buy' ? 'buy' : 'sell');
+      } else payload = buildInventoryDetailPickView(userId);
+      await disableOldComponents(interaction.message);
+      const channel = getSendableChannel(interaction.channel);
+      if (!channel) return;
+      await interaction.deferUpdate();
+      await channel.send(payload);
+      return;
+    }
+    if (parts[1] === 'compare') {
+      const invId = Number(parts[2]);
+      const { buildEquipmentDetailView, assertInventoryOwned } = await import('./systems/itemDetailSystem');
+      await disableOldComponents(interaction.message);
+      const channel = getSendableChannel(interaction.channel);
+      if (!channel) return;
+      await interaction.deferUpdate();
+      const owned = assertInventoryOwned(userId, invId);
+      if (!owned.ok) {
+        await channel.send({ embeds: [errorEmbed(owned.reason ?? '品が見つかりません。')], components: nextActionButtons('equip') });
+        return;
+      }
+      await channel.send(buildEquipmentDetailView(userId, invId, { compare: true, context: 'equip' }));
+      return;
+    }
+  }
+
+  if (parts[0] === 'shop' && parts[1] === 'confirm_sell') {
+    const invId = Number(parts[2]);
+    const { canSellItem, assertInventoryOwned } = await import('./systems/itemDetailSystem');
+    const owned = assertInventoryOwned(userId, invId);
+    const sell = canSellItem(userId, invId);
+    await disableOldComponents(interaction.message);
+    const channel = getSendableChannel(interaction.channel);
+    if (!channel) return;
+    await interaction.deferUpdate();
+    if (!owned.ok || !sell.ok) {
+      await channel.send({ embeds: [errorEmbed(sell.reason ?? owned.reason ?? '売却できません。')], components: nextActionButtons('facility') });
+      return;
+    }
+    const { sellInventoryItem } = await import('./systems/shopSystem');
+    const r = sellInventoryItem(userId, invId);
+    await channel.send({ embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    return;
+  }
+
+  if (parts[0] === 'market' && parts[1] === 'confirm_buy') {
+    const listingId = parts[2]!;
+    const { assertListingActive } = await import('./systems/itemDetailSystem');
+    const listing = assertListingActive(listingId);
+    await disableOldComponents(interaction.message);
+    const channel = getSendableChannel(interaction.channel);
+    if (!channel) return;
+    await interaction.deferUpdate();
+    if (!listing.ok) {
+      await channel.send({ embeds: [errorEmbed(listing.reason ?? '購入できません。')], components: nextActionButtons('facility') });
+      return;
+    }
+    const { buyListing } = await import('./systems/marketSystem');
+    const r = buyListing(userId, listingId);
+    await channel.send({ embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    return;
+  }
+
+  if (parts[0] === 'market' && parts[1] === 'confirm_list') {
+    const invId = Number(parts[2]);
+    const { canListItem, assertInventoryOwned } = await import('./systems/itemDetailSystem');
+    const owned = assertInventoryOwned(userId, invId);
+    const list = canListItem(userId, invId);
+    await disableOldComponents(interaction.message);
+    const channel = getSendableChannel(interaction.channel);
+    if (!channel) return;
+    await interaction.deferUpdate();
+    if (!owned.ok || !list.ok) {
+      await channel.send({ embeds: [errorEmbed(list.reason ?? owned.reason ?? '出品できません。')], components: nextActionButtons('facility') });
+      return;
+    }
+    const { createListing } = await import('./systems/marketSystem');
+    const { getMarketPriceHint } = await import('./systems/itemValueSystem');
+    const row = getDb().prepare('SELECT item_id FROM player_inventory WHERE id = ? AND user_id = ?').get(invId, userId) as { item_id: string } | undefined;
+    const hint = getMarketPriceHint(row?.item_id ?? '');
+    const r = createListing(userId, invId, hint.base);
+    await channel.send({ embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    return;
+  }
+
+  if (parts[0] === 'upgrade' && parts[1] === 'confirm_dismantle') {
+    const invId = Number(parts[2]);
+    const { canDismantleItem, assertInventoryOwned } = await import('./systems/itemDetailSystem');
+    const owned = assertInventoryOwned(userId, invId);
+    const dis = canDismantleItem(userId, invId);
+    await disableOldComponents(interaction.message);
+    const channel = getSendableChannel(interaction.channel);
+    if (!channel) return;
+    await interaction.deferUpdate();
+    if (!owned.ok || !dis.ok) {
+      await channel.send({ embeds: [errorEmbed(dis.reason ?? owned.reason ?? '分解できません。')], components: nextActionButtons('upgrade') });
+      return;
+    }
+    const result = handleUpgradeAction(userId, 'dismantle', invId);
+    await channel.send({ ...result, components: nextActionButtons('upgrade') });
+    return;
+  }
+
+  if (parts[0] === 'prep' && parts[1] === 'confirm_equip') {
+    const invId = Number(parts[2]);
+    const { assertInventoryOwned } = await import('./systems/itemDetailSystem');
+    const owned = assertInventoryOwned(userId, invId);
+    await disableOldComponents(interaction.message);
+    const channel = getSendableChannel(interaction.channel);
+    if (!channel) return;
+    await interaction.deferUpdate();
+    if (!owned.ok) {
+      await channel.send({ embeds: [errorEmbed(owned.reason ?? '装備できません。')], components: nextActionButtons('equip') });
+      return;
+    }
+    const { equipWithDiff } = await import('./systems/prepSystem');
+    const r = equipWithDiff(userId, invId);
+    await channel.send({ embeds: [successEmbed(r.message)], components: nextActionButtons('equip') });
+    return;
+  }
 
   await interaction.reply({ embeds: [errorEmbed('不明な操作です。')], ephemeral: true });
 

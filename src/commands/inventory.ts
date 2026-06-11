@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { getPlayer } from '../systems/playerSystem';
 import { getInventoryByCategory } from '../systems/inventorySystem';
+import { buildInventoryDetailPickView } from '../systems/itemDetailSystem';
 import { baseEmbed, errorEmbed, itemLine } from '../utils/embeds';
 import { safeDefer, safeEdit } from '../utils/interaction';
 import type { Rarity } from '../types';
@@ -40,5 +41,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   if (cat === 'equipment' || cat === 'all') footer += '\n装備変更: /equip change';
   if (cat === 'equipment' || cat === 'all') footer += '\n分解・強化: /upgrade';
 
-  await safeEdit(interaction, { embeds: [baseEmbed('所持品', lines.join('\n') + footer)] });
+  await safeEdit(interaction, {
+    embeds: [baseEmbed('所持品', lines.join('\n') + footer)],
+    components: buildInventoryDetailPickView(userId).components,
+  });
 }

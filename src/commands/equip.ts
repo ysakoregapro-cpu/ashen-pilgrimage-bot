@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { getPlayer } from '../systems/playerSystem';
 import { formatEquipmentDisplay, getEquippableItems, equipItem } from '../systems/equipmentSystem';
+import { buildInventoryDetailPickView } from '../systems/itemDetailSystem';
 import { baseEmbed, errorEmbed, selectMenu } from '../utils/embeds';
 import { safeDefer, safeEdit } from '../utils/interaction';
 import { SLOT_LABELS, type EquipmentSlot } from '../types';
@@ -24,7 +25,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
   const sub = interaction.options.getSubcommand();
   if (sub === 'show') {
-    await safeEdit(interaction, { embeds: [baseEmbed('装備', formatEquipmentDisplay(userId))] });
+    await safeEdit(interaction, {
+      embeds: [baseEmbed('装備', formatEquipmentDisplay(userId))],
+      components: buildInventoryDetailPickView(userId).components,
+    });
     return;
   }
 
@@ -36,9 +40,12 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   }
   await safeEdit(interaction, {
     embeds: [baseEmbed('装備変更', `${SLOT_LABELS[slot]}に装備するアイテムを選択`)],
-    components: [selectMenu(`equip:${slot}`, '装備を選択', items.map((i) => ({
-      label: i.name, value: String(i.id), description: `${i.rarity}${i.upgrade_level ? ` +${i.upgrade_level}` : ''}`,
-    })))],
+    components: [
+      selectMenu(`equip:${slot}`, '装備を選択', items.map((i) => ({
+        label: i.name, value: String(i.id), description: `${i.rarity}${i.upgrade_level ? ` +${i.upgrade_level}` : ''}`,
+      }))),
+      ...buildInventoryDetailPickView(userId).components,
+    ],
   });
 }
 

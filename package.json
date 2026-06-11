@@ -7,7 +7,8 @@
     "dev": "tsx src/index.ts",
     "deploy": "tsx src/deploy-commands.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "validate:game-data": "tsx scripts/validate-game-data.ts"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",

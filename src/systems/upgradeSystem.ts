@@ -4,32 +4,29 @@ import { consumeMaterial, getItemCount } from './inventorySystem';
 import { canPerformItemAction } from './itemProtectionSystem';
 import { incrementWeeklyProgress } from './weeklySystem';
 import { nowIso, DURABILITY_ORDER, type DurabilityState } from '../types';
+import {
+  getEnhanceRequirement, getMaxUpgradeLevel, formatEnhanceDiff, formatEnhancePreview,
+} from './enhanceSystem';
 
-const RARITY_MAX: Record<string, number> = { N: 5, R: 5, SR: 7, SSR: 10, UR: 15, Src: 10 };
-const RARITY_GOLD_MULT: Record<string, number> = { N: 1.0, R: 1.0, SR: 1.5, SSR: 2.0, UR: 3.0 };
+export { getEnhanceRequirement, formatEnhancePreview } from './enhanceSystem';
 
-type EnhanceReq = { stoneId: string; stoneQty: number; goldCost: number };
+type EnhanceReq = ReturnType<typeof getEnhanceRequirement>;
 
-function getEnhanceRequirement(currentLevel: number, rarity: string): EnhanceReq {
-  const next = currentLevel + 1;
-  const mult = RARITY_GOLD_MULT[rarity] ?? 1;
-  let stoneId: string;
-  let baseGold: number;
-
-  if (next <= 3) { stoneId = 'upg_rough_stone'; baseGold = 100 * next; }
-  else if (next <= 6) { stoneId = 'upg_stone'; baseGold = 200 * next; }
-  else if (next <= 9) { stoneId = 'upg_fine_stone'; baseGold = 350 * next; }
-  else { stoneId = 'upg_rare_stone'; baseGold = 500 * next; }
-
-  return { stoneId, stoneQty: Math.max(1, Math.ceil(next / 2)), goldCost: Math.floor(baseGold * mult) };
-}
-
-function statPreview(row: { attack_bonus?: number; defense_bonus?: number; magic_bonus?: number }, level: number): string {
-  const bonus = Math.floor((row.attack_bonus ?? row.defense_bonus ?? row.magic_bonus ?? 0) * level * 0.05);
-  if (row.attack_bonus) return `攻撃+${bonus}`;
-  if (row.magic_bonus) return `魔力+${bonus}`;
-  if (row.defense_bonus) return `防御+${bonus}`;
-  return '';
+function statPreview(row: { attack_bonus?: number; defense_bonus?: number; magic_bonus?: number; spirit_bonus?: number; weapon_type?: string | null; slot: string }, level: number, srcLevel: number): string {
+  return formatEnhanceDiff(
+    {
+      attack_bonus: row.attack_bonus ?? 0,
+      magic_bonus: row.magic_bonus ?? 0,
+      defense_bonus: row.defense_bonus ?? 0,
+      spirit_bonus: row.spirit_bonus ?? 0,
+      speed_bonus: 0,
+      hp_bonus: 0,
+      weapon_type: row.weapon_type,
+      slot: row.slot,
+    },
+    level,
+    srcLevel,
+  );
 }
 
 export function enhanceEquipment(userId: string, inventoryId: number): { success: boolean; message: string } {
@@ -38,28 +35,28 @@ export function enhanceEquipment(userId: string, inventoryId: number): { success
 
   const row = getDb().prepare(`
     SELECT pi.*, i.rarity, i.name, e.max_upgrade_level, e.weapon_type, e.slot, e.series_id,
-      e.attack_bonus, e.magic_bonus, e.defense_bonus
+      e.attack_bonus, e.magic_bonus, e.defense_bonus, e.spirit_bonus
     FROM player_inventory pi JOIN items i ON pi.item_id = i.id JOIN equipment e ON pi.item_id = e.item_id
     WHERE pi.id = ? AND pi.user_id = ?
   `).get(inventoryId, userId) as {
     upgrade_level: number; src_level: number; rarity: string; name: string;
     max_upgrade_level: number; is_equipped: number;
-    attack_bonus: number; magic_bonus: number; defense_bonus: number;
+    attack_bonus: number; magic_bonus: number; defense_bonus: number; spirit_bonus: number;
+    weapon_type: string | null; slot: string;
   } | undefined;
   if (!row) return { success: false, message: '装備が見つかりません。' };
   if (row.rarity === 'Src') {
     return enhanceSrcWeapon(userId, inventoryId);
   }
 
-  const maxLevel = RARITY_MAX[row.rarity] ?? row.max_upgrade_level;
+  const maxLevel = getMaxUpgradeLevel(row.rarity, row.max_upgrade_level);
   const currentLevel = row.upgrade_level;
   if (currentLevel >= maxLevel) return { success: false, message: 'これ以上強化できません。' };
 
   const req = getEnhanceRequirement(currentLevel, row.rarity);
   if (!spendGold(userId, req.goldCost)) return { success: false, message: `ゴールドが足りません（${req.goldCost}G必要）。` };
   if (getItemCount(userId, req.stoneId) < req.stoneQty) {
-    const stoneName = (getDb().prepare('SELECT name FROM items WHERE id = ?').get(req.stoneId) as { name: string }).name;
-    return { success: false, message: `${stoneName}が足りません（${req.stoneQty}個必要、所持${getItemCount(userId, req.stoneId)}）。` };
+    return { success: false, message: `${req.stoneName}が足りません（${req.stoneQty}個必要、所持${getItemCount(userId, req.stoneId)}）。` };
   }
   consumeMaterial(userId, req.stoneId, req.stoneQty);
 
@@ -67,10 +64,14 @@ export function enhanceEquipment(userId: string, inventoryId: number): { success
 
   if (row.is_equipped) recalculatePlayerStats(userId);
   incrementWeeklyProgress(userId, 'upgrade_count');
-  const preview = statPreview(row, 1);
+  const diff = statPreview(row, currentLevel + 1, row.src_level);
   return {
     success: true,
-    message: `「${row.name}」を+${currentLevel + 1}に強化しました。（-${req.goldCost}G）\n${preview ? `変化: ${preview}` : ''}`,
+    message: [
+      `「${row.name}」を+${currentLevel}→+${currentLevel + 1}に強化しました。`,
+      formatEnhancePreview(req, currentLevel),
+      diff ? `**変化**\n${diff}` : '',
+    ].filter(Boolean).join('\n'),
   };
 }
 

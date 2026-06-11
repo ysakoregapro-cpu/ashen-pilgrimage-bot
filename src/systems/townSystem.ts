@@ -1,6 +1,7 @@
 import { getDb } from '../db/database';
-import { getUnlockedTowns, requirePlayer } from './playerSystem';
+import { getUnlockedTowns, requirePlayer, addExp } from './playerSystem';
 import { finalizeExplorationLoot } from './inventorySystem';
+import { calcExploreReturnBonus } from './expSystem';
 import { nowIso } from '../types';
 
 export function setPlayerTown(userId: string, townId: string): void {
@@ -41,6 +42,37 @@ export function getTownNpcs(townId: string) {
   return getDb().prepare('SELECT * FROM npcs WHERE town_id = ? ORDER BY name').all(townId);
 }
 
+export function incrementExploreAction(userId: string): void {
+  getDb().prepare('UPDATE players SET explore_actions_since_town = COALESCE(explore_actions_since_town, 0) + 1, updated_at = ? WHERE user_id = ?')
+    .run(nowIso(), userId);
+}
+
+function grantExploreReturnBonus(userId: string, townId: string): string {
+  const row = getDb().prepare(`
+    SELECT explore_actions_since_town, level FROM players WHERE user_id = ?
+  `).get(userId) as { explore_actions_since_town: number | null; level: number } | undefined;
+  const actions = row?.explore_actions_since_town ?? 0;
+  getDb().prepare('UPDATE players SET explore_actions_since_town = 0, updated_at = ? WHERE user_id = ?').run(nowIso(), userId);
+  if (actions < 2) return '';
+
+  const avgRow = getDb().prepare(`
+    SELECT AVG(m.exp_reward) AS avgExp, AVG(a.recommended_min_level) AS minLv, AVG(a.recommended_max_level) AS maxLv
+    FROM exploration_areas a
+    JOIN json_each(a.monster_pool_json) je
+    JOIN monsters m ON m.id = json_extract(je.value, '$.monster_id')
+    WHERE a.town_id = ?
+  `).get(townId) as { avgExp: number; minLv: number; maxLv: number } | undefined;
+
+  const avgExp = Math.floor(avgRow?.avgExp ?? 15);
+  const inBand = row!.level >= (avgRow?.minLv ?? 1) && row!.level <= (avgRow?.maxLv ?? 99);
+  const bonus = calcExploreReturnBonus(avgExp, actions, inBand);
+  if (bonus <= 0) return '';
+  const result = addExp(userId, bonus);
+  let msg = `探索から無事帰還。探索完了ボーナス: 経験値 +${bonus}`;
+  if (result.levelUpMessage) msg += `\n${result.levelUpMessage}`;
+  return msg;
+}
+
 export function travelToTown(userId: string, townId: string): string {
   const player = requirePlayer(userId);
   const town = getTown(townId) as { id: string; name: string; required_level: number } | undefined;
@@ -56,13 +88,18 @@ export function travelToTown(userId: string, townId: string): string {
   recordTownVisit(userId, townId);
 
   let msg = `${town.name}に着いた。`;
+  const exploreBonus = grantExploreReturnBonus(userId, player.current_town_id);
+  if (exploreBonus) msg += `\n\n${exploreBonus}`;
   if (loot.message) msg += `\n\n${loot.message}`;
   return msg;
 }
 
 export function returnToTownHub(userId: string): string {
+  const player = requirePlayer(userId);
   const loot = finalizeExplorationLoot(userId);
-  return loot.message || '';
+  const exploreBonus = grantExploreReturnBonus(userId, player.current_town_id);
+  const parts = [exploreBonus, loot.message].filter(Boolean);
+  return parts.join('\n\n');
 }
 
 export function getCurrentTown(userId: string) {

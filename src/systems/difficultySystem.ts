@@ -1,3 +1,5 @@
+import { getExpMultiplier as calcExpMult } from './expSystem';
+
 export interface DifficultyModifiers {
   playerHitRate: number;
   enemyHitRate: number;
@@ -93,8 +95,5 @@ export function underlevelWarning(playerLevel: number, minLevel: number): string
 }
 
 export function getExpMultiplier(playerLevel: number): number {
-  if (playerLevel <= 15) return 1.25;
-  if (playerLevel <= 35) return 1.30;
-  if (playerLevel <= 60) return 1.35;
-  return 1.20;
+  return calcExpMult(playerLevel);
 }

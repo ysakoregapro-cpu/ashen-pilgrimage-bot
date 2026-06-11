@@ -20,6 +20,7 @@ import { baseEmbed } from '../utils/embeds';
 import { nextActionButtons } from '../utils/nextActionButtons';
 import type { UiPayload } from '../utils/townUi';
 import { formatFieldTitle, formatBulletList } from '../utils/formatters';
+import { getRoadmapHints } from './progressionSystem';
 
 export type StoryEventPayload = UiPayload;
 
@@ -272,12 +273,7 @@ export function getPilgrimageJournal(userId: string): UiPayload {
   if (hasStoryFlag(userId, 'ending_connectors_revealed')) recorded.push('繋ぎ手として迎えられた');
 
   const objectives = ps.current_objective.split(/[。、]/).filter(Boolean).map((s) => s.trim());
-  const hints: string[] = [];
-  if (player.hp < player.max_hp * 0.5) hints.push('宿で休む');
-  if (player.gold < 100) hints.push('探索でゴールドを稼ぐ');
-  hints.push('探索で経験値と素材を集める');
-  hints.push('鍛冶場で装備を強化する');
-  if (player.level >= 20) hints.push('売店で回復薬を補充する');
+  const roadmap = getRoadmapHints(userId);
   const locked = JOURNAL_LOCKED_PAGES.filter((p) => !hasStoryFlag(userId, p.flag)).map((p) => p.label);
 
   const jobLines: string[] = [];
@@ -298,8 +294,14 @@ export function getPilgrimageJournal(userId: string): UiPayload {
     formatFieldTitle('いまの道しるべ'),
     formatBulletList(objectives.length ? objectives : [ps.current_objective]),
     '',
-    formatFieldTitle('おすすめ行動'),
-    formatBulletList(hints),
+    formatFieldTitle('今できること'),
+    formatBulletList(roadmap.now),
+    '',
+    formatFieldTitle('次に目指すこと'),
+    formatBulletList(roadmap.next.length ? roadmap.next : ['—']),
+    '',
+    formatFieldTitle('今後解放される要素'),
+    formatBulletList(roadmap.future.length ? roadmap.future : ['—']),
     '',
     formatFieldTitle('記されたこと'),
     formatBulletList(recorded.length ? recorded : ['—']),

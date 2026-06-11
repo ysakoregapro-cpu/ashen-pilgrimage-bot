@@ -4,6 +4,7 @@ import { createTrade, getActiveTradeForUser, addTradeItem, confirmTrade, cancelT
 import { baseEmbed, errorEmbed, successEmbed, selectMenu } from '../utils/embeds';
 import { safeDefer, safeEdit } from '../utils/interaction';
 import { getInventory } from '../systems/inventorySystem';
+import { buildInventoryDetailPickView } from '../systems/itemDetailSystem';
 
 export const data = new SlashCommandBuilder()
   .setName('trade')
@@ -46,8 +47,11 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     }) as Array<{ id: number; name: string; rarity: string }>;
     if (!inv.length) { await safeEdit(interaction, { embeds: [errorEmbed('取引可能なアイテムがありません。')] }); return; }
     await safeEdit(interaction, {
-      embeds: [baseEmbed('取引に追加', 'アイテムを選択')],
-      components: [selectMenu(`trade:add:${trade!.id}`, 'アイテム選択', inv.slice(0, 25).map((i) => ({ label: i.name, value: String(i.id), description: i.rarity })))],
+      embeds: [baseEmbed('取引に追加', 'アイテムを選択（詳細確認後に追加）')],
+      components: [
+        selectMenu(`trade:add:${trade!.id}`, 'アイテム選択', inv.slice(0, 25).map((i) => ({ label: i.name, value: String(i.id), description: i.rarity }))),
+        ...buildInventoryDetailPickView(userId).components,
+      ],
     });
     return;
   }

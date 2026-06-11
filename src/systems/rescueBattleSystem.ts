@@ -6,6 +6,7 @@ import { applyDefeat } from './defeatSystem';
 import { randomInt, uuid } from '../utils/random';
 import { nowIso } from '../types';
 import { formatBattleLine } from '../utils/formatters';
+import { getPlayerElementResistances, applyPlayerElementResist } from './elementSystem';
 
 type CoopParticipant = {
   user_id: string; role: 'requester' | 'helper';
@@ -31,7 +32,7 @@ export function startRescueBattle(rescueId: string): { ok: boolean; message: str
   }
 
   const monster = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(monsterId) as {
-    hp: number; name: string; attack: number; defense: number; spirit: number; exp_reward: number; gold_reward: number;
+    hp: number; name: string; attack: number; defense: number; spirit: number; exp_reward: number; gold_reward: number; element?: string | null;
   };
   const helpers = JSON.parse(req.participants_json) as string[];
   const allIds = [req.requester_id, ...helpers];
@@ -89,7 +90,7 @@ function processRescueTurn(battleId: string): string {
     status_json: string; rescue_request_id: string; id: string;
   };
   const monster = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(battle.monster_id) as {
-    name: string; attack: number; defense: number; exp_reward: number; gold_reward: number;
+    name: string; attack: number; defense: number; exp_reward: number; gold_reward: number; element?: string | null;
   };
   let states = JSON.parse(battle.participant_states_json) as CoopParticipant[];
   const status = JSON.parse(battle.status_json) as { log: string[] };
@@ -111,9 +112,11 @@ function processRescueTurn(battleId: string): string {
   if (eHp > 0) {
     const alive = states.filter((s) => s.hp > 0);
     const target = alive[randomInt(0, alive.length - 1)]!;
-    const dmg = Math.max(1, Math.floor(monster.attack * 1.1 - target.defense * 0.35));
-    target.hp -= dmg;
-    status.log.push(formatBattleLine('enemy_attack', `${monster.name} → <@${target.user_id}> **${dmg}**`));
+    const rawDmg = Math.max(1, Math.floor(monster.attack * 1.1 - target.defense * 0.35));
+    const mit = applyPlayerElementResist(rawDmg, monster.element, getPlayerElementResistances(target.user_id));
+    target.hp -= mit.damage;
+    status.log.push(formatBattleLine('enemy_attack', `${monster.name} → <@${target.user_id}> **${mit.damage}**`));
+    if (mit.logText) status.log.push(formatBattleLine('status', mit.logText));
   }
 
   if (eHp <= 0) {

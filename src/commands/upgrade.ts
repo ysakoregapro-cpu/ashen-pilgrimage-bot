@@ -5,6 +5,7 @@ import {
   enhanceSrcWeapon, listMaterials, getEnhanceableEquipment,
 } from '../systems/upgradeSystem';
 import { getSrcManifestInfo, manifestSrcWeapon } from '../systems/srcWeaponSystem';
+import { detailOpenButton } from '../systems/itemDetailSystem';
 import { baseEmbed, errorEmbed, successEmbed, selectMenu } from '../utils/embeds';
 import { safeDefer, safeEdit } from '../utils/interaction';
 
@@ -48,10 +49,13 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   };
   await safeEdit(interaction, {
     embeds: [baseEmbed('装備選択', `${sub} する装備を選んでください`)],
-    components: [selectMenu(actionMap[sub]!, '装備を選択', filter.slice(0, 25).map((i) => ({
-      label: i.name, value: String(i.id),
-      description: `${i.rarity}${i.src_level ? ` Src+${i.src_level}` : i.upgrade_level ? ` +${i.upgrade_level}` : ''}`,
-    })))],
+    components: [
+      selectMenu(actionMap[sub]!, '装備を選択', filter.slice(0, 25).map((i) => ({
+        label: i.name, value: String(i.id),
+        description: `${i.rarity}${i.src_level ? ` Src+${i.src_level}` : i.upgrade_level ? ` +${i.upgrade_level}` : ''}`,
+      }))),
+      detailOpenButton('upgrade'),
+    ],
   });
 }
 

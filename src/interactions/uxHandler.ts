@@ -30,6 +30,7 @@ import {
   type UiPayload,
 } from '../utils/townUi';
 import { nextActionButtons } from '../utils/nextActionButtons';
+import { detailOpenButton } from '../systems/itemDetailSystem';
 import {
   parseSessionCustomId,
   isPanelSessionValid,
@@ -223,7 +224,7 @@ async function handleFacilityResult(
     case 'inventory': {
       await sendJourneyLog(interaction, {
         embeds: [inventorySummaryEmbed(formatInventorySummary(userId))],
-        components: nextActionButtons('inventory'),
+        components: [detailOpenButton('inventory'), ...nextActionButtons('inventory')],
       });
       break;
     }
@@ -241,7 +242,7 @@ async function handleFacilityResult(
     case 'equip': {
       await sendJourneyLog(interaction, {
         embeds: [equipSummaryEmbed(formatEquipSummary(userId))],
-        components: nextActionButtons('equip'),
+        components: [detailOpenButton('equip'), ...nextActionButtons('equip')],
       });
       break;
     }
@@ -260,9 +261,12 @@ async function handleFacilityResult(
       }
       await sendPanelAfterAction(interaction, userId, {
         embeds: [townHubEmbed(facilityName, result.message)],
-        components: [selectMenu(`upgrade:${result.extra}`, '装備を選ぶ', items.map((i) => ({
-          label: i.name, value: String(i.id), description: i.rarity,
-        })))],
+        components: [
+          selectMenu(`upgrade:${result.extra}`, '装備を選ぶ', items.map((i) => ({
+            label: i.name, value: String(i.id), description: i.rarity,
+          }))),
+          detailOpenButton('upgrade'),
+        ],
       });
       break;
     }
@@ -341,12 +345,18 @@ async function handleShopMarketPrep(
     return;
   }
   if (result.type === 'shop_buy') {
-    const catalog = getShopCatalog(town?.id ?? 'start_starfield');
+    const catalog = getShopCatalog(town?.id ?? 'start_starfield').slice(0, 25);
     await sendPanelAfterAction(interaction, userId, {
       embeds: [townHubEmbed(getFacilityName(facId), result.message)],
-      components: [selectMenu('shop:buy', '品を選ぶ', catalog.map((c) => ({
-        label: c.name, value: c.item_id, description: `${c.buy_price}G`,
-      })))],
+      components: [
+        selectMenu('shop:buy', '品を選ぶ', catalog.map((c) => ({
+          label: c.name, value: c.item_id, description: `${c.buy_price}G`,
+        }))),
+        selectMenu('detail:shop', '商品詳細', catalog.map((c) => ({
+          label: c.name, value: c.item_id, description: `${c.buy_price}G [${c.rarity}]`.slice(0, 100),
+        }))),
+        detailOpenButton('shop_buy'),
+      ],
     });
     return;
   }
@@ -361,18 +371,30 @@ async function handleShopMarketPrep(
     }
     await sendPanelAfterAction(interaction, userId, {
       embeds: [townHubEmbed(getFacilityName(facId), result.message)],
-      components: [selectMenu('shop:sell', '売る品を選ぶ', items.slice(0, 25).map((i) => ({
-        label: i.name, value: String(i.id), description: `[${i.rarity}] x${i.quantity}`,
-      })))],
+      components: [
+        selectMenu('shop:sell', '売る品を選ぶ', items.slice(0, 25).map((i) => ({
+          label: i.name, value: String(i.id), description: `[${i.rarity}] x${i.quantity}`,
+        }))),
+        selectMenu('detail:inv', '詳細を見る', items.slice(0, 25).map((i) => ({
+          label: i.name, value: String(i.id), description: i.rarity,
+        }))),
+        detailOpenButton('shop_sell'),
+      ],
     });
     return;
   }
   if (result.type === 'market_browse') {
+    const listings = getActiveListings(15) as Array<{ id: string; name: string; price: number }>;
     await sendPanelAfterAction(interaction, userId, {
       embeds: [townHubEmbed(getFacilityName(facId), result.message)],
-      components: [selectMenu('market:buy', '購入する出品', (getActiveListings(15) as Array<{ id: string; name: string; price: number }>).map((l) => ({
-        label: l.name, value: l.id, description: `${l.price}G`,
-      })))],
+      components: [
+        selectMenu('market:buy', '購入する出品', listings.map((l) => ({
+          label: l.name, value: l.id, description: `${l.price}G`,
+        }))),
+        selectMenu('detail:listing', '出品詳細', listings.map((l) => ({
+          label: l.name, value: l.id, description: `${l.price}G`,
+        }))),
+      ],
     });
     return;
   }
@@ -399,10 +421,13 @@ async function handleShopMarketPrep(
   if (result.type === 'prep_equip') {
     await sendPanelAfterAction(interaction, userId, {
       embeds: [townHubEmbed('身支度', result.message)],
-      components: [selectMenu('prep:slot', '部位を選ぶ', PREP_SLOTS.map((s) => ({
-        label: ({ weapon: '武器', head: '頭', body: '胴', arms: '腕', legs: '脚', feet: '靴', accessory1: 'アクセ1', accessory2: 'アクセ2', sub: '補助' } as Record<string, string>)[s] ?? s,
-        value: s,
-      })))],
+      components: [
+        selectMenu('prep:slot', '部位を選ぶ', PREP_SLOTS.map((s) => ({
+          label: ({ weapon: '武器', head: '頭', body: '胴', arms: '腕', legs: '脚', feet: '靴', accessory1: 'アクセ1', accessory2: 'アクセ2', sub: '補助' } as Record<string, string>)[s] ?? s,
+          value: s,
+        }))),
+        detailOpenButton('equip'),
+      ],
     });
     return;
   }
@@ -435,14 +460,14 @@ async function handleFlowButton(interaction: ButtonInteraction, flow: string): P
   if (flow === 'inventory') {
     await sendJourneyLog(interaction, {
       embeds: [inventorySummaryEmbed(formatInventorySummary(userId))],
-      components: nextActionButtons('inventory'),
+      components: [detailOpenButton('inventory'), ...nextActionButtons('inventory')],
     });
     return;
   }
   if (flow === 'equip') {
     await sendJourneyLog(interaction, {
       embeds: [equipSummaryEmbed(formatEquipSummary(userId))],
-      components: nextActionButtons('equip'),
+      components: [detailOpenButton('equip'), ...nextActionButtons('equip')],
     });
     return;
   }

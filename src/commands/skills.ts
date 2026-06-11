@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { getPlayer } from '../systems/playerSystem';
 import { getSkillsDisplayData, skillTypeLabel, scalingLabel } from '../systems/skillSystem';
+import { buildSkillDetailPickView } from '../systems/itemDetailSystem';
 import { JOB_LEVEL_CAP } from '../systems/jobLevelSystem';
 import { baseEmbed, errorEmbed } from '../utils/embeds';
 import { formatBulletList, formatFieldTitle } from '../utils/formatters';
@@ -46,5 +47,5 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
       { name: formatFieldTitle('次に覚えそうな技'), value: formatBulletList(upcomingLines), inline: false },
     );
 
-  await safeEdit(interaction, { embeds: [embed] });
+  await safeEdit(interaction, { embeds: [embed], components: buildSkillDetailPickView(userId).components });
 }

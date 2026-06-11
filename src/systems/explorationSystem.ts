@@ -4,6 +4,7 @@ import { createBattle, getActiveBattle } from './battleSystem';
 import { addItem } from './inventorySystem';
 import { incrementWeeklyProgress } from './weeklySystem';
 import { underlevelWarning } from './difficultySystem';
+import { incrementExploreAction } from './townSystem';
 import { isBossMonsterById } from './monsterBossSystem';
 import { weightedChoice, roll, randomInt } from '../utils/random';
 
@@ -34,6 +35,7 @@ export function exploreArea(userId: string, areaId: string): {
   const event = weightedChoice(events);
 
   incrementWeeklyProgress(userId, 'explore_count');
+  incrementExploreAction(userId);
 
   switch (event.type) {
     case 'battle': {
