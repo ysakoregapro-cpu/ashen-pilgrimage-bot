@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3';
 import { seedBattleSkills, ensurePlayerSkillTables } from './seedData/battleSkills';
 import { seedStoryTables } from '../systems/storySystem';
-import { ensurePhase2Seed } from './seedData/phase2Seed';
+import { ensureMonstersIsBossColumn } from './monsterSchema';
 
 function addColumn(db: Database.Database, table: string, column: string, def: string): void {
   try {
@@ -114,11 +114,10 @@ export function runMigrations(db: Database.Database): void {
   addColumn(db, 'items', 'shop_sell_price', 'INTEGER');
 
   addColumn(db, 'player_inventory', 'is_listed', 'INTEGER DEFAULT 0');
-  addColumn(db, 'monsters', 'is_boss', 'INTEGER DEFAULT 0');
+  ensureMonstersIsBossColumn(db);
   addColumn(db, 'monsters', 'spirit', 'INTEGER DEFAULT 0');
 
   ensurePlayerSkillTables(db);
   seedBattleSkills(db);
   seedStoryTables(db);
-  ensurePhase2Seed(db);
 }

@@ -1,9 +1,7 @@
 import { getDb } from '../db/database';
 import { getDifficultyModifiers } from './difficultySystem';
 import { requirePlayer } from './playerSystem';
-import { MONSTER_TO_STORY_BOSS } from '../db/seedData/storyData';
-
-const BOSS_MONSTERS = new Set(Object.keys(MONSTER_TO_STORY_BOSS));
+import { getMonsterRow, isBossMonster } from './monsterBossSystem';
 
 export function getAreaTier(areaId: string): 'early' | 'mid' | 'late' | 'valhalla' {
   const area = getDb().prepare('SELECT town_id, recommended_max_level FROM exploration_areas WHERE id = ?').get(areaId) as {
@@ -39,13 +37,14 @@ export function formatAreaDetail(userId: string, areaId: string): string {
   const monsters = JSON.parse(area.monster_pool_json) as Array<{ monster_id: string }>;
   const rewards = JSON.parse(area.reward_pool_json) as Array<{ item_id: string }>;
 
+  const db = getDb();
   const monNames: string[] = [];
   let hasBoss = false;
   for (const m of monsters.slice(0, 6)) {
-    const mon = getDb().prepare('SELECT name, is_boss FROM monsters WHERE id = ?').get(m.monster_id) as { name: string; is_boss: number } | undefined;
+    const mon = getMonsterRow(db, m.monster_id);
     if (mon) {
       monNames.push(mon.name);
-      if (mon.is_boss || BOSS_MONSTERS.has(m.monster_id)) hasBoss = true;
+      if (isBossMonster(m.monster_id, mon)) hasBoss = true;
     }
   }
 

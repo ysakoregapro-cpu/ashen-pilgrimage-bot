@@ -4,15 +4,8 @@ import { createBattle, getActiveBattle } from './battleSystem';
 import { addItem } from './inventorySystem';
 import { incrementWeeklyProgress } from './weeklySystem';
 import { underlevelWarning } from './difficultySystem';
-import { MONSTER_TO_STORY_BOSS } from '../db/seedData/storyData';
+import { isBossMonsterById } from './monsterBossSystem';
 import { weightedChoice, roll, randomInt } from '../utils/random';
-
-const BOSS_MONSTERS = new Set(Object.keys(MONSTER_TO_STORY_BOSS));
-
-function isBossMonster(monsterId: string): boolean {
-  const row = getDb().prepare('SELECT is_boss FROM monsters WHERE id = ?').get(monsterId) as { is_boss: number } | undefined;
-  return (row?.is_boss === 1) || BOSS_MONSTERS.has(monsterId);
-}
 
 export function getAreasForTown(townId: string) {
   return getDb().prepare('SELECT * FROM exploration_areas WHERE town_id = ? ORDER BY recommended_min_level').all(townId);
@@ -46,7 +39,7 @@ export function exploreArea(userId: string, areaId: string): {
     case 'battle': {
       const pool = JSON.parse(area.monster_pool_json) as Array<{ monster_id: string; weight: number }>;
       const pick = weightedChoice(pool);
-      const isBoss = isBossMonster(pick.monster_id);
+      const isBoss = isBossMonsterById(pick.monster_id);
       const battleId = createBattle(userId, pick.monster_id, areaId, { isBoss });
       const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(pick.monster_id) as { name: string };
       const bossPrefix = isBoss ? '強敵の気配…\n' : '';

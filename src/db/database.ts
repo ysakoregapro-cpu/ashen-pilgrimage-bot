@@ -4,6 +4,8 @@ import path from 'path';
 import { createTables } from './schema';
 import { seedDatabase } from './seed';
 import { runMigrations } from './migrations';
+import { ensureMonstersIsBossColumn } from './monsterSchema';
+import { ensurePhase2Seed } from './seedData/phase2Seed';
 
 let db: Database.Database | null = null;
 
@@ -18,8 +20,10 @@ export function getDb(): Database.Database {
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     createTables(db);
-    seedDatabase(db);
+    ensureMonstersIsBossColumn(db);
     runMigrations(db);
+    seedDatabase(db);
+    ensurePhase2Seed(db);
   }
   return db;
 }

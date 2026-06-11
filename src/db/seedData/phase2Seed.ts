@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3';
 import { nowIso } from '../../types';
 import { MONSTER_TO_STORY_BOSS } from './storyData';
+import { ensureMonstersIsBossColumn } from '../monsterSchema';
 
 const BOSS_IDS = new Set(Object.keys(MONSTER_TO_STORY_BOSS));
 
@@ -71,6 +72,7 @@ const RARITY_REQ: Record<string, number> = { N: 1, R: 5, SR: 20, SSR: 40, UR: 58
 
 export function ensurePhase2Seed(db: Database.Database): void {
   const ts = nowIso();
+  ensureMonstersIsBossColumn(db);
 
   // Mark bosses in monsters table
   const updBoss = db.prepare('UPDATE monsters SET is_boss = 1, break_max = 180 WHERE id = ?');
