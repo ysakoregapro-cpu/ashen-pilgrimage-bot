@@ -2,6 +2,7 @@ import { getDb } from '../db/database';
 import { nowIso } from '../types';
 import { uuid } from '../utils/random';
 import { incrementWeeklyProgress } from './weeklySystem';
+import { startRaidBattle } from './raidBattleSystem';
 
 const MAX_RAID = 4;
 
@@ -39,20 +40,23 @@ export function leaveRaid(raidId: string, userId: string): string {
   return 'レイドから辞退しました。';
 }
 
-export function startRaid(raidId: string, userId: string): string {
+export function startRaid(raidId: string, userId: string): { message: string; battleId?: string } {
   const raid = getRaid(raidId) as { leader_id: string; participants_json: string; raid_area_id: string; status: string } | undefined;
-  if (!raid || raid.status !== 'recruiting') return 'レイドが見つかりません。';
-  if (raid.leader_id !== userId) return 'リーダーのみ出発できます。';
+  if (!raid || raid.status !== 'recruiting') return { message: 'レイドが見つかりません。' };
+  if (raid.leader_id !== userId) return { message: 'リーダーのみ出発できます。' };
 
   const count = (JSON.parse(raid.participants_json) as string[]).length;
-  const hpMod = [1, 1.8, 2.6, 3.4][count - 1] ?? 1;
   getDb().prepare("UPDATE raid_sessions SET status = 'in_progress', updated_at = ? WHERE id = ?").run(nowIso(), raidId);
 
   for (const pid of JSON.parse(raid.participants_json) as string[]) {
     incrementWeeklyProgress(pid, 'raid_joins');
   }
 
-  return `レイド開始！（${count}人）\n敵HP: ${Math.round(hpMod * 100)}%\n${getRaidGimmick(count)}`;
+  const battle = startRaidBattle(raidId);
+  return {
+    message: `${getRaidGimmick(count)}\n${battle.message}`,
+    battleId: battle.battleId,
+  };
 }
 
 function getRaidGimmick(count: number): string {

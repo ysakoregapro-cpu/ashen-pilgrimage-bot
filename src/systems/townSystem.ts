@@ -1,5 +1,6 @@
 import { getDb } from '../db/database';
 import { getUnlockedTowns, requirePlayer } from './playerSystem';
+import { finalizeExplorationLoot } from './inventorySystem';
 import { nowIso } from '../types';
 
 export function setPlayerTown(userId: string, townId: string): void {
@@ -47,11 +48,21 @@ export function travelToTown(userId: string, townId: string): string {
   const unlocked = getUnlockedTowns(userId);
   if (!unlocked.includes(townId)) return `${town.name}へは、まだ道が通っていない。`;
   if (player.level < town.required_level) return `${town.name}へ向かうには、もう少し旅の経験が必要だ。`;
+
+  const loot = finalizeExplorationLoot(userId);
   setPlayerTown(userId, townId);
   getDb().prepare('UPDATE players SET last_safe_town_id = ?, updated_at = ? WHERE user_id = ?')
     .run(townId, nowIso(), userId);
   recordTownVisit(userId, townId);
-  return `${town.name}に着いた。`;
+
+  let msg = `${town.name}に着いた。`;
+  if (loot.message) msg += `\n\n${loot.message}`;
+  return msg;
+}
+
+export function returnToTownHub(userId: string): string {
+  const loot = finalizeExplorationLoot(userId);
+  return loot.message || '';
 }
 
 export function getCurrentTown(userId: string) {

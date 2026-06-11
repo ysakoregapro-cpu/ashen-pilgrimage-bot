@@ -1,8 +1,9 @@
 import { getDb } from '../db/database';
 import { nowIso } from '../types';
+import { canLoseOnDefeat } from './itemProtectionSystem';
 
 export function addItem(userId: string, itemId: string, quantity = 1, opts?: {
-  upgradeLevel?: number; durability?: string; srcLevel?: number; pending?: boolean;
+  upgradeLevel?: number; durability?: string; srcLevel?: number; pending?: boolean; metadata?: string;
 }): number {
   const db = getDb();
   const item = db.prepare('SELECT * FROM items WHERE id = ?').get(itemId) as { category: string } | undefined;
@@ -12,11 +13,11 @@ export function addItem(userId: string, itemId: string, quantity = 1, opts?: {
   if (isEquipment) {
     const ts = nowIso();
     const r = db.prepare(`
-      INSERT INTO player_inventory (user_id, item_id, quantity, upgrade_level, durability_state, src_level, is_pending_reward, created_at, updated_at)
-      VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?)
+      INSERT INTO player_inventory (user_id, item_id, quantity, upgrade_level, durability_state, src_level, is_pending_reward, metadata_json, created_at, updated_at)
+      VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       userId, itemId, opts?.upgradeLevel ?? 0, opts?.durability ?? '良好', opts?.srcLevel ?? 0,
-      opts?.pending ? 1 : 0, ts, ts,
+      opts?.pending ? 1 : 0, opts?.metadata ?? null, ts, ts,
     );
     return Number(r.lastInsertRowid);
   }
@@ -100,20 +101,35 @@ export function confirmPendingRewards(userId: string): void {
     .run(nowIso(), userId);
 }
 
+export function finalizeExplorationLoot(userId: string): { confirmed: string[]; message: string } {
+  const pending = getDb().prepare(`
+    SELECT pi.id, i.name FROM player_inventory pi JOIN items i ON pi.item_id = i.id
+    WHERE pi.user_id = ? AND pi.is_pending_reward = 1
+  `).all(userId) as Array<{ id: number; name: string }>;
+  if (!pending.length) return { confirmed: [], message: '' };
+  confirmPendingRewards(userId);
+  const names = pending.map((p) => p.name);
+  const msg = names.length === 1
+    ? '道中で得たものを荷に収めた。'
+    : '拾った品々は、無事に町まで持ち帰られた。';
+  return { confirmed: names, message: `${msg}\n・${names.join('、')}` };
+}
+
 export function losePendingRewards(userId: string, ratio: number): string[] {
   const pending = getDb().prepare(`
-    SELECT pi.id AS inventory_id, i.name AS item_name, i.category, COALESCE(e.is_unique, 0) AS is_unique
+    SELECT pi.id AS inventory_id, i.name AS item_name, i.category, i.rarity, i.id AS item_id, COALESCE(e.is_unique, 0) AS is_unique
     FROM player_inventory pi
     JOIN items i ON pi.item_id = i.id
     LEFT JOIN equipment e ON pi.item_id = e.item_id
     WHERE pi.user_id = ? AND pi.is_pending_reward = 1
-      AND COALESCE(e.is_unique, 0) = 0
-      AND i.category NOT IN ('key_item', 'quest')
-      AND i.rarity != 'Src'
-  `).all(userId) as Array<{ inventory_id: number; item_name: string }>;
+  `).all(userId) as Array<{ inventory_id: number; item_name: string; category: string; rarity: string; item_id: string; is_unique: number }>;
 
   const lost: string[] = [];
   for (const p of pending) {
+    if (!canLoseOnDefeat(p)) {
+      getDb().prepare('UPDATE player_inventory SET is_pending_reward = 0, updated_at = ? WHERE id = ?').run(nowIso(), p.inventory_id);
+      continue;
+    }
     if (Math.random() < ratio) {
       getDb().prepare('DELETE FROM player_inventory WHERE id = ?').run(p.inventory_id);
       lost.push(p.item_name);

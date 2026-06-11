@@ -1,5 +1,6 @@
 import { getDb } from '../db/database';
 import { recalculatePlayerStats, requirePlayer } from './playerSystem';
+import { checkEquipRequirements } from './prepSystem';
 import { nowIso, SLOT_LABELS, type EquipmentSlot } from '../types';
 
 const EQUIPPABLE_SLOTS: EquipmentSlot[] = [
@@ -38,6 +39,9 @@ export function equipItem(userId: string, inventoryId: number): string {
 
   if (!inv) return '装備が見つかりません。';
   if (inv.is_equipped) return '既に装備中です。';
+
+  const req = checkEquipRequirements(userId, inventoryId);
+  if (!req.ok) return req.reason ?? '装備できません。';
 
   const slot = inv.slot;
   if (!EQUIPPABLE_SLOTS.includes(slot)) return 'このスロットには装備できません。';

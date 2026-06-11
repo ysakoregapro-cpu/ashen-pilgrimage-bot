@@ -272,6 +272,12 @@ export function getPilgrimageJournal(userId: string): UiPayload {
   if (hasStoryFlag(userId, 'ending_connectors_revealed')) recorded.push('繋ぎ手として迎えられた');
 
   const objectives = ps.current_objective.split(/[。、]/).filter(Boolean).map((s) => s.trim());
+  const hints: string[] = [];
+  if (player.hp < player.max_hp * 0.5) hints.push('宿で休む');
+  if (player.gold < 100) hints.push('探索でゴールドを稼ぐ');
+  hints.push('探索で経験値と素材を集める');
+  hints.push('鍛冶場で装備を強化する');
+  if (player.level >= 20) hints.push('売店で回復薬を補充する');
   const locked = JOURNAL_LOCKED_PAGES.filter((p) => !hasStoryFlag(userId, p.flag)).map((p) => p.label);
 
   const jobLines: string[] = [];
@@ -291,6 +297,9 @@ export function getPilgrimageJournal(userId: string): UiPayload {
     '',
     formatFieldTitle('いまの道しるべ'),
     formatBulletList(objectives.length ? objectives : [ps.current_objective]),
+    '',
+    formatFieldTitle('おすすめ行動'),
+    formatBulletList(hints),
     '',
     formatFieldTitle('記されたこと'),
     formatBulletList(recorded.length ? recorded : ['—']),

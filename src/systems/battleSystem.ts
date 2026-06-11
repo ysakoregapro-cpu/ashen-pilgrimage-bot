@@ -1,7 +1,7 @@
 import { getDb } from '../db/database';
-import { getDifficultyModifiers } from './difficultySystem';
+import { getDifficultyModifiers, getExpMultiplier } from './difficultySystem';
 import { addExp, addGold, requirePlayer, recalculatePlayerStats } from './playerSystem';
-import { addItem, confirmPendingRewards } from './inventorySystem';
+import { addItem } from './inventorySystem';
 import { applyDefeat } from './defeatSystem';
 import { incrementWeeklyProgress } from './weeklySystem';
 import { getUsableBattleSkills, isUsableBattleSkill, skillTypeLabel, scalingLabel, type SkillRow } from './skillSystem';
@@ -33,6 +33,7 @@ export interface BattleState {
 type MonsterRow = {
   name: string; level: number; attack: number; magic: number; defense: number; spirit: number; speed: number;
   break_max: number; exp_reward: number; gold_reward: number; drop_pool_json: string; ai_pattern_json: string; hp: number;
+  area_tag?: string;
 };
 
 type SessionRow = {
@@ -179,7 +180,8 @@ export function processBattleAction(
   let eHp = session.enemy_hp;
   let eBreak = session.enemy_break;
   const { areaMin, areaMax } = getAreaLevels(session, monster);
-  const diff = getDifficultyModifiers(player.level, areaMin, areaMax);
+  const isValhalla = session.area_id?.includes('valhalla') || monster.area_tag === 'valhalla';
+  const diff = getDifficultyModifiers(player.level, areaMin, areaMax, { isValhalla });
   const tutorial = !!state.tutorialBattle;
   const canFlee = session.can_flee === 1;
 
@@ -386,8 +388,8 @@ function executeEnemyTurn(monster: MonsterRow, player: ReturnType<typeof require
   if (result.hit) {
     let dmg = Math.floor(result.damage * diff.playerTaken);
     if (tutorial) dmg = Math.max(1, Math.floor(dmg * 0.45));
-    if (state.defending) dmg = Math.floor(dmg * (state.guardStrong ? 0.35 : 0.5));
-    if (state.enemyBroken) dmg = Math.floor(dmg * 0.7);
+    if (state.defending) dmg = Math.floor(dmg * (state.guardStrong ? 0.40 : 0.55));
+    if (state.enemyBroken) dmg = Math.floor(dmg * 0.75);
     pHp -= dmg;
     pushLog(state, 'enemy_attack', `${monster.name}の攻撃。\n　あなたに **${dmg}** ダメージ。`);
     if (ai.poison_chance && roll(ai.poison_chance)) {
@@ -437,14 +439,22 @@ function useBattleItem(userId: string, inventoryId: number, state: BattleState, 
   return { ok: true, message: '', pHp, pMp, state };
 }
 
+function hasBossFirstKill(userId: string, monsterId: string): boolean {
+  const row = getDb().prepare(`
+    SELECT COUNT(*) AS c FROM battle_sessions WHERE user_id = ? AND monster_id = ? AND status = 'victory'
+  `).get(userId, monsterId) as { c: number };
+  return row.c === 0;
+}
+
 function resolveVictory(sessionId: string, userId: string, session: SessionRow, monster: MonsterRow, state: BattleState) {
   endBattle(sessionId, 'victory');
-  const exp = monster.exp_reward;
+  let exp = Math.floor(monster.exp_reward * getExpMultiplier(requirePlayer(userId).level));
+  if (session.is_boss) exp = Math.floor(exp * (hasBossFirstKill(userId, session.monster_id) ? 4 : 1.5));
   const gold = monster.gold_reward;
   const levelResult = addExp(userId, exp);
   const jobResults = grantBattleJobExp(userId, exp);
   addGold(userId, gold);
-  confirmPendingRewards(userId);
+  // Pending rewards are confirmed on town return; battle victory keeps them pending until then
   const drops = JSON.parse(monster.drop_pool_json || '[]') as Array<{ item_id: string; weight: number }>;
   const dropMsgs: string[] = [];
   if (drops.length && roll(0.4)) {

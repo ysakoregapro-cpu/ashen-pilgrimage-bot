@@ -3,7 +3,7 @@ import { getPlayer } from '../systems/playerSystem';
 import { createRescueRequest, joinRescue, startPreemptiveRescue, completeRescue, setRescueMessage } from '../systems/rescueSystem';
 import { getActiveBattle } from '../systems/battleSystem';
 import { getOrCreatePublicChannel } from '../utils/channels';
-import { getEnvOptional } from '../utils/permissions';
+import { getEnvOptional, isAdmin } from '../utils/permissions';
 import { baseEmbed, errorEmbed, successEmbed } from '../utils/embeds';
 import { safeDefer, safeEdit } from '../utils/interaction';
 
@@ -59,6 +59,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   }
 
   if (sub === 'complete') {
+    if (!isAdmin(interaction.member as import('discord.js').GuildMember)) {
+      await safeEdit(interaction, { embeds: [errorEmbed('この操作は管理者のみ利用できます。')] });
+      return;
+    }
     const id = interaction.options.getString('id', true);
     const msg = completeRescue(id);
     await safeEdit(interaction, { embeds: [successEmbed(msg)] });

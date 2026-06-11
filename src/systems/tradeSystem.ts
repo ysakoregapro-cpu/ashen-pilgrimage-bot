@@ -16,7 +16,12 @@ export function getTrade(tradeId: string) {
   return getDb().prepare('SELECT * FROM trades WHERE id = ?').get(tradeId);
 }
 
+import { canPerformItemAction } from './itemProtectionSystem';
+
 export function addTradeItem(tradeId: string, userId: string, inventoryId: number, quantity = 1): string {
+  const prot = canPerformItemAction(inventoryId, userId, 'trade');
+  if (!prot.ok) return prot.reason ?? '取引できません。';
+
   const trade = getTrade(tradeId) as { initiator_id: string; partner_id: string; status: string; initiator_items_json: string; partner_items_json: string } | undefined;
   if (!trade || trade.status !== 'pending') return '取引が見つかりません。';
 
@@ -26,7 +31,9 @@ export function addTradeItem(tradeId: string, userId: string, inventoryId: numbe
   `).get(inventoryId, userId) as { name: string; tradeable: number; is_equipped: number; category: string; rarity: string; item_id: string; quantity: number } | undefined;
   if (!inv) return 'アイテムが見つかりません。';
   if (inv.is_equipped) return '装備中のアイテムは取引できません。';
-  if (!inv.tradeable) return 'このアイテムは取引できません。';
+  if ((inv as { is_pending_reward?: number }).is_pending_reward) return '道中で得た品は、町へ戻るまで取引できない。';
+  if ((inv as { is_listed?: number }).is_listed) return '出品中のアイテムは取引できません。';
+  if (!inv.tradeable) return 'それは、この旅に深く結びついた品だ。手放すことはできない。';
   if (inv.rarity === 'Src' && inv.category === 'equipment') return 'Src本体は取引できません。';
 
   const item = { inventory_id: inventoryId, item_id: inv.item_id, name: inv.name, quantity };

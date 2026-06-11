@@ -19,6 +19,7 @@ export type NextActionContext =
   | 'guide'
   | 'story_event'
   | 'error'
+  | 'explore_area'
   | 'generic';
 
 function btn(id: string, label: string, style: ButtonStyle): ButtonBuilder {
@@ -31,7 +32,7 @@ function row(...buttons: ButtonBuilder[]): ActionRowBuilder<ButtonBuilder> {
 
 export function nextActionButtons(
   context: NextActionContext,
-  extra?: { npcId?: string; facilityId?: string },
+  extra?: { npcId?: string; facilityId?: string; areaId?: string },
 ): ActionRowBuilder<MessageActionRowComponentBuilder>[] {
   switch (context) {
     case 'job_done':
@@ -164,6 +165,15 @@ export function nextActionButtons(
         ),
         row(
           btn('town:guide', '巡礼手帳', ButtonStyle.Secondary),
+        ),
+      ];
+
+    case 'explore_area':
+      return [
+        row(
+          btn(`flow:explore:${extra?.areaId ?? ''}`, '探索する', ButtonStyle.Success),
+          btn('town:explore', '別の場所', ButtonStyle.Secondary),
+          btn('town:home', '町へ戻る', ButtonStyle.Secondary),
         ),
       ];
 

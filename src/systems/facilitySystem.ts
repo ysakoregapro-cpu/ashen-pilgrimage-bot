@@ -1,11 +1,16 @@
 import { getDb } from '../db/database';
 import { getDialogue, getNpc, buildNpcBody } from './npcConversationSystem';
-import { healPlayer, requirePlayer, getPlayer, recalculatePlayerStats } from './playerSystem';
+import { requirePlayer, getPlayer, recalculatePlayerStats } from './playerSystem';
 import { getEnhanceableEquipment } from './upgradeSystem';
 import { getUniqueWeapons } from './srcWeaponSystem';
 import { getJobs } from './jobSystem';
 import { formatEquipmentDisplay } from './equipmentSystem';
 import { getInventoryByCategory } from './inventorySystem';
+import { restAtInn, shrineHeal } from './innSystem';
+import { formatShopCatalogForPlayer, getShopCatalog, getSellableInventory } from './shopSystem';
+import { getActiveListings, getMyListings, formatListingList } from './marketSystem';
+import { formatCurrentEquipment } from './prepSystem';
+import { getCurrentTown } from './townSystem';
 
 export interface FacilityRow {
   id: string;
@@ -113,7 +118,29 @@ export function getFacilityActions(facility: FacilityRow): FacAction[] {
       ];
     case 'item_shop':
     case 'market':
-      return [talk, explain, { id: 'shop', label: '品物を見る' }, home];
+      return [
+        { id: 'shop_browse', label: '品物を見る' },
+        { id: 'shop_buy', label: '買う' },
+        { id: 'shop_sell', label: '売る' },
+        talk, explain, home,
+      ];
+    case 'exchange':
+    case 'exchange_under':
+    case 'exchange_fort':
+      return [
+        { id: 'market_browse', label: '出品一覧' },
+        { id: 'market_sell', label: '出品する' },
+        { id: 'market_my', label: '自分の出品' },
+        talk, explain, home,
+      ];
+    case 'prep_room':
+      return [
+        { id: 'prep_equip', label: '装備を変える' },
+        { id: 'prep_skills', label: 'スキルを見る' },
+        { id: 'prep_inventory', label: '所持品を見る' },
+        { id: 'prep_status', label: 'ステータスを見る' },
+        home,
+      ];
     case 'training_ground':
       return [talk, explain, { id: 'profile', label: '旅人の記録を見る' }, home];
     case 'travel_gate':
@@ -143,7 +170,8 @@ function getExplainLabel(type: string): string {
 }
 
 export function executeFacilityAction(userId: string, facilityId: string, actionId: string): {
-  type: 'text' | 'upgrade_select' | 'job_select' | 'travel' | 'profile' | 'inventory' | 'equip' | 'src_select' | 'rescue_hint' | 'raid_hint';
+  type: 'text' | 'upgrade_select' | 'job_select' | 'travel' | 'profile' | 'inventory' | 'equip' | 'src_select' | 'rescue_hint' | 'raid_hint'
+    | 'shop_browse' | 'shop_buy' | 'shop_sell' | 'market_browse' | 'market_sell' | 'market_my' | 'prep_equip' | 'prep_menu' | 'inn_preview';
   message: string;
   extra?: string;
 } {
@@ -152,19 +180,16 @@ export function executeFacilityAction(userId: string, facilityId: string, action
 
   const npcId = facility.npc_id;
 
-  if (actionId === 'rest' || actionId === 'heal') {
-    healPlayer(userId, 1);
-    recalculatePlayerStats(userId);
-    const cost = actionId === 'rest' ? 10 : 0;
-    if (cost > 0) {
-      const p = requirePlayer(userId);
-      if (p.gold >= cost) {
-        getDb().prepare('UPDATE players SET gold = gold - ? WHERE user_id = ?').run(cost, userId);
-      }
-    }
-    return { type: 'text', message: actionId === 'rest'
-      ? '深く息を吐くと、体の芯まで温かさが戻ってきた。\nHPとMPが全回復した。'
-      : '灯火のような温もりが、傷を静かに閉じていく。\nHPとMPが全回復した。' };
+  if (actionId === 'rest') {
+    const town = getCurrentTown(userId) as { id: string } | undefined;
+    const result = restAtInn(userId, town?.id ?? 'start_starfield');
+    return { type: 'text', message: result.message };
+  }
+
+  if (actionId === 'heal') {
+    const town = getCurrentTown(userId) as { id: string } | undefined;
+    const result = shrineHeal(userId, town?.id ?? 'start_starfield');
+    return { type: 'text', message: result.message };
   }
 
   if (actionId === 'smalltalk' && npcId) {
@@ -185,8 +210,23 @@ export function executeFacilityAction(userId: string, facilityId: string, action
   if (actionId === 'dismantle') return { type: 'upgrade_select', message: 'どの装備を分解しますか？', extra: 'dismantle' };
   if (actionId === 'job') return { type: 'job_select', message: 'どの職能を選びますか？' };
   if (actionId === 'profile') return { type: 'profile', message: '' };
-  if (actionId === 'inventory' || actionId === 'shop') return { type: 'inventory', message: '' };
-  if (actionId === 'equip') return { type: 'equip', message: '' };
+  if (actionId === 'shop_browse' || actionId === 'shop') {
+    const town = getCurrentTown(userId) as { id: string } | undefined;
+    return { type: 'shop_browse', message: formatShopCatalogForPlayer(userId, town?.id ?? 'start_starfield') };
+  }
+  if (actionId === 'shop_buy') return { type: 'shop_buy', message: '何を買いますか？', extra: facilityId };
+  if (actionId === 'shop_sell') return { type: 'shop_sell', message: '何を売りますか？', extra: facilityId };
+  if (actionId === 'market_browse') {
+    const listings = getActiveListings(15) as Array<{ id: string; name: string; rarity: string; price: number; upgrade_level: number; seller_id: string }>;
+    return { type: 'market_browse', message: formatListingList(listings) };
+  }
+  if (actionId === 'market_sell') return { type: 'market_sell', message: '何を出品しますか？', extra: facilityId };
+  if (actionId === 'market_my') return { type: 'market_my', message: '自分の出品', extra: facilityId };
+  if (actionId === 'prep_equip') return { type: 'prep_equip', message: 'どの部位を変更しますか？', extra: facilityId };
+  if (actionId === 'prep_skills') return { type: 'text', message: 'スキルは /skills または戦闘中の「技」から確認できます。' };
+  if (actionId === 'prep_inventory') return { type: 'inventory', message: '' };
+  if (actionId === 'prep_status') return { type: 'profile', message: '' };
+  if (actionId === 'equip') return { type: 'prep_menu', message: formatCurrentEquipment(userId), extra: facilityId };
   if (actionId === 'travel') return { type: 'travel', message: '' };
   if (actionId === 'src_check' || actionId === 'src_manifest') return { type: 'src_select', message: 'どの古い武器を確かめますか？', extra: actionId };
   if (actionId === 'src_upgrade') return { type: 'upgrade_select', message: 'どの伝承武器を鍛えますか？', extra: 'src' };

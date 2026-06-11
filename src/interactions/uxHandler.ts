@@ -227,6 +227,17 @@ async function handleFacilityResult(
       });
       break;
     }
+    case 'shop_browse':
+    case 'shop_buy':
+    case 'shop_sell':
+    case 'market_browse':
+    case 'market_sell':
+    case 'market_my':
+    case 'prep_equip':
+    case 'prep_menu': {
+      await handleShopMarketPrep(interaction, userId, facId, result);
+      break;
+    }
     case 'equip': {
       await sendJourneyLog(interaction, {
         embeds: [equipSummaryEmbed(formatEquipSummary(userId))],
@@ -310,8 +321,117 @@ function getFacilityName(facId: string): string {
   return getFacility(facId)?.name ?? '—';
 }
 
+async function handleShopMarketPrep(
+  interaction: ButtonInteraction,
+  userId: string,
+  facId: string,
+  result: ReturnType<typeof executeFacilityAction>,
+): Promise<void> {
+  const { getCurrentTown } = await import('../systems/townSystem');
+  const { getShopCatalog, getSellableInventory } = await import('../systems/shopSystem');
+  const { getActiveListings, getMyListings } = await import('../systems/marketSystem');
+  const { PREP_SLOTS } = await import('../systems/prepSystem');
+  const town = getCurrentTown(userId) as { id: string } | undefined;
+
+  if (result.type === 'shop_browse') {
+    await sendJourneyLog(interaction, {
+      embeds: [townHubEmbed(getFacilityName(facId), result.message)],
+      components: nextActionButtons('facility', { facilityId: facId }),
+    });
+    return;
+  }
+  if (result.type === 'shop_buy') {
+    const catalog = getShopCatalog(town?.id ?? 'start_starfield');
+    await sendPanelAfterAction(interaction, userId, {
+      embeds: [townHubEmbed(getFacilityName(facId), result.message)],
+      components: [selectMenu('shop:buy', '品を選ぶ', catalog.map((c) => ({
+        label: c.name, value: c.item_id, description: `${c.buy_price}G`,
+      })))],
+    });
+    return;
+  }
+  if (result.type === 'shop_sell') {
+    const items = getSellableInventory(userId);
+    if (!items.length) {
+      await sendJourneyLog(interaction, {
+        embeds: [townHubEmbed(getFacilityName(facId), '売れる品がない。')],
+        components: nextActionButtons('facility', { facilityId: facId }),
+      });
+      return;
+    }
+    await sendPanelAfterAction(interaction, userId, {
+      embeds: [townHubEmbed(getFacilityName(facId), result.message)],
+      components: [selectMenu('shop:sell', '売る品を選ぶ', items.slice(0, 25).map((i) => ({
+        label: i.name, value: String(i.id), description: `[${i.rarity}] x${i.quantity}`,
+      })))],
+    });
+    return;
+  }
+  if (result.type === 'market_browse') {
+    await sendPanelAfterAction(interaction, userId, {
+      embeds: [townHubEmbed(getFacilityName(facId), result.message)],
+      components: [selectMenu('market:buy', '購入する出品', (getActiveListings(15) as Array<{ id: string; name: string; price: number }>).map((l) => ({
+        label: l.name, value: l.id, description: `${l.price}G`,
+      })))],
+    });
+    return;
+  }
+  if (result.type === 'market_sell') {
+    const items = getSellableInventory(userId).filter((i) => i.category === 'equipment' || i.quantity === 1);
+    await sendPanelAfterAction(interaction, userId, {
+      embeds: [townHubEmbed(getFacilityName(facId), result.message)],
+      components: [selectMenu('market:list', '出品する品', items.slice(0, 25).map((i) => ({
+        label: i.name, value: String(i.id),
+      })))],
+    });
+    return;
+  }
+  if (result.type === 'market_my') {
+    const mine = getMyListings(userId) as Array<{ id: string; name: string; price: number }>;
+    await sendPanelAfterAction(interaction, userId, {
+      embeds: [townHubEmbed(getFacilityName(facId), mine.length ? mine.map((m) => `${m.name} ${m.price}G`).join('\n') : '出品なし')],
+      components: mine.length ? [selectMenu('market:cancel', '取り下げ', mine.map((m) => ({
+        label: m.name, value: m.id, description: `${m.price}G`,
+      })))] : nextActionButtons('facility', { facilityId: facId }),
+    });
+    return;
+  }
+  if (result.type === 'prep_equip') {
+    await sendPanelAfterAction(interaction, userId, {
+      embeds: [townHubEmbed('身支度', result.message)],
+      components: [selectMenu('prep:slot', '部位を選ぶ', PREP_SLOTS.map((s) => ({
+        label: ({ weapon: '武器', head: '頭', body: '胴', arms: '腕', legs: '脚', feet: '靴', accessory1: 'アクセ1', accessory2: 'アクセ2', sub: '補助' } as Record<string, string>)[s] ?? s,
+        value: s,
+      })))],
+    });
+    return;
+  }
+  if (result.type === 'prep_menu') {
+    await sendJourneyLog(interaction, {
+      embeds: [equipSummaryEmbed(result.message)],
+      components: nextActionButtons('equip'),
+    });
+  }
+}
+
 async function handleFlowButton(interaction: ButtonInteraction, flow: string): Promise<void> {
   const userId = interaction.user.id;
+  if (flow.startsWith('explore:')) {
+    const areaId = flow.slice('explore:'.length);
+    const { handleExploreSelect } = await import('../commands/explore');
+    const { buildPostExplore } = await import('../systems/townActionSystem');
+    const { buildBattleReply } = await import('../systems/battleSystem');
+    const result = await handleExploreSelect(userId, areaId);
+    if (result.type === 'battle' && result.battleId) {
+      const reply = buildBattleReply(result.battleId, userId);
+      if (reply) {
+        await sendJourneyLog(interaction, reply);
+        return;
+      }
+    }
+    await sendJourneyLog(interaction, buildPostExplore(result.message));
+    return;
+  }
   if (flow === 'inventory') {
     await sendJourneyLog(interaction, {
       embeds: [inventorySummaryEmbed(formatInventorySummary(userId))],

@@ -5,6 +5,8 @@ import {
 import { getFacilitiesForTown, buildFacilityGreeting, getFacility, getFacilityActions } from './facilitySystem';
 import { getTownNpcs, getDialogue, getNpcGreeting, getNpc } from './npcConversationSystem';
 import { getAreasForTown } from './explorationSystem';
+import { buildExploreAreaOptions, formatAreaDetail } from './areaDisplaySystem';
+import { returnToTownHub } from './townSystem';
 import { buildGuideSection } from './dialogueSystem';
 import {
   townHubButtons,
@@ -51,7 +53,12 @@ export function travelToTownWithResult(userId: string, townId: string): { ok: bo
   return { ok, message, isFirstVisit: ok && before === 0 };
 }
 
-export function buildTownHub(userId: string, opts?: { intro?: string; isFirstVisit?: boolean }): UiPayload {
+export function buildTownHub(userId: string, opts?: { intro?: string; isFirstVisit?: boolean; skipLootConfirm?: boolean }): UiPayload {
+  if (!opts?.skipLootConfirm) {
+    const lootMsg = returnToTownHub(userId);
+    if (lootMsg && opts?.intro) opts.intro = `${opts.intro}\n\n${lootMsg}`;
+    else if (lootMsg && !opts?.intro) opts = { ...opts, intro: lootMsg };
+  }
   const town = getCurrentTown(userId) as {
     id: string; name: string; description: string; required_level: number;
   } | undefined;
@@ -135,8 +142,16 @@ export function buildExploreList(userId: string): UiPayload {
   if (!town) return buildTownHub(userId);
   const areas = getAreasForTown(town.id) as Array<{ id: string; name: string; recommended_min_level: number; recommended_max_level: number }>;
   return {
-    embeds: [townHubEmbed('探索へ向かう', `${town.name}の周辺。どこへ足を踏み入れる？`)],
-    components: [exploreSelectMenu(areas)],
+    embeds: [townHubEmbed('探索へ向かう', `${town.name}の周辺。どこへ足を踏み入れる？\n\n*エリアを選ぶと詳細が表示されます*`)],
+    components: [exploreSelectMenu(userId, areas)],
+  };
+}
+
+export function buildAreaDetailView(userId: string, areaId: string): UiPayload {
+  const detail = formatAreaDetail(userId, areaId);
+  return {
+    embeds: [townHubEmbed('探索先', detail)],
+    components: nextActionButtons('explore_area', { areaId }),
   };
 }
 

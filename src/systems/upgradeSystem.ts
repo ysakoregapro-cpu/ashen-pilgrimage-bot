@@ -1,65 +1,95 @@
 import { getDb } from '../db/database';
 import { recalculatePlayerStats, requirePlayer, spendGold } from './playerSystem';
 import { consumeMaterial, getItemCount } from './inventorySystem';
+import { canPerformItemAction } from './itemProtectionSystem';
 import { incrementWeeklyProgress } from './weeklySystem';
 import { nowIso, DURABILITY_ORDER, type DurabilityState } from '../types';
 
 const RARITY_MAX: Record<string, number> = { N: 5, R: 5, SR: 7, SSR: 10, UR: 15, Src: 10 };
+const RARITY_GOLD_MULT: Record<string, number> = { N: 1.0, R: 1.0, SR: 1.5, SSR: 2.0, UR: 3.0 };
+
+type EnhanceReq = { stoneId: string; stoneQty: number; goldCost: number };
+
+function getEnhanceRequirement(currentLevel: number, rarity: string): EnhanceReq {
+  const next = currentLevel + 1;
+  const mult = RARITY_GOLD_MULT[rarity] ?? 1;
+  let stoneId: string;
+  let baseGold: number;
+
+  if (next <= 3) { stoneId = 'upg_rough_stone'; baseGold = 100 * next; }
+  else if (next <= 6) { stoneId = 'upg_stone'; baseGold = 200 * next; }
+  else if (next <= 9) { stoneId = 'upg_fine_stone'; baseGold = 350 * next; }
+  else { stoneId = 'upg_rare_stone'; baseGold = 500 * next; }
+
+  return { stoneId, stoneQty: Math.max(1, Math.ceil(next / 2)), goldCost: Math.floor(baseGold * mult) };
+}
+
+function statPreview(row: { attack_bonus?: number; defense_bonus?: number; magic_bonus?: number }, level: number): string {
+  const bonus = Math.floor((row.attack_bonus ?? row.defense_bonus ?? row.magic_bonus ?? 0) * level * 0.05);
+  if (row.attack_bonus) return `攻撃+${bonus}`;
+  if (row.magic_bonus) return `魔力+${bonus}`;
+  if (row.defense_bonus) return `防御+${bonus}`;
+  return '';
+}
 
 export function enhanceEquipment(userId: string, inventoryId: number): { success: boolean; message: string } {
+  const check = canPerformItemAction(inventoryId, userId, 'dismantle');
+  if (!check.ok && check.reason?.includes('道中')) return { success: false, message: check.reason! };
+
   const row = getDb().prepare(`
-    SELECT pi.*, i.rarity, i.name, e.max_upgrade_level, e.weapon_type, e.slot, e.series_id
+    SELECT pi.*, i.rarity, i.name, e.max_upgrade_level, e.weapon_type, e.slot, e.series_id,
+      e.attack_bonus, e.magic_bonus, e.defense_bonus
     FROM player_inventory pi JOIN items i ON pi.item_id = i.id JOIN equipment e ON pi.item_id = e.item_id
     WHERE pi.id = ? AND pi.user_id = ?
   `).get(inventoryId, userId) as {
     upgrade_level: number; src_level: number; rarity: string; name: string;
     max_upgrade_level: number; is_equipped: number;
+    attack_bonus: number; magic_bonus: number; defense_bonus: number;
   } | undefined;
   if (!row) return { success: false, message: '装備が見つかりません。' };
+  if (row.rarity === 'Src') {
+    return enhanceSrcWeapon(userId, inventoryId);
+  }
 
-  const maxLevel = row.src_level > 0 ? 10 : (RARITY_MAX[row.rarity] ?? row.max_upgrade_level);
-  const currentLevel = row.src_level > 0 ? row.src_level : row.upgrade_level;
+  const maxLevel = RARITY_MAX[row.rarity] ?? row.max_upgrade_level;
+  const currentLevel = row.upgrade_level;
   if (currentLevel >= maxLevel) return { success: false, message: 'これ以上強化できません。' };
 
-  const goldCost = 200 * (currentLevel + 1);
-  const stoneNeeded = currentLevel + 1;
-  if (!spendGold(userId, goldCost)) return { success: false, message: `ゴールドが足りません（${goldCost}G必要）。` };
-  if (getItemCount(userId, 'upg_stone') < stoneNeeded) {
-    return { success: false, message: `強化石が足りません（${stoneNeeded}個必要、所持${getItemCount(userId, 'upg_stone')}）。` };
+  const req = getEnhanceRequirement(currentLevel, row.rarity);
+  if (!spendGold(userId, req.goldCost)) return { success: false, message: `ゴールドが足りません（${req.goldCost}G必要）。` };
+  if (getItemCount(userId, req.stoneId) < req.stoneQty) {
+    const stoneName = (getDb().prepare('SELECT name FROM items WHERE id = ?').get(req.stoneId) as { name: string }).name;
+    return { success: false, message: `${stoneName}が足りません（${req.stoneQty}個必要、所持${getItemCount(userId, req.stoneId)}）。` };
   }
-  consumeMaterial(userId, 'upg_stone', stoneNeeded);
+  consumeMaterial(userId, req.stoneId, req.stoneQty);
 
-  if (row.src_level > 0 || row.rarity === 'Src') {
-    getDb().prepare('UPDATE player_inventory SET src_level = src_level + 1, updated_at = ? WHERE id = ?').run(nowIso(), inventoryId);
-  } else {
-    getDb().prepare('UPDATE player_inventory SET upgrade_level = upgrade_level + 1, updated_at = ? WHERE id = ?').run(nowIso(), inventoryId);
-  }
+  getDb().prepare('UPDATE player_inventory SET upgrade_level = upgrade_level + 1, updated_at = ? WHERE id = ?').run(nowIso(), inventoryId);
 
   if (row.is_equipped) recalculatePlayerStats(userId);
   incrementWeeklyProgress(userId, 'upgrade_count');
-  return { success: true, message: `「${row.name}」を+${currentLevel + 1}に強化しました。（-${goldCost}G）` };
+  const preview = statPreview(row, 1);
+  return {
+    success: true,
+    message: `「${row.name}」を+${currentLevel + 1}に強化しました。（-${req.goldCost}G）\n${preview ? `変化: ${preview}` : ''}`,
+  };
 }
 
 export function dismantleEquipment(userId: string, inventoryId: number): { success: boolean; message: string } {
+  const prot = canPerformItemAction(inventoryId, userId, 'dismantle');
+  if (!prot.ok) return { success: false, message: prot.reason ?? '分解できません。' };
+
   const row = getDb().prepare(`
     SELECT pi.*, i.rarity, i.name, e.series_id FROM player_inventory pi
     JOIN items i ON pi.item_id = i.id JOIN equipment e ON pi.item_id = e.item_id
     WHERE pi.id = ? AND pi.user_id = ? AND pi.is_equipped = 0
   `).get(inventoryId, userId) as { rarity: string; name: string; series_id: string | null } | undefined;
   if (!row) return { success: false, message: '装備が見つからないか、装備中です。' };
-  if (row.rarity === 'Src') return { success: false, message: 'Src装備は分解できません。' };
 
   const materials = getDismantleRewards(row.rarity, row.series_id);
   getDb().prepare('DELETE FROM player_inventory WHERE id = ?').run(inventoryId);
 
   const msgs: string[] = [];
   for (const m of materials) {
-    getDb().prepare(`
-      INSERT INTO player_inventory (user_id, item_id, quantity, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT DO NOTHING
-    `);
-    // use addItem via direct insert
     const existing = getDb().prepare('SELECT id, quantity FROM player_inventory WHERE user_id=? AND item_id=? AND is_equipped=0 LIMIT 1').get(userId, m.id) as { id: number; quantity: number } | undefined;
     if (existing) {
       getDb().prepare('UPDATE player_inventory SET quantity=quantity+?, updated_at=? WHERE id=?').run(m.qty, nowIso(), existing.id);
@@ -136,7 +166,6 @@ export function getSrcUpgradeInfo(userId: string, inventoryId: number): string {
 }
 
 export function enhanceSrcWeapon(userId: string, inventoryId: number): { success: boolean; message: string } {
-  const info = getSrcUpgradeInfo(userId, inventoryId);
   const row = getDb().prepare(`
     SELECT pi.*, i.name, e.src_weapon_id FROM player_inventory pi
     JOIN items i ON pi.item_id = i.id JOIN equipment e ON pi.item_id = e.item_id

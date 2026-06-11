@@ -8,6 +8,12 @@ import {
 
   Events,
 
+  ActionRowBuilder,
+
+  ButtonBuilder,
+
+  ButtonStyle,
+
   type Interaction,
 
   type ButtonInteraction,
@@ -24,6 +30,8 @@ import { getEnv } from './utils/permissions';
 import { errorEmbed, successEmbed } from './utils/embeds';
 import { nextActionButtons, errorRecoveryPayload } from './utils/nextActionButtons';
 import type { UiPayload } from './utils/townUi';
+import { townHubEmbed } from './utils/townUi';
+import { selectMenu } from './utils/embeds';
 
 import { handleJobSelect } from './commands/job';
 
@@ -236,6 +244,7 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
     await channel.send(stampPanelPayload(userId, buildTownHub(userId, {
       isFirstVisit: travel.isFirstVisit,
       intro: `${travel.message}\n`,
+      skipLootConfirm: true,
     })));
 
     return;
@@ -294,23 +303,9 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
 
     }
 
-    const result = await handleExploreSelect(userId, value);
+    const { buildAreaDetailView } = await import('./systems/townActionSystem');
 
-    if (result.type === 'battle' && result.battleId) {
-
-      const reply = buildBattleReply(result.battleId, userId);
-
-      if (reply) {
-
-        await sendJourneyLogAfterSelect(interaction, reply);
-
-        return;
-
-      }
-
-    }
-
-    await sendJourneyLogAfterSelect(interaction, buildPostExplore(result.message));
+    await sendJourneyLogAfterSelect(interaction, buildAreaDetailView(userId, value));
 
     return;
 
@@ -382,6 +377,68 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
 
     return;
 
+  }
+
+  if (prefix === 'shop' && action === 'buy') {
+    const { buyShopItem } = await import('./systems/shopSystem');
+    const { getCurrentTown } = await import('./systems/townSystem');
+    const town = getCurrentTown(userId) as { id: string } | undefined;
+    const r = buyShopItem(userId, value, town?.id ?? 'start_starfield');
+    await sendSelectResultLog(interaction, { embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    return;
+  }
+
+  if (prefix === 'shop' && action === 'sell') {
+    const { sellInventoryItem } = await import('./systems/shopSystem');
+    const r = sellInventoryItem(userId, Number(value));
+    await sendSelectResultLog(interaction, { embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    return;
+  }
+
+  if (prefix === 'market' && action === 'buy') {
+    const { buyListing } = await import('./systems/marketSystem');
+    const r = buyListing(userId, value);
+    await sendSelectResultLog(interaction, { embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    return;
+  }
+
+  if (prefix === 'market' && action === 'list') {
+    const { createListing } = await import('./systems/marketSystem');
+    const { getMarketPriceHint } = await import('./systems/itemValueSystem');
+    const row = getDb().prepare('SELECT item_id FROM player_inventory WHERE id = ? AND user_id = ?').get(Number(value), userId) as { item_id: string } | undefined;
+    const hint = getMarketPriceHint(row?.item_id ?? '');
+    const r = createListing(userId, Number(value), hint.base);
+    await sendSelectResultLog(interaction, { embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    return;
+  }
+
+  if (prefix === 'market' && action === 'cancel') {
+    const { cancelListing } = await import('./systems/marketSystem');
+    const r = cancelListing(userId, value);
+    await sendSelectResultLog(interaction, { embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    return;
+  }
+
+  if (prefix === 'prep' && action === 'slot') {
+    const { getPrepSlotOptions } = await import('./systems/prepSystem');
+    const opts = getPrepSlotOptions(userId, value as import('./types').EquipmentSlot);
+    await sendSelectResultLog(interaction, {
+      embeds: [townHubEmbed('装備変更', `**${value}** の装備候補`)],
+      components: opts.length ? [selectMenu('prep:equip', '装備を選ぶ', opts.filter((o) => !o.disabled).map((o) => ({
+        label: o.label, value: String(o.inventoryId), description: o.description,
+      })))] : nextActionButtons('equip'),
+    });
+    return;
+  }
+
+  if (prefix === 'prep' && action === 'equip') {
+    const { equipWithDiff } = await import('./systems/prepSystem');
+    const r = equipWithDiff(userId, Number(value));
+    await sendSelectResultLog(interaction, {
+      embeds: [successEmbed(r.message)],
+      components: nextActionButtons('equip'),
+    });
+    return;
   }
 
 
@@ -588,10 +645,21 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
 
     if (parts[1] === 'depart') {
 
-      const msg = startPreemptiveRescue(rescueId, userId);
+      const { startRescueBattle } = await import('./systems/rescueBattleSystem');
+      const battle = startRescueBattle(rescueId);
+      await interaction.reply({ embeds: [successEmbed(battle.message)] });
 
-      await interaction.reply({ embeds: [successEmbed(msg)] });
+      return;
 
+    }
+
+    if (parts[1] === 'act') {
+      const battleId = parts[2]!;
+      const act = parts[3]!;
+      const { setRescueAction } = await import('./systems/rescueBattleSystem');
+      const msg = setRescueAction(battleId, userId, act);
+      await interaction.reply({ embeds: [successEmbed(msg)], ephemeral: true });
+      return;
     }
 
     return;
@@ -616,12 +684,32 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
 
     if (parts[1] === 'depart') {
 
-      const msg = startRaid(raidId, userId);
+      const result = startRaid(raidId, userId);
 
-      await interaction.reply({ embeds: [successEmbed(msg)] });
+      const { formatRaidBattleStatus } = await import('./systems/raidBattleSystem');
+      const body = result.battleId ? formatRaidBattleStatus(result.battleId) : result.message;
+      const components = result.battleId ? [
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setCustomId(`raid:act:${result.battleId}:attack`).setLabel('攻撃').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId(`raid:act:${result.battleId}:defend`).setLabel('防御').setStyle(ButtonStyle.Secondary),
+        ),
+      ] : [];
+      await interaction.reply({
+        embeds: [successEmbed(`${result.message}\n\n${body}`)],
+        components,
+      });
 
       return;
 
+    }
+
+    if (parts[1] === 'act') {
+      const battleId = parts[2]!;
+      const act = parts[3]!;
+      const { setRaidAction } = await import('./systems/raidBattleSystem');
+      const msg = setRaidAction(battleId, userId, act);
+      await interaction.reply({ embeds: [successEmbed(msg)], ephemeral: true });
+      return;
     }
 
     if (parts[1] === 'leave') {

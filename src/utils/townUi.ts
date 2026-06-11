@@ -8,6 +8,7 @@ import {
 import { baseEmbed, selectMenu } from './embeds';
 import type { Player } from '../types';
 import { GUIDE_SECTIONS } from '../systems/dialogueSystem';
+import { buildExploreAreaOptions } from '../systems/areaDisplaySystem';
 import { nextActionButtons } from './nextActionButtons';
 import type { FacilityRow } from '../systems/facilitySystem';
 import type { NpcRow } from '../systems/npcConversationSystem';
@@ -72,15 +73,11 @@ export function npcSelectMenu(npcs: NpcRow[]) {
   );
 }
 
-export function exploreSelectMenu(areas: Array<{ id: string; name: string; recommended_min_level: number; recommended_max_level: number }>) {
+export function exploreSelectMenu(userId: string, areas: Array<{ id: string; name: string; recommended_min_level: number; recommended_max_level: number }>) {
   return selectMenu(
     'explore:select',
     'どこへ足を踏み入れる？',
-    areas.map((a) => ({
-      label: a.name,
-      value: a.id,
-      description: `推奨Lv${a.recommended_min_level}-${a.recommended_max_level}`,
-    })),
+    buildExploreAreaOptions(userId, areas),
   );
 }
 

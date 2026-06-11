@@ -10,6 +10,7 @@ import { seedSrcWeapons } from './seedData/srcWeapons';
 import { seedFacilities, ensureFacilitiesSeed } from './seedData/facilities';
 import { seedDialogues, ensureDialoguesSeed } from './seedData/dialogues';
 import { seedStoryTables } from '../systems/storySystem';
+import { ensurePhase2Seed } from './seedData/phase2Seed';
 
 export function seedDatabase(db: Database.Database): void {
   const row = db.prepare('SELECT COUNT(*) as c FROM towns').get() as { c: number };
@@ -17,6 +18,7 @@ export function seedDatabase(db: Database.Database): void {
     ensureFacilitiesSeed(db);
     ensureDialoguesSeed(db);
     seedStoryTables(db);
+    ensurePhase2Seed(db);
     return;
   }
 

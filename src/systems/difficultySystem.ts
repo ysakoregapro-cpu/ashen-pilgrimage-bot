@@ -15,6 +15,7 @@ export function getDifficultyModifiers(
   playerLevel: number,
   minLevel: number,
   maxLevel: number,
+  opts?: { isValhalla?: boolean },
 ): DifficultyModifiers {
   const mid = (minLevel + maxLevel) / 2;
 
@@ -44,13 +45,13 @@ export function getDifficultyModifiers(
   if (playerLevel <= mid) {
     return {
       playerHitRate: 0.88,
-      enemyHitRate: 0.90,
+      enemyHitRate: 0.92,
       playerDamage: 0.88,
-      playerTaken: 1.12,
+      playerTaken: opts?.isValhalla ? 1.2 : 1.15,
       fleeRate: 0.52,
       breakRate: 0.88,
       playerSpeed: 1,
-      enemySpeed: 1.05,
+      enemySpeed: 1.08,
       label: '適正下位',
       levelDeficit: 0,
     };
@@ -59,13 +60,13 @@ export function getDifficultyModifiers(
   if (playerLevel <= maxLevel) {
     return {
       playerHitRate: 0.93,
-      enemyHitRate: 0.87,
+      enemyHitRate: 0.90,
       playerDamage: 1.0,
-      playerTaken: 1.0,
+      playerTaken: opts?.isValhalla ? 1.15 : 1.08,
       fleeRate: 0.62,
       breakRate: 1.0,
       playerSpeed: 1,
-      enemySpeed: 1,
+      enemySpeed: 1.05,
       label: '適正上位',
       levelDeficit: 0,
     };
@@ -75,8 +76,8 @@ export function getDifficultyModifiers(
   return {
     playerHitRate: Math.min(0.99, 0.95 + over * 0.005),
     enemyHitRate: Math.max(0.72, 0.85 - over * 0.02),
-    playerDamage: Math.min(1.25, 1 + over * 0.04),
-    playerTaken: Math.max(0.75, 1 - over * 0.025),
+    playerDamage: Math.min(1.10, 1 + over * 0.02),
+    playerTaken: Math.max(0.85, 1 - over * 0.015),
     fleeRate: Math.min(0.85, 0.68 + over * 0.02),
     breakRate: Math.min(1.15, 1 + over * 0.03),
     playerSpeed: 1,
@@ -89,4 +90,11 @@ export function getDifficultyModifiers(
 export function underlevelWarning(playerLevel: number, minLevel: number): string | null {
   if (playerLevel >= minLevel) return null;
   return 'この先は、今の足取りには少し重い。\n進むことはできるが、無理をすれば灯火に戻されるだろう。';
+}
+
+export function getExpMultiplier(playerLevel: number): number {
+  if (playerLevel <= 15) return 1.25;
+  if (playerLevel <= 35) return 1.30;
+  if (playerLevel <= 60) return 1.35;
+  return 1.20;
 }
