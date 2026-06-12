@@ -7,6 +7,7 @@ import {
 } from 'discord.js';
 import { baseEmbed, selectMenu } from './embeds';
 import type { Player } from '../types';
+import { getActiveSetEffectLines } from '../systems/playerSystem';
 import { GUIDE_SECTIONS } from '../systems/dialogueSystem';
 import { buildExploreAreaOptions } from '../systems/areaDisplaySystem';
 import { nextActionButtons } from './nextActionButtons';
@@ -22,8 +23,8 @@ export function townHubEmbed(title: string, description: string): EmbedBuilder {
   return baseEmbed(title, description);
 }
 
-export function playerRecordEmbed(player: Player): EmbedBuilder {
-  return baseEmbed('旅人の記録')
+export function playerRecordEmbed(player: Player, userId?: string): EmbedBuilder {
+  const embed = baseEmbed('旅人の記録')
     .addFields(
       { name: '名前', value: player.name, inline: true },
       { name: 'Lv', value: `${player.level}`, inline: true },
@@ -37,6 +38,13 @@ export function playerRecordEmbed(player: Player): EmbedBuilder {
         inline: false,
       },
     );
+  if (userId) {
+    const sets = getActiveSetEffectLines(userId);
+    if (sets.length) {
+      embed.addFields({ name: '発動中シリーズ効果', value: sets.join('\n').slice(0, 1024) });
+    }
+  }
+  return embed;
 }
 
 export function townHubButtons(): ActionRowBuilder<ButtonBuilder>[] {
@@ -126,6 +134,16 @@ export function postVictoryButtons() {
 
 export function postDefeatButtons() {
   return nextActionButtons('defeat');
+}
+
+export function restConfirmButtons(facilityId: string, mode: 'inn' | 'shrine'): ActionRowBuilder<ButtonBuilder>[] {
+  const confirmId = mode === 'inn' ? 'rest_confirm' : 'heal_confirm';
+  return [
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      btn(`facility:act:${facilityId}:${confirmId}`, '利用する', ButtonStyle.Success),
+      btn(`facility:view:${facilityId}`, 'やめる', ButtonStyle.Secondary),
+    ),
+  ];
 }
 
 export function postFacilityButtons(facilityId: string) {

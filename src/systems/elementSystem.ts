@@ -1,7 +1,8 @@
 import type { GameElement, AffinityTier } from '../db/seedData/elementMaster';
 import {
-  normalizeElement, getAffinityTier, getAffinityMultiplier, affinityLogText, ELEMENT_LABELS, GAME_ELEMENTS,
+  normalizeElement, getAffinityTier, getAffinityMultiplier, affinityLogText, ELEMENT_LABELS, GAME_ELEMENTS, AFFINITY_MULTIPLIER,
 } from '../db/seedData/elementMaster';
+import { getMonsterElementDef } from '../db/seedData/monsterElementMaster';
 import { getDb } from '../db/database';
 import { DURABILITY_PENALTY, type DurabilityState } from '../types';
 
@@ -196,19 +197,55 @@ export function calcElementDamageMultiplier(
 ): { multiplier: number; tier: AffinityTier; logText: string | null } {
   const def = resolveDefenseElements(defender);
   let tier = getAffinityTier(attackElement, def.element);
-
-  if (def.weaknesses.includes(attackElement)) tier = tier === 'neutral' ? 'weak' : 'major_weak';
-  if (def.resistances.includes(attackElement)) tier = tier === 'neutral' ? 'resist' : 'major_resist';
-
   let multiplier = getAffinityMultiplier(attackElement, def.element);
-  if (def.weaknesses.includes(attackElement)) multiplier = Math.max(multiplier, 1.25);
-  if (def.resistances.includes(attackElement)) multiplier = Math.min(multiplier, 0.75);
+
+  // Explicit lists cap tier — listed weaknesses are 弱点(1.15), not 大弱点
+  if (def.weaknesses.includes(attackElement)) {
+    tier = 'weak';
+    multiplier = AFFINITY_MULTIPLIER.weak;
+  } else if (def.resistances.includes(attackElement)) {
+    tier = tier === 'major_resist' || tier === 'immune' ? tier : 'resist';
+    multiplier = Math.min(multiplier, AFFINITY_MULTIPLIER.resist);
+  }
 
   if (playerResists && attackElement in playerResists) {
     multiplier *= (1 - (playerResists[attackElement] ?? 0));
   }
 
   return { multiplier, tier, logText: affinityLogText(tier, attackElement) };
+}
+
+/** Area UI — show 大弱点/弱点/等倍/耐性 labels matching combat */
+export function formatMonsterAffinityHints(monsterId: string, areaTag: string): string {
+  const def = getMonsterElementDef(monsterId, areaTag);
+  const defender = {
+    element: def.element,
+    weaknesses_json: JSON.stringify(def.weaknesses),
+    resistances_json: JSON.stringify(def.resistances),
+  };
+  const tierLabel: Record<AffinityTier, string> = {
+    major_weak: '大弱点',
+    weak: '弱点',
+    neutral: '等倍',
+    resist: '耐性',
+    major_resist: '強耐性',
+    immune: '無効',
+  };
+  const shown = new Set<GameElement>();
+  const parts: string[] = [];
+  const candidates: GameElement[] = [
+    ...def.weaknesses,
+    ...def.resistances,
+    'light', 'fire', 'thunder', 'dark', 'ice', 'wind',
+  ];
+  for (const el of candidates) {
+    if (shown.has(el) || el === 'neutral') continue;
+    const { tier } = calcElementDamageMultiplier(el, defender);
+    if (tier === 'neutral') continue;
+    shown.add(el);
+    parts.push(`${ELEMENT_LABELS[el]}${tierLabel[tier]}`);
+  }
+  return parts.length ? parts.join(' / ') : '属性等倍';
 }
 
 export function applyElementToDamage(baseDamage: number, mult: number): number {

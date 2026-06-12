@@ -1,8 +1,9 @@
 import { getDb } from '../db/database';
 import { nowIso } from '../types';
 import {
-  KAI_UNIQUE_TARGETS, MAX_AWAKENING_LEVEL, SRC_FORGE_MATERIAL_ID, awakeningLabel,
+  KAI_UNIQUE_TARGETS, MAX_AWAKENING_LEVEL, SRC_FORGE_MATERIAL_ID, awakeningLabel, isMaxAwakening,
 } from '../db/seedData/awakeningMaster';
+import { isJobStarterWeapon, STARTER_WEAPON_IDS } from '../db/seedData/jobStarterWeapons';
 import { hasStoryFlag, setStoryFlag } from './storySystem';
 import { unlockTownForPlayer } from './townSystem';
 import { getItemCount, consumeMaterial } from './inventorySystem';
@@ -34,8 +35,14 @@ export function canKaiUnique(userId: string, inventoryId: number): { ok: boolean
   if (!row) return { ok: false, reason: '武器が見つかりません。' };
   if (row.is_unique) return { ok: false, reason: 'すでにユニーク武器です。' };
   if (row.rarity === 'Src') return { ok: false, reason: 'Src武器は対象外です。' };
-  if (row.slot !== 'weapon') return { ok: false, reason: '武器のみユニーク昇華できます。' };
-  if (row.awakening_level < MAX_AWAKENING_LEVEL) {
+  if (row.slot !== 'weapon') return { ok: false, reason: '武器のみ伝承できます。' };
+  if (!isJobStarterWeapon(row.item_id)) {
+    return { ok: false, reason: '伝承できるのは職業初期武器のみです。' };
+  }
+  if (!KAI_UNIQUE_TARGETS[row.item_id]) {
+    return { ok: false, reason: 'この武器には伝承の名がありません。' };
+  }
+  if (!isMaxAwakening(row.awakening_level)) {
     return { ok: false, reason: `最大覚醒（${awakeningLabel(MAX_AWAKENING_LEVEL)}）が必要です。（現在 ${awakeningLabel(row.awakening_level)}）` };
   }
   return { ok: true };
@@ -167,14 +174,17 @@ export function kaiSrcTransform(userId: string, inventoryId: number): { success:
 }
 
 export function getKaiUniqueCandidates(userId: string) {
+  const ids = [...STARTER_WEAPON_IDS];
+  const placeholders = ids.map(() => '?').join(',');
   return getDb().prepare(`
     SELECT pi.id, i.name, pi.awakening_level FROM player_inventory pi
     JOIN items i ON pi.item_id = i.id
     JOIN equipment e ON pi.item_id = e.item_id
-    WHERE pi.user_id = ? AND e.slot = 'weapon' AND e.is_unique = 0 AND i.rarity IN ('N','R')
+    WHERE pi.user_id = ? AND e.slot = 'weapon' AND e.is_unique = 0
+      AND pi.item_id IN (${placeholders})
       AND pi.awakening_level >= ? AND pi.is_equipped = 0 AND pi.is_pending_reward = 0
     ORDER BY i.name LIMIT 25
-  `).all(userId, MAX_AWAKENING_LEVEL) as Array<{ id: number; name: string; awakening_level: number }>;
+  `).all(userId, ...ids, MAX_AWAKENING_LEVEL) as Array<{ id: number; name: string; awakening_level: number }>;
 }
 
 export function getKaiSrcCandidates(userId: string) {

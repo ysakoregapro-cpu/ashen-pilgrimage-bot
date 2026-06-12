@@ -215,6 +215,40 @@ function applySetBonuses(setCounts: Record<string, number>): StatModifiers {
   return mods;
 }
 
+export function getActiveSetEffectLines(userId: string): string[] {
+  const db = getDb();
+  const equipped = db.prepare(`
+    SELECT e.series_id FROM player_equipment pe
+    JOIN player_inventory pi ON pe.inventory_id = pi.id
+    JOIN equipment e ON pi.item_id = e.item_id
+    WHERE pe.user_id = ? AND e.series_id IS NOT NULL
+  `).all(userId) as Array<{ series_id: string }>;
+  const setCounts: Record<string, number> = {};
+  for (const eq of equipped) setCounts[eq.series_id] = (setCounts[eq.series_id] ?? 0) + 1;
+
+  const lines: string[] = [];
+  for (const [setId, count] of Object.entries(setCounts)) {
+    const set = db.prepare('SELECT name FROM equipment_sets WHERE id = ?').get(setId) as { name: string } | undefined;
+    const bonuses = db.prepare(`
+      SELECT piece_count, effect_description FROM equipment_set_bonuses
+      WHERE set_id = ? AND piece_count <= ? ORDER BY piece_count
+    `).all(setId, count) as Array<{ piece_count: number; effect_description: string }>;
+    if (!bonuses.length) continue;
+    lines.push(`**${set?.name ?? setId}** (${count}部位)`);
+    for (const b of bonuses) lines.push(`  ${b.piece_count}部位: ${b.effect_description}`);
+  }
+  return lines;
+}
+
+function collectLevelUpUnlockHints(userId: string, oldLevel: number, newLevel: number): string[] {
+  const player = requirePlayer(userId);
+  const hints: string[] = [];
+  if (oldLevel < 20 && newLevel >= 20 && !player.sub_job) {
+    hints.push('副職が選べるようになる');
+  }
+  return hints;
+}
+
 export function addExp(userId: string, exp: number): AddExpResult {
   const player = requirePlayer(userId);
   const oldLevel = player.level;
@@ -236,9 +270,7 @@ export function addExp(userId: string, exp: number): AddExpResult {
   if (leveledUp) {
     const p = recalculatePlayerStats(userId);
     getDb().prepare('UPDATE players SET hp=max_hp, mp=max_mp WHERE user_id=?').run(userId);
-    const extras: string[] = [];
-    if (newLevel >= 20) extras.push('副職が選べるようになる');
-    if (newLevel >= 15) extras.push('白銀鉱山街の推奨Lv圏内');
+    const extras = collectLevelUpUnlockHints(userId, oldLevel, newLevel);
     levelUpMessage = formatLevelUpMessage(oldLevel, newLevel, extras);
     return {
       leveledUp: true,

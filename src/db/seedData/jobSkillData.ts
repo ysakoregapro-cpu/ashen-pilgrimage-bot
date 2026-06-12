@@ -190,7 +190,7 @@ export const ALL_JOB_SKILLS: BattleSkillDef[] = [
   { id: 'bs_magic_focus', name: '魔力集中', job: '魔術師', desc: '魔力を研ぎ澄ます。', mp: 5, power: 0, skill_type: 'support', scaling_stat: 'magic', effect_type: 'mag_buff' },
   { id: 'bs_deep_thunder', name: '深層雷', job: '魔術師', desc: '深層の雷。', mp: 9, power: 1.15, skill_type: 'magic', scaling_stat: 'magic', element: 'thunder' },
   { id: 'bs_ash_circle', name: '灰術陣', job: '魔術師', desc: '次の魔法を強化。', mp: 9, power: 0, skill_type: 'support', scaling_stat: 'magic', effect_type: 'mag_buff' },
-  { id: 'bs_echo_blast', name: '残響爆破', job: '魔術師', desc: '残響の爆発。', mp: 10, power: 1.2, skill_type: 'magic', scaling_stat: 'magic', break_power: 12 },
+  { id: 'bs_echo_blast', name: '残響爆破', job: '魔術師', desc: '残響の爆発。', mp: 10, power: 1.2, skill_type: 'magic', scaling_stat: 'magic', element: 'neutral', break_power: 12 },
   { id: 'bs_star_fall', name: '星落とし', job: '魔術師', desc: '星を落とす。', mp: 12, power: 1.3, skill_type: 'magic', scaling_stat: 'magic', element: 'star' },
   { id: 'bs_magic_cycle', name: '魔力循環', job: '魔術師', desc: '魔力を巡らせる。', mp: 7, power: 0, skill_type: 'support', scaling_stat: 'magic', effect_type: 'mag_buff' },
   { id: 'bs_ash_crown_fire', name: '灰冠の火', job: '魔術師', desc: '灰冠の炎。', mp: 13, power: 1.4, skill_type: 'magic', scaling_stat: 'magic', element: 'ash' },

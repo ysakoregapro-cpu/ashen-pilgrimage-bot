@@ -41,9 +41,9 @@ export const AREAS: AreaDef[] = [
   { id: 'area_muddy_field', town: 'rain_ruins', name: '泥濘の畑', desc: '泥に沈んだ畑。', min: 16, max: 22, monsters: ['mon_poison_vine_slime', 'mon_forest_wolf'], rewards: ['arm_set_rain_legs', 'mat_starfield_grass'] },
   // 月下図書館
   { id: 'area_forbidden_section', town: 'moon_library', name: '月下図書館・禁書区画', desc: '禁書が眠る区画。', min: 20, max: 30, monsters: ['mon_runaway_book', 'mon_bookworm_swarm'], rewards: ['mat_moon_ink', 'wpn_moon_rod'] },
-  { id: 'area_bookworm_corridor', town: 'moon_library', name: '紙魚の回廊', desc: '紙魚の回廊。', min: 22, max: 32, monsters: ['mon_bookworm_swarm', 'mon_ink_beast'], rewards: ['mat_moon_ink', 'src_echo_core'] },
+  { id: 'area_bookworm_corridor', town: 'moon_library', name: '紙魚の回廊', desc: '紙魚の回廊。', min: 22, max: 32, monsters: ['mon_bookworm_swarm', 'mon_ink_beast'], rewards: ['mat_moon_ink', 'wpn_moon_rod'] },
   { id: 'area_record_terminal', town: 'moon_library', name: '記録端末室', desc: '記録端末の室。', min: 26, max: 34, monsters: ['mon_broken_terminal', 'mon_shadow_librarian'], rewards: ['wpn_moon_staff_sr', 'arm_set_moon_head'] },
-  { id: 'area_shadow_reading', town: 'moon_library', name: '影写しの閲覧室', desc: '影写しの閲覧室。', min: 28, max: 36, monsters: ['mon_shadow_librarian', 'mon_moon_observer'], rewards: ['arm_set_moon_body', 'src_primordial'] },
+  { id: 'area_shadow_reading', town: 'moon_library', name: '影写しの閲覧室', desc: '影写しの閲覧室。', min: 28, max: 36, monsters: ['mon_shadow_librarian', 'mon_moon_observer'], rewards: ['arm_set_moon_body', 'mat_moon_ink'] },
   { id: 'area_unanswered_archive', town: 'moon_library', name: '無答の書庫', desc: '答えのない書庫。', min: 34, max: 42, monsters: ['mon_silent_guardian', 'mon_moon_observer'], rewards: ['boss_silent_page', 'wpn_moon_spell_staff'] },
   // 忘却地下市
   { id: 'area_under_path', town: 'forgotten_market', name: '忘却の地下路', desc: '忘却の地下路。', min: 24, max: 34, monsters: ['mon_black_market_thug', 'mon_market_hound'], rewards: ['mat_forgotten_sand', 'wpn_black_lamp_twin'] },
@@ -52,11 +52,11 @@ export const AREAS: AreaDef[] = [
   { id: 'area_contract_cage', town: 'forgotten_market', name: '契約失敗体の檻', desc: '契約失敗体の檻。', min: 32, max: 40, monsters: ['mon_failed_contract', 'mon_black_iron_exec'], rewards: ['boss_black_iron', 'wpn_black_exec_blade'] },
   { id: 'area_masked_warehouse', town: 'forgotten_market', name: '仮面商人の隠し倉庫', desc: '仮面商人の倉庫。', min: 34, max: 42, monsters: ['mon_masked_thief', 'mon_black_market_thug'], rewards: ['wpn_black_exec_sword', 'mat_forgotten_sand'] },
   // 砂時計の都
-  { id: 'area_hourglass_ruins', town: 'hourglass_city', name: '砂時計の廃路', desc: '砂時計の廃路。', min: 28, max: 38, monsters: ['mon_old_soldier', 'mon_capital_undead'], rewards: ['mat_hourglass_shard', 'src_primordial'] },
+  { id: 'area_hourglass_ruins', town: 'hourglass_city', name: '砂時計の廃路', desc: '砂時計の廃路。', min: 28, max: 38, monsters: ['mon_old_soldier', 'mon_capital_undead'], rewards: ['mat_hourglass_shard', 'mat_moon_ink'] },
   { id: 'area_time_market', town: 'hourglass_city', name: '時紋の市場跡', desc: '時紋の市場。', min: 30, max: 40, monsters: ['mon_shield_breaker', 'mon_old_soldier'], rewards: ['mat_hourglass_shard', 'upg_fine_stone'] },
   { id: 'area_lost_plaza', town: 'hourglass_city', name: '喪失者の広場', desc: '喪失者の広場。', min: 32, max: 42, monsters: ['mon_capital_undead', 'mon_armor_spider'], rewards: ['mat_hourglass_shard', 'wpn_ash_spear'] },
   { id: 'area_inverted_tower', town: 'hourglass_city', name: '逆さ時計塔', desc: '逆さの時計塔。', min: 34, max: 44, monsters: ['mon_old_mage', 'mon_throne_shadow'], rewards: ['src_star_mark', 'wpn_starfall_spear'] },
-  { id: 'area_memory_vault', town: 'hourglass_city', name: '記憶の保管庫', desc: '記憶の保管庫。', min: 36, max: 46, monsters: ['mon_throne_shadow', 'mon_old_mage'], rewards: ['src_primordial_full', 'mat_hourglass_shard'] },
+  { id: 'area_memory_vault', town: 'hourglass_city', name: '記憶の保管庫', desc: '記憶の保管庫。', min: 36, max: 46, monsters: ['mon_throne_shadow', 'mon_old_mage'], rewards: ['mat_hourglass_shard', 'mat_moon_ink'] },
   // 灰冠王都
   { id: 'area_capital_under', town: 'ash_capital', name: '灰冠の王都地下', desc: '王都の地下。', min: 34, max: 44, monsters: ['mon_old_soldier', 'mon_armor_spider'], rewards: ['mat_ash_crest', 'wpn_ash_knight_sword'] },
   { id: 'area_old_army_post', town: 'ash_capital', name: '旧統治軍詰所', desc: '旧軍の詰所。', min: 36, max: 46, monsters: ['mon_shield_breaker', 'mon_old_mage'], rewards: ['mat_ash_crest', 'arm_set_ash_crown_head'] },

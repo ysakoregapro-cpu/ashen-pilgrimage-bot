@@ -1,21 +1,22 @@
 import type Database from 'better-sqlite3';
 import { nowIso } from '../../types';
-import { MONSTER_TO_STORY_BOSS } from './storyData';
+import { STORY_BOSS_MONSTERS } from './storyData';
+import { MONSTER_SEED_DATA } from './monsters';
 import { ensureMonstersIsBossColumn } from '../monsterSchema';
 
-const BOSS_IDS = new Set(Object.keys(MONSTER_TO_STORY_BOSS));
+const STORY_BOSS_MONSTER_IDS = new Set(Object.values(STORY_BOSS_MONSTERS));
 
 const EVENT_POOLS = {
   early: [
-    { type: 'battle', weight: 50 }, { type: 'material', weight: 22 }, { type: 'treasure', weight: 14 },
-    { type: 'npc_event', weight: 9 }, { type: 'nothing', weight: 5 },
-  ],
-  mid: [
     { type: 'battle', weight: 55 }, { type: 'material', weight: 20 }, { type: 'treasure', weight: 13 },
     { type: 'npc_event', weight: 7 }, { type: 'nothing', weight: 5 },
   ],
+  mid: [
+    { type: 'battle', weight: 57 }, { type: 'material', weight: 19 }, { type: 'treasure', weight: 12 },
+    { type: 'npc_event', weight: 7 }, { type: 'nothing', weight: 5 },
+  ],
   late: [
-    { type: 'battle', weight: 58 }, { type: 'material', weight: 18 }, { type: 'treasure', weight: 12 },
+    { type: 'battle', weight: 60 }, { type: 'material', weight: 17 }, { type: 'treasure', weight: 11 },
     { type: 'npc_event', weight: 7 }, { type: 'nothing', weight: 5 },
   ],
   valhalla: [
@@ -58,25 +59,73 @@ const CONSUMABLE_EXTRAS = [
 const BOSS_STATS: Record<string, { hp: number; atk: number; mag?: number; def: number; lv: number }> = {
   mon_night_shadow: { lv: 8, hp: 80, atk: 16, def: 8 },
   mon_lighthouse_jelly: { lv: 12, hp: 100, atk: 10, mag: 20, def: 6 },
-  mon_silver_golem: { lv: 16, hp: 200, atk: 28, def: 20 },
+  mon_silver_golem: { lv: 16, hp: 300, atk: 17, def: 20 },
   mon_tree_guardian: { lv: 26, hp: 280, atk: 28, def: 24 },
-  mon_silent_guardian: { lv: 36, hp: 450, atk: 30, mag: 36, def: 26 },
-  mon_black_iron_exec: { lv: 36, hp: 320, atk: 36, def: 20 },
-  mon_throne_shadow: { lv: 44, hp: 400, atk: 20, mag: 42, def: 22 },
-  mon_furnace_keeper: { lv: 56, hp: 500, atk: 44, mag: 30, def: 36 },
-  mon_old_king_shadow: { lv: 68, hp: 600, atk: 52, mag: 48, def: 38 },
+  mon_silent_guardian: { lv: 36, hp: 480, atk: 16, mag: 32, def: 26 },
+  mon_black_iron_exec: { lv: 36, hp: 320, atk: 34, def: 20 },
+  mon_throne_shadow: { lv: 44, hp: 400, atk: 20, mag: 40, def: 22 },
+  mon_furnace_keeper: { lv: 56, hp: 520, atk: 19, mag: 26, def: 34 },
+  mon_old_king_shadow: { lv: 68, hp: 600, atk: 22, mag: 42, def: 36 },
   mon_deep_core_boss: { lv: 72, hp: 650, atk: 54, mag: 50, def: 44 },
 };
 
+/** Idempotent overrides — absolute DB values (never multiply existing DB columns) */
+const MONSTER_BALANCE_OVERRIDES: Record<string, {
+  hp?: number; attack?: number; magic?: number; defense?: number; spirit?: number; gold?: number;
+}> = {
+  mon_bookworm_swarm: { hp: 130, attack: 22, defense: 11 },
+  mon_ink_beast: { hp: 166, attack: 27, defense: 18, spirit: 18 },
+  mon_mine_bat: { hp: 170, attack: 15 },
+  mon_moon_observer: { hp: 240, attack: 22 },
+  mon_arc_residue: { hp: 320, attack: 26 },
+  mon_rust_miner: { hp: 265, attack: 22, defense: 16 },
+  mon_crystal_spider: { hp: 310, attack: 20, defense: 12 },
+  mon_furnace_defense: { hp: 450, attack: 24, defense: 38 },
+};
+
+const EARLY_AREA_TAGS = new Set(['starfield', 'port']);
+const MID_AREA_TAGS = new Set(['mine', 'forest', 'library']);
+
+function applyIdempotentAreaBalance(db: Database.Database): void {
+  const upd = db.prepare('UPDATE monsters SET hp = ?, defense = ?, gold_reward = ? WHERE id = ?');
+  for (const m of MONSTER_SEED_DATA) {
+    if (m.boss || STORY_BOSS_MONSTER_IDS.has(m.id)) continue;
+    let hp = m.hp;
+    let def = m.def;
+    let gold = m.gold;
+    if (EARLY_AREA_TAGS.has(m.tag)) {
+      hp = Math.floor(hp * 1.18);
+      def = Math.floor(def * 1.08);
+      gold = Math.floor(gold * 1.2);
+    } else if (MID_AREA_TAGS.has(m.tag)) {
+      hp = Math.floor(hp * 1.12);
+      gold = Math.floor(gold * 1.2);
+    }
+    upd.run(hp, def, gold, m.id);
+  }
+}
+
+function applyMonsterBalanceOverrides(db: Database.Database): void {
+  const upd = db.prepare(`
+    UPDATE monsters SET
+      hp = COALESCE(?, hp),
+      attack = COALESCE(?, attack),
+      magic = COALESCE(?, magic),
+      defense = COALESCE(?, defense),
+      spirit = COALESCE(?, spirit),
+      gold_reward = COALESCE(?, gold_reward)
+    WHERE id = ?
+  `);
+  for (const [id, o] of Object.entries(MONSTER_BALANCE_OVERRIDES)) {
+    upd.run(o.hp ?? null, o.attack ?? null, o.magic ?? null, o.defense ?? null, o.spirit ?? null, o.gold ?? null, id);
+  }
+}
+
 const RARITY_REQ: Record<string, number> = { N: 1, R: 5, SR: 20, SSR: 40, UR: 58, Src: 50 };
 
-export function ensurePhase2Seed(db: Database.Database): void {
-  const ts = nowIso();
-  ensureMonstersIsBossColumn(db);
-
-  // Mark bosses in monsters table
+function applyBossStats(db: Database.Database): void {
   const updBoss = db.prepare('UPDATE monsters SET is_boss = 1, break_max = 180 WHERE id = ?');
-  for (const id of BOSS_IDS) updBoss.run(id);
+  for (const id of STORY_BOSS_MONSTER_IDS) updBoss.run(id);
   db.prepare('UPDATE monsters SET is_boss = 1 WHERE id IN (SELECT id FROM monsters WHERE ai_pattern_json LIKE ?)').run('%"boss"%');
 
   for (const [id, stats] of Object.entries(BOSS_STATS)) {
@@ -85,6 +134,11 @@ export function ensurePhase2Seed(db: Database.Database): void {
       WHERE id=?
     `).run(stats.lv, stats.hp, stats.atk, stats.mag ?? Math.floor(stats.atk * 0.5), stats.def, id);
   }
+}
+
+export function ensurePhase2Seed(db: Database.Database): void {
+  const ts = nowIso();
+  ensureMonstersIsBossColumn(db);
 
   const AI_OVERRIDES: Record<string, Record<string, unknown>> = {
     mon_silver_golem: { pattern: 'normal', heavy_chance: 0.35, poison_chance: 0 },
@@ -185,7 +239,62 @@ export function ensurePhase2Seed(db: Database.Database): void {
     insFac.run(`f_${town.slice(0, 8)}_exch`, town, name, type, 'npc_jin', '巡礼者同士の品物売買。', 'exchange');
   }
 
-  // EXP boost on monsters by level bands handled in battleSystem
+  // Combat balance — idempotent absolute values from seed data (never hp * mult on DB)
+  applyIdempotentAreaBalance(db);
+  applyMonsterBalanceOverrides(db);
+  applyBossStats(db);
+
+  // Remove mid-game Src upgrade mats from exploration rewards
+  const SRC_MIDS = ['src_echo_core', 'src_primordial', 'src_primordial_full', 'src_upg_shard'];
+  const areaRows = db.prepare('SELECT id, reward_pool_json FROM exploration_areas').all() as Array<{ id: string; reward_pool_json: string }>;
+  const updReward = db.prepare('UPDATE exploration_areas SET reward_pool_json = ? WHERE id = ?');
+  for (const a of areaRows) {
+    const pool = JSON.parse(a.reward_pool_json) as Array<{ item_id: string; weight: number }>;
+    const filtered = pool.filter((p) => !SRC_MIDS.includes(p.item_id));
+    if (filtered.length !== pool.length) updReward.run(JSON.stringify(filtered), a.id);
+  }
+
+  // Job starter weapons — low-rate early area/treasure drops
+  const STARTER_AREA_BOOST: Record<string, Array<{ item_id: string; weight: number }>> = {
+    area_old_training: [
+      { item_id: 'wpn_traveler_sword', weight: 3 },
+      { item_id: 'wpn_leather_gauntlet', weight: 2 },
+      { item_id: 'wpn_training_hammer', weight: 2 },
+    ],
+    area_night_hill: [{ item_id: 'wpn_rust_dagger', weight: 3 }],
+    area_broken_shrine: [{ item_id: 'wpn_prayer_rod', weight: 3 }],
+    area_lighthouse_rocks: [{ item_id: 'wpn_old_bow', weight: 3 }],
+    area_old_mine: [{ item_id: 'wpn_mini_cannon', weight: 2 }],
+    area_mist_beast_path: [{ item_id: 'wpn_mist_staff', weight: 2 }],
+  };
+  for (const [areaId, extras] of Object.entries(STARTER_AREA_BOOST)) {
+    const row = db.prepare('SELECT reward_pool_json FROM exploration_areas WHERE id = ?').get(areaId) as { reward_pool_json: string } | undefined;
+    if (!row) continue;
+    const pool = JSON.parse(row.reward_pool_json) as Array<{ item_id: string; weight: number }>;
+    for (const ex of extras) {
+      if (!pool.some((p) => p.item_id === ex.item_id)) pool.push(ex);
+    }
+    updReward.run(JSON.stringify(pool), areaId);
+  }
+
+  db.prepare(`UPDATE items SET usage_text = '高級装備・特殊強化' WHERE id = 'mat_moon_ink'`).run();
+  db.prepare(`UPDATE items SET usage_text = 'Src武器強化（ヴァルハラ産）', source_text = 'ヴァルハラ探索' WHERE category = 'src_upgrade_material'`).run();
+
+  // 重騎士初期武器 — 訓練用槌（既存DB向け idempotent）
+  const insWpnItem = db.prepare(`
+    INSERT INTO items (id, name, category, rarity, description, source_text, usage_text, sell_price, tradeable, created_at)
+    VALUES (?, ?, 'equipment', ?, ?, ?, '装備', ?, 1, ?)
+    ON CONFLICT(id) DO NOTHING
+  `);
+  const insWpnEq = db.prepare(`
+    INSERT INTO equipment (item_id, slot, weapon_type, attack_bonus, magic_bonus, defense_bonus, max_upgrade_level, is_unique, src_weapon_id)
+    VALUES (?, 'weapon', ?, ?, 0, ?, 5, ?, ?)
+    ON CONFLICT(item_id) DO UPDATE SET weapon_type=excluded.weapon_type, attack_bonus=excluded.attack_bonus, is_unique=excluded.is_unique, src_weapon_id=excluded.src_weapon_id
+  `);
+  insWpnItem.run('wpn_training_hammer', '訓練用槌', 'N', '重騎士の訓練用槌。', '古い訓練場・低確率', 50, ts);
+  insWpnEq.run('wpn_training_hammer', 'hammer', 9, 0, 0, null);
+  insWpnItem.run('wpn_unique_old_hammer', '古炉の訓練槌', 'SR', 'カイ伝承の槌。', 'カイ伝承', 0, ts);
+  insWpnEq.run('wpn_unique_old_hammer', 'hammer', 20, 0, 1, 'src_silver');
 }
 
 function parseEffect(s: string): Record<string, number> {

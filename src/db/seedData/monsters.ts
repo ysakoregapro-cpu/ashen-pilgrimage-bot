@@ -4,7 +4,7 @@ type Mon = { id: string; name: string; tag: string; lv: number; hp: number; atk:
 
 function mons(list: Mon[]): Mon[] { return list; }
 
-const MONSTERS = mons([
+export const MONSTER_SEED_DATA = mons([
   // 星原
   { id: 'mon_star_slime', name: '星原スライム', tag: 'starfield', lv: 1, hp: 40, atk: 6, mag: 4, def: 3, spd: 5, exp: 8, gold: 5 },
   { id: 'mon_chip_wolf', name: '欠け角ウルフ', tag: 'starfield', lv: 3, hp: 55, atk: 10, mag: 2, def: 5, spd: 8, exp: 12, gold: 8 },
@@ -23,12 +23,12 @@ const MONSTERS = mons([
   { id: 'mon_tide_ghost', name: '潮騒の怨霊', tag: 'port', lv: 18, hp: 100, atk: 12, mag: 22, def: 8, spd: 10, exp: 35, gold: 22 },
   // 鉱山
   { id: 'mon_ore_eater', name: '鉱石喰らい', tag: 'mine', lv: 12, hp: 100, atk: 16, mag: 0, def: 14, spd: 5, exp: 26, gold: 15 },
-  { id: 'mon_silver_golem', name: '白銀ゴーレム', tag: 'mine', lv: 16, hp: 165, atk: 26, mag: 8, def: 18, spd: 4, exp: 34, gold: 25 },
-  { id: 'mon_mine_bat', name: '坑道コウモリ', tag: 'mine', lv: 14, hp: 85, atk: 16, mag: 6, def: 6, spd: 16, exp: 28, gold: 12 },
-  { id: 'mon_rust_miner', name: '錆びた採掘機', tag: 'mine', lv: 18, hp: 145, atk: 24, mag: 4, def: 14, spd: 6, exp: 36, gold: 20 },
+  { id: 'mon_silver_golem', name: '白銀ゴーレム', tag: 'mine', lv: 16, hp: 165, atk: 26, mag: 8, def: 18, spd: 4, exp: 34, gold: 25, boss: true },
+  { id: 'mon_mine_bat', name: '坑道コウモリ', tag: 'mine', lv: 14, hp: 170, atk: 15, mag: 6, def: 6, spd: 16, exp: 28, gold: 12 },
+  { id: 'mon_rust_miner', name: '錆びた採掘機', tag: 'mine', lv: 18, hp: 265, atk: 22, mag: 4, def: 16, spd: 6, exp: 36, gold: 20 },
   { id: 'mon_cave_in_bug', name: '落盤虫', tag: 'mine', lv: 20, hp: 120, atk: 22, mag: 0, def: 18, spd: 8, exp: 38, gold: 18 },
   { id: 'mon_black_iron_guard', name: '黒鉄の番兵', tag: 'mine', lv: 22, hp: 150, atk: 24, mag: 6, def: 22, spd: 7, exp: 42, gold: 28 },
-  { id: 'mon_crystal_spider', name: '結晶蜘蛛', tag: 'mine', lv: 24, hp: 125, atk: 22, mag: 14, def: 11, spd: 14, exp: 44, gold: 24 },
+  { id: 'mon_crystal_spider', name: '結晶蜘蛛', tag: 'mine', lv: 24, hp: 230, atk: 20, mag: 14, def: 12, spd: 14, exp: 44, gold: 24 },
   // 森
   { id: 'mon_mist_deer', name: '霧鹿', tag: 'forest', lv: 16, hp: 100, atk: 14, mag: 8, def: 10, spd: 16, exp: 30, gold: 16 },
   { id: 'mon_poison_vine_slime', name: '毒蔦スライム', tag: 'forest', lv: 18, hp: 120, atk: 12, mag: 16, def: 8, spd: 6, exp: 34, gold: 14 },
@@ -38,12 +38,12 @@ const MONSTERS = mons([
   { id: 'mon_tree_guardian', name: '古樹の番人', tag: 'forest', lv: 28, hp: 220, atk: 28, mag: 16, def: 24, spd: 8, exp: 80, gold: 50, boss: true },
   { id: 'mon_sleeping_beast', name: '眠れる獣王', tag: 'forest', lv: 32, hp: 350, atk: 32, mag: 20, def: 28, spd: 12, exp: 120, gold: 80, boss: true },
   // 図書館
-  { id: 'mon_bookworm_swarm', name: '紙魚の群れ', tag: 'library', lv: 22, hp: 80, atk: 10, mag: 14, def: 4, spd: 14, exp: 38, gold: 18 },
+  { id: 'mon_bookworm_swarm', name: '紙魚の群れ', tag: 'library', lv: 22, hp: 116, atk: 20, mag: 16, def: 10, spd: 14, exp: 38, gold: 18 },
   { id: 'mon_runaway_book', name: '走る禁書', tag: 'library', lv: 24, hp: 100, atk: 12, mag: 22, def: 8, spd: 16, exp: 42, gold: 22 },
-  { id: 'mon_ink_beast', name: 'インクの魔物', tag: 'library', lv: 26, hp: 120, atk: 14, mag: 26, def: 10, spd: 10, exp: 46, gold: 24 },
+  { id: 'mon_ink_beast', name: 'インクの魔物', tag: 'library', lv: 26, hp: 148, atk: 24, mag: 28, def: 16, spd: 10, exp: 46, gold: 24 },
   { id: 'mon_broken_terminal', name: '壊れた記録端末', tag: 'library', lv: 28, hp: 150, atk: 18, mag: 20, def: 16, spd: 8, exp: 50, gold: 26 },
   { id: 'mon_shadow_librarian', name: '影写しの司書', tag: 'library', lv: 30, hp: 130, atk: 16, mag: 28, def: 12, spd: 14, exp: 54, gold: 28 },
-  { id: 'mon_moon_observer', name: '月下の観測者', tag: 'library', lv: 32, hp: 160, atk: 20, mag: 30, def: 14, spd: 12, exp: 58, gold: 30 },
+  { id: 'mon_moon_observer', name: '月下の観測者', tag: 'library', lv: 32, hp: 240, atk: 22, mag: 30, def: 14, spd: 12, exp: 58, gold: 30 },
   { id: 'mon_silent_guardian', name: '無答の守護者', tag: 'library', lv: 38, hp: 400, atk: 30, mag: 36, def: 26, spd: 10, exp: 150, gold: 100, boss: true },
   // 地下市
   { id: 'mon_black_market_thug', name: '黒市の用心棒', tag: 'undermarket', lv: 28, hp: 160, atk: 28, mag: 4, def: 16, spd: 12, exp: 52, gold: 35 },
@@ -66,14 +66,14 @@ const MONSTERS = mons([
   { id: 'mon_mech_type1', name: '機械兵Type-I', tag: 'furnace', lv: 50, hp: 260, atk: 36, mag: 8, def: 32, spd: 8, exp: 100, gold: 65 },
   { id: 'mon_mech_type2', name: '機械兵Type-II', tag: 'furnace', lv: 52, hp: 280, atk: 40, mag: 12, def: 34, spd: 10, exp: 105, gold: 68 },
   { id: 'mon_rampage_mechanic', name: '暴走整備機', tag: 'furnace', lv: 54, hp: 300, atk: 42, mag: 6, def: 30, spd: 12, exp: 110, gold: 70 },
-  { id: 'mon_arc_residue', name: 'アーク残滓体', tag: 'furnace', lv: 56, hp: 250, atk: 28, mag: 38, def: 22, spd: 14, exp: 115, gold: 72 },
+  { id: 'mon_arc_residue', name: 'アーク残滓体', tag: 'furnace', lv: 56, hp: 320, atk: 26, mag: 38, def: 22, spd: 14, exp: 115, gold: 72 },
   { id: 'mon_furnace_keeper', name: '炉熱の番人', tag: 'furnace', lv: 58, hp: 450, atk: 44, mag: 30, def: 36, spd: 8, exp: 160, gold: 110, boss: true },
   { id: 'mon_deep_watcher', name: '深層監視者', tag: 'furnace', lv: 60, hp: 320, atk: 38, mag: 34, def: 28, spd: 12, exp: 120, gold: 78 },
   // ヴァルハラ
   { id: 'mon_old_army', name: '旧統治軍制式兵', tag: 'valhalla', lv: 58, hp: 320, atk: 42, mag: 10, def: 34, spd: 10, exp: 125, gold: 80 },
   { id: 'mon_sky_mech', name: '空塞機兵', tag: 'valhalla', lv: 60, hp: 340, atk: 44, mag: 16, def: 36, spd: 12, exp: 130, gold: 85 },
   { id: 'mon_lab_failure', name: '実験区画の失敗体', tag: 'valhalla', lv: 62, hp: 300, atk: 36, mag: 40, def: 24, spd: 14, exp: 135, gold: 88 },
-  { id: 'mon_furnace_defense', name: '炉心防衛ユニット', tag: 'valhalla', lv: 64, hp: 400, atk: 46, mag: 20, def: 40, spd: 8, exp: 140, gold: 92 },
+  { id: 'mon_furnace_defense', name: '炉心防衛ユニット', tag: 'valhalla', lv: 64, hp: 420, atk: 36, mag: 20, def: 38, spd: 8, exp: 140, gold: 92 },
   { id: 'mon_throne_guard', name: '玉座の守護機', tag: 'valhalla', lv: 66, hp: 420, atk: 48, mag: 24, def: 42, spd: 8, exp: 145, gold: 95 },
   { id: 'mon_machina_echo', name: 'マキナの残響', tag: 'valhalla', lv: 68, hp: 500, atk: 50, mag: 44, def: 36, spd: 14, exp: 200, gold: 130, boss: true },
   { id: 'mon_old_king_shadow', name: '旧王の影', tag: 'valhalla', lv: 70, hp: 550, atk: 52, mag: 48, def: 38, spd: 12, exp: 220, gold: 150, boss: true },
@@ -85,10 +85,11 @@ export function seedMonsters(db: Database.Database): void {
     INSERT INTO monsters (id, name, area_tag, level, hp, mp, attack, magic, defense, spirit, speed, break_max, element, drop_pool_json, exp_reward, gold_reward, ai_pattern_json)
     VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  for (const m of MONSTERS) {
+  for (const m of MONSTER_SEED_DATA) {
     const drops = m.drops ?? ['mat_iron_scrap', 'mat_cloth_scrap', 'upg_rough_stone'];
+    const spirit = m.tag === 'library' ? Math.max(m.def, Math.floor(m.mag * 0.55)) : Math.floor(m.def * 0.8);
     ins.run(
-      m.id, m.name, m.tag, m.lv, m.hp, m.atk, m.mag, m.def, Math.floor(m.def * 0.8), m.spd,
+      m.id, m.name, m.tag, m.lv, m.hp, m.atk, m.mag, m.def, spirit, m.spd,
       m.boss ? 150 : 100, null,
       JSON.stringify(drops.map((d) => ({ item_id: d, weight: 10 }))),
       m.exp, m.gold,

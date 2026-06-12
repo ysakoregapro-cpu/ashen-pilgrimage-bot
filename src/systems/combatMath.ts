@@ -1,12 +1,17 @@
 import { MONSTER_TO_STORY_BOSS } from '../db/seedData/storyData';
 
-export type ThreatTier = 'normal' | 'tough' | 'elite' | 'boss';
+export type ThreatTier = 'normal' | 'tough' | 'rare' | 'elite' | 'boss';
 
 /** Random exploration encounters — story boss IDs are elites unless story-triggered */
 export const ELITE_MONSTER_IDS = new Set([
   'mon_silver_golem', 'mon_black_iron_guard', 'mon_crystal_spider',
   'mon_rust_miner', 'mon_cave_in_bug', 'mon_furnace_keeper',
   'mon_throne_guard', 'mon_furnace_defense', 'mon_old_king_shadow',
+]);
+
+export const RARE_MONSTER_IDS = new Set([
+  'mon_night_shadow',   'mon_lighthouse_jelly', 'mon_lost_mushroom', 'mon_moon_observer', 'mon_masked_thief',
+  'mon_armor_spider', 'mon_arc_residue', 'mon_lab_failure', 'mon_mine_bat',
 ]);
 
 export const TOUGH_MONSTER_IDS = new Set([
@@ -29,6 +34,7 @@ const AREA_MULT: Record<string, { atk: number; hp: number; mag: number; def: num
 const TIER_MULT: Record<ThreatTier, { atk: number; hp: number }> = {
   normal: { atk: 1, hp: 1 },
   tough: { atk: 1.12, hp: 1.2 },
+  rare: { atk: 1.18, hp: 1.35 },
   elite: { atk: 1.28, hp: 1.55 },
   boss: { atk: 1.35, hp: 1.85 },
 };
@@ -36,6 +42,7 @@ const TIER_MULT: Record<ThreatTier, { atk: number; hp: number }> = {
 const ENEMY_HIT_PCT: Record<ThreatTier, { min: number; max: number }> = {
   normal: { min: 0.04, max: 0.07 },
   tough: { min: 0.06, max: 0.10 },
+  rare: { min: 0.08, max: 0.12 },
   elite: { min: 0.10, max: 0.18 },
   boss: { min: 0.08, max: 0.15 },
 };
@@ -53,6 +60,7 @@ export type ScaledMonster = {
 export function getMonsterThreatTier(monsterId: string, opts?: { forceBoss?: boolean; isStoryBoss?: boolean }): ThreatTier {
   if (opts?.forceBoss || opts?.isStoryBoss) return 'boss';
   if (ELITE_MONSTER_IDS.has(monsterId)) return 'elite';
+  if (RARE_MONSTER_IDS.has(monsterId)) return 'rare';
   if (TOUGH_MONSTER_IDS.has(monsterId)) return 'tough';
   return 'normal';
 }
@@ -124,6 +132,7 @@ export function calcPlayerDamageToEnemy(
 }
 
 export function getThreatLabel(tier: ThreatTier, monsterName: string): string | null {
+  if (tier === 'rare') return `レア敵: ${monsterName}`;
   if (tier === 'elite') return `危険個体: ${monsterName}`;
   if (tier === 'boss') return `強敵: ${monsterName}`;
   if (tier === 'tough') return `手強い敵: ${monsterName}`;

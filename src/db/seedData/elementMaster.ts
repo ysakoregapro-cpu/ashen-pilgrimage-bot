@@ -35,12 +35,12 @@ export const ELEMENT_ALIASES: Record<string, GameElement> = {
 export type AffinityTier = 'major_weak' | 'weak' | 'neutral' | 'resist' | 'major_resist' | 'immune';
 
 export const AFFINITY_MULTIPLIER: Record<AffinityTier, number> = {
-  major_weak: 1.5,
-  weak: 1.25,
+  major_weak: 1.35,
+  weak: 1.15,
   neutral: 1.0,
-  resist: 0.75,
-  major_resist: 0.5,
-  immune: 0.25,
+  resist: 0.85,
+  major_resist: 0.65,
+  immune: 0.35,
 };
 
 /** attackElement → defenderElement → tier */

@@ -216,7 +216,7 @@ async function handleFacilityResult(
     case 'profile': {
       recalculatePlayerStats(userId);
       await sendJourneyLog(interaction, {
-        embeds: [playerRecordEmbed(getPlayer(userId)!)],
+        embeds: [playerRecordEmbed(getPlayer(userId)!, userId)],
         components: nextActionButtons('profile'),
       });
       break;
@@ -304,6 +304,15 @@ async function handleFacilityResult(
         components: nextActionButtons('facility', { facilityId: facId }),
       });
       break;
+    case 'inn_preview': {
+      const { restConfirmButtons } = await import('../utils/townUi');
+      const mode = result.extra === 'shrine' ? 'shrine' : 'inn';
+      await sendJourneyLog(interaction, {
+        embeds: [townHubEmbed(getFacilityName(facId), result.message)],
+        components: [...restConfirmButtons(facId, mode), ...nextActionButtons('facility', { facilityId: facId })],
+      });
+      break;
+    }
     default:
       await sendJourneyLog(interaction, buildFacilityView(userId, facId));
   }
@@ -474,7 +483,7 @@ async function handleFlowButton(interaction: ButtonInteraction, flow: string): P
   if (flow === 'profile') {
     recalculatePlayerStats(userId);
     await sendJourneyLog(interaction, {
-      embeds: [playerRecordEmbed(getPlayer(userId)!)],
+      embeds: [playerRecordEmbed(getPlayer(userId)!, userId)],
       components: nextActionButtons('profile'),
     });
     return;

@@ -21,7 +21,7 @@ import { resolveSkillEffect } from '../db/seedData/skillEffectMaster';
 import { getSkill, skillTypeLabel, scalingLabel } from './skillSystem';
 import { AREAS } from '../db/seedData/areas';
 import { DURABILITY_PENALTY, RARITY_EMOJI, SLOT_LABELS, type DurabilityState, type Rarity } from '../types';
-import { awakeningLabel, MAX_AWAKENING_LEVEL, AWAKENING_DUP_COST } from '../db/seedData/awakeningMaster';
+import { awakeningLabel, MAX_AWAKENING_LEVEL, getAwakeningDupCost, AWAKENING_ELIGIBLE_RARITIES } from '../db/seedData/awakeningMaster';
 import { ButtonBuilder, ButtonStyle, ActionRowBuilder, type MessageActionRowComponentBuilder } from 'discord.js';
 
 export type DetailContext = 'inventory' | 'shop_buy' | 'shop_sell' | 'market' | 'upgrade' | 'equip' | 'skill' | 'general';
@@ -31,7 +31,7 @@ const UPGRADE_STONE_USAGE: Record<string, string> = {
   upg_stone: '装備 +4〜+6 強化',
   upg_fine_stone: '装備 +7〜+9 強化',
   upg_rare_stone: '装備 +10 以降の強化',
-  upg_deep_core_stone: '高級装備・Src強化',
+  upg_deep_core_stone: '高級装備・深層強化',
 };
 
 const SPECIAL_MATERIAL_USAGE: Record<string, string> = {
@@ -95,8 +95,8 @@ export function getItemUsageHint(itemId: string, category: string): string {
   if (UPGRADE_STONE_USAGE[itemId]) return UPGRADE_STONE_USAGE[itemId];
   if (itemId.startsWith('rep_')) return '装備の修理';
   if (category === 'upgrade_stone') return '装備強化';
-  if (category === 'boss_material') return 'Src強化・高級装備';
-  if (category === 'raid_material' || category === 'src_upgrade') return 'Src・レイド装備';
+  if (category === 'boss_material') return '高級装備・特殊強化';
+  if (category === 'raid_material' || category === 'src_upgrade') return 'Src武器強化（ヴァルハラ産）';
   if (category === 'consumable') return '回復・支援';
   return '探索・強化・取引';
 }
@@ -161,20 +161,57 @@ function protectionTags(row: ReturnType<typeof getInventoryProtectRow> | undefin
   return tags.length ? tags.join(' / ') : '通常';
 }
 
+function formatSeriesBlock(userId: string, seriesId: string | null, slot: string): string {
+  if (!seriesId) {
+    if (slot === 'weapon' || slot.startsWith('accessory')) {
+      return [formatFieldTitle('シリーズ'), 'シリーズ: なし'].join('\n');
+    }
+    return '';
+  }
+  const set = getDb().prepare('SELECT name FROM equipment_sets WHERE id = ?').get(seriesId) as { name: string } | undefined;
+  const countRow = getDb().prepare(`
+    SELECT COUNT(*) AS c FROM player_equipment pe
+    JOIN player_inventory pi ON pe.inventory_id = pi.id
+    JOIN equipment e ON pi.item_id = e.item_id
+    WHERE pe.user_id = ? AND e.series_id = ?
+  `).get(userId, seriesId) as { c: number };
+  const totalPieces = getDb().prepare('SELECT COUNT(*) AS c FROM equipment WHERE series_id = ?').get(seriesId) as { c: number };
+  const bonuses = getDb().prepare(`
+    SELECT piece_count, effect_description FROM equipment_set_bonuses WHERE set_id = ? ORDER BY piece_count
+  `).all(seriesId) as Array<{ piece_count: number; effect_description: string }>;
+  const effectLines = bonuses.map((b) => {
+    const active = countRow.c >= b.piece_count;
+    return `${b.piece_count}部位: ${b.effect_description}${active ? '' : ' — 未発動'}`;
+  });
+  return [
+    formatFieldTitle('シリーズ'),
+    `シリーズ: ${set?.name ?? seriesId}`,
+    `装備中: ${countRow.c}/${totalPieces.c}部位`,
+    '',
+    '発動効果:',
+    ...effectLines,
+    '',
+    'シリーズスキル: 未発現',
+  ].join('\n');
+}
+
 function formatPermFlags(userId: string, inventoryId: number | null, itemId: string, category: string): string {
   const lines: string[] = [];
   if (inventoryId != null) {
     const sell = canSellItem(userId, inventoryId);
     lines.push(`売却: ${sell.ok ? '可' : '不可'}`);
+    if (!sell.ok && sell.reason) lines.push(`理由: ${sell.reason}`);
     const list = canListItem(userId, inventoryId);
     lines.push(`出品: ${list.ok ? '可' : '不可'}`);
+    if (!list.ok && list.reason) lines.push(`理由: ${list.reason}`);
     const dis = canDismantleItem(userId, inventoryId);
     lines.push(`分解: ${dis.ok ? '可' : '不可'}`);
+    if (!dis.ok && dis.reason) lines.push(`理由: ${dis.reason}`);
     lines.push(`修理: ${category === 'equipment' ? '可（損傷時）' : '—'}`);
   } else {
     lines.push('売却: — / 出品: — / 分解: —');
   }
-  return lines.join(' | ');
+  return lines.join('\n');
 }
 
 export function getEquipmentComparison(userId: string, inventoryId: number): string {
@@ -306,11 +343,13 @@ function buildEquipmentDetail(userId: string, inventoryId: number): string {
 
   const awLv = (row.awakening_level as number) ?? 0;
   let awakenBlock = awakeningLabel(awLv);
-  if (awLv < MAX_AWAKENING_LEVEL && ['N', 'R'].includes(rarity) && !(row.is_unique as number)) {
-    const need = AWAKENING_DUP_COST[awLv] ?? 0;
+  if (rarity === 'Src') {
+    awakenBlock += '\nSrc武器は覚醒不可';
+  } else if (awLv < MAX_AWAKENING_LEVEL && AWAKENING_ELIGIBLE_RARITIES.has(rarity) && !(row.is_unique as number)) {
+    const need = getAwakeningDupCost(rarity, awLv);
     awakenBlock += `\n次の覚醒: 同名武器 ${need} 本`;
   } else if (awLv >= MAX_AWAKENING_LEVEL && slot === 'weapon' && !(row.is_unique as number)) {
-    awakenBlock += '\nカイに見せればユニーク昇華可能';
+    awakenBlock += '\n最大覚醒 — 職業初期武器ならカイで伝承可能';
   }
   const meta = row.metadata_json as string | null;
   const kaiUnique = meta?.includes('kai_unique');
@@ -334,6 +373,8 @@ function buildEquipmentDetail(userId: string, inventoryId: number): string {
     statLines.length ? statLines.join('\n') : '—',
     durPen < 1 ? `（損傷補正: 性能×${Math.round(durPen * 100)}%）` : '',
     resistLine ? `属性耐性: ${resistLine}` : '',
+    '',
+    formatSeriesBlock(userId, row.series_id as string | null, slot),
     '',
     formatFieldTitle('強化'),
     enhanceBlock,

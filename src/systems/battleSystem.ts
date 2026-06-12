@@ -134,6 +134,18 @@ function getCombatScale(state: BattleState, monster: MonsterRow): ScaledMonster 
   );
 }
 
+function getEnemyHpDisplay(session: SessionRow, state: BattleState, monster: MonsterRow): { current: number; max: number } {
+  const max = getCombatScale(state, monster).hp;
+  return { current: Math.min(Math.max(0, session.enemy_hp), max), max };
+}
+
+function getPlayerBattleDisplay(session: SessionRow, player: ReturnType<typeof requirePlayer>): { hp: number; mp: number } {
+  return {
+    hp: Math.min(Math.max(0, session.player_hp), player.max_hp),
+    mp: Math.min(Math.max(0, session.player_mp), player.max_mp),
+  };
+}
+
 function getPlayerWeaponElement(userId: string): string | null {
   const row = getDb().prepare(`
     SELECT e.element FROM player_equipment pe
@@ -158,7 +170,7 @@ function applyElementDamage(
 
 function pushLog(state: BattleState, type: BattleLogType, line: string): void {
   state.log.push(formatBattleLine(type, line));
-  if (state.log.length > 8) state.log.shift();
+  if (state.log.length > 12) state.log.shift();
 }
 
 function getAreaLevels(session: SessionRow, monster: MonsterRow) {
@@ -309,20 +321,29 @@ function resolvePlayerTurn(
         const r = executePlayerAction(action, skill, userId, player, monster, state, diff, pHp, pMp, eHp, eBreak, session.is_boss === 1);
         pHp = r.pHp; pMp = r.pMp; eHp = r.eHp; eBreak = r.eBreak; state = r.state;
       }
-      if (eHp <= 0) return resolveVictory(sessionId, userId, session, monster, state);
+      if (eHp <= 0) {
+    pushLog(state, 'info', `${monster.name}を打ち倒した。`);
+    return resolveVictory(sessionId, userId, session, monster, state);
+  }
       if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state);
     } else {
       const r = executeEnemyTurn(monster, player, state, diff, tutorial, pHp, eHp, eBreak, session.is_boss === 1);
       pHp = r.pHp; eHp = r.eHp; eBreak = r.eBreak; state = r.state;
       if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state);
-      if (eHp <= 0) return resolveVictory(sessionId, userId, session, monster, state);
+      if (eHp <= 0) {
+    pushLog(state, 'info', `${monster.name}を打ち倒した。`);
+    return resolveVictory(sessionId, userId, session, monster, state);
+  }
     }
   }
 
   const tick = tickStatusEffects(state, pHp, player.max_hp, eHp, monster.name, session.is_boss === 1);
   pHp = tick.pHp; eHp = tick.eHp;
   for (const line of tick.logs) pushLog(state, 'status', line);
-  if (eHp <= 0) return resolveVictory(sessionId, userId, session, monster, state);
+  if (eHp <= 0) {
+    pushLog(state, 'info', `${monster.name}を打ち倒した。`);
+    return resolveVictory(sessionId, userId, session, monster, state);
+  }
   if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state);
 
   state.defending = false;
@@ -411,17 +432,16 @@ function applySkill(skill: SkillRow, player: ReturnType<typeof requirePlayer>, m
   if (effect === 'def_buff') { state.defBuff += 0.15; pushLog(state, 'player_heal', `${skill.name}。\n　守りが強まった。`); return { pHp, pMp, eHp, eBreak, state }; }
   if (effect === 'scan') { state.hitBonus += 0.1; state.breakBonus += 10; pushLog(state, 'player_skill', `${skill.name}。\n　弱点が見えた。`); return { pHp, pMp, eHp, eBreak, state }; }
   if (effect === 'trap') { state.trapActive = true; pushLog(state, 'player_skill', `${skill.name}。\n　罠を仕掛けた。`); return { pHp, pMp, eHp, eBreak, state }; }
-  if (effect === 'slow') {
-    const msg = applyStatusEffect(state, 'enemy', 'slow', fx.statusDuration ?? 2, isBoss);
-    pushLog(state, 'player_skill', `${skill.name}。\n　${msg || '敵の足が止まった。'}`);
-    return { pHp, pMp, eHp, eBreak, state };
-  }
-  if (effect === 'bind' || fx.implementationKey === 'bind') {
-    const msg = applyStatusEffect(state, 'enemy', 'bind', fx.statusDuration ?? 1, isBoss);
-    pushLog(state, 'player_skill', `${skill.name}。\n　${fx.logTemplate ?? msg}`);
-    return { pHp, pMp, eHp, eBreak, state };
-  }
   if (effect === 'taunt') { state.hitBonus += 0.05; pushLog(state, 'player_attack', `${skill.name}。\n　敵の視線を引いた。`); return { pHp, pMp, eHp, eBreak, state }; }
+
+  // pure support: power 0 + status-only (no damage path)
+  if (skill.power <= 0 && (effect === 'slow' || effect === 'bind' || fx.implementationKey === 'bind' || fx.implementationKey === 'slow')) {
+    const statusKey = effect === 'bind' || fx.implementationKey === 'bind' ? 'bind' : 'slow';
+    const msg = applyStatusEffect(state, 'enemy', statusKey, fx.statusDuration ?? (statusKey === 'bind' ? 1 : 2), isBoss);
+    const suffix = statusKey === 'slow' ? (msg || '敵の動きが鈍った。') : (fx.logTemplate ?? msg ?? '拘束した。');
+    pushLog(state, 'player_skill', `${skill.name}。\n　${suffix}`);
+    return { pHp, pMp, eHp, eBreak, state };
+  }
 
   const hits = skill.hits ?? 1;
   const isMag = ['magic', 'divine', 'machine'].includes(skill.skill_type);
@@ -446,6 +466,11 @@ function applySkill(skill: SkillRow, player: ReturnType<typeof requirePlayer>, m
     if (msg) pushLog(state, 'status', msg);
   } else if (skill.status_effect === 'poison') {
     applyStatusEffect(state, 'enemy', 'poison', 3, isBoss);
+  } else if (skill.power > 0 && (effect === 'slow' || effect === 'bind' || fx.implementationKey === 'slow' || fx.implementationKey === 'bind')) {
+    const statusKey = effect === 'bind' || fx.implementationKey === 'bind' ? 'bind' : 'slow';
+    const msg = applyStatusEffect(state, 'enemy', statusKey, fx.statusDuration ?? (statusKey === 'bind' ? 1 : 2), isBoss);
+    const suffix = statusKey === 'slow' ? (msg || '敵の動きが鈍った。') : (fx.logTemplate ?? msg ?? '拘束した。');
+    pushLog(state, 'status', suffix);
   }
 
   checkBreak(state, monster, eBreak);
@@ -557,12 +582,15 @@ function hasBossFirstKill(userId: string, monsterId: string): boolean {
 function resolveVictory(sessionId: string, userId: string, session: SessionRow, monster: MonsterRow, state: BattleState) {
   endBattle(sessionId, 'victory');
   const player = requirePlayer(userId);
-  let exp = calcBattleExp(monster.exp_reward, player.level, monster.level);
+  const scale = getCombatScale(state, monster);
+  const tierExpMult = scale.threatTier === 'rare' ? 1.85 : scale.threatTier === 'elite' ? 1.9 : scale.threatTier === 'tough' ? 1.35 : 1;
+  const tierGoldMult = scale.threatTier === 'rare' ? 1.75 : scale.threatTier === 'elite' ? 1.85 : scale.threatTier === 'tough' ? 1.3 : 1;
+  let exp = calcBattleExp(Math.floor(monster.exp_reward * tierExpMult), player.level, monster.level);
   if (session.is_boss) {
     const first = hasBossFirstKill(userId, session.monster_id);
-    exp = calcBossExp(calcBattleExp(monster.exp_reward, player.level, monster.level), first);
+    exp = calcBossExp(calcBattleExp(Math.floor(monster.exp_reward * tierExpMult), player.level, monster.level), first);
   }
-  const gold = monster.gold_reward;
+  const gold = Math.floor(monster.gold_reward * tierGoldMult * 1.2);
   const levelResult = addExp(userId, exp);
   const jobResults = grantBattleJobExp(userId, exp);
   addGold(userId, gold);
@@ -584,6 +612,10 @@ function resolveVictory(sessionId: string, userId: string, session: SessionRow, 
   incrementWeeklyProgress(userId, 'explore_count');
 
   const lines: string[] = [];
+  const battleTail = state.log.filter((l) => !l.includes('勝利')).slice(-4);
+  if (battleTail.length) {
+    lines.push('**戦闘の終わり**', ...battleTail, '');
+  }
   lines.push('🔵 ' + monster.name + 'を倒した。');
   lines.push('');
   lines.push('**得たもの**');
@@ -598,7 +630,7 @@ function resolveVictory(sessionId: string, userId: string, session: SessionRow, 
     lines.push(levelResult.levelUpMessage);
     lines.push('');
   }
-  lines.push(`Lv${levelResult.newLevel} まであと ${levelResult.expToNext} EXP`);
+  lines.push(`Lv${levelResult.newLevel + 1} まであと ${levelResult.expToNext} EXP`);
   for (const jr of jobResults) {
     if (jr.leveledUp) lines.push('✦ ' + jr.jobName + ' Lv' + jr.newLevel + 'へ深まった。');
     else if (jr.expGained > 0 && jr.newLevel < 70) lines.push(getJobProgressText(userId, jr.jobName));
@@ -649,10 +681,11 @@ export function getBattleDisplay(sessionId: string, userId: string) {
 export function buildBattleReply(battleId: string, userId: string) {
   const display = getBattleDisplay(battleId, userId);
   if (!display) return null;
-  const canFlee = display.session.can_flee === 1;
+  const enemyHp = getEnemyHpDisplay(display.session, display.state, display.monster);
+  const playerHp = getPlayerBattleDisplay(display.session, display.player);
   return {
-    embeds: [battleEmbed(display.monster.name, display.session.player_hp, display.player.max_hp, display.session.player_mp, display.player.max_mp,
-      display.monster.name, display.session.enemy_hp, display.monster.hp, display.session.enemy_break, display.monster.break_max, display.state.log)],
+    embeds: [battleEmbed(display.monster.name, playerHp.hp, display.player.max_hp, playerHp.mp, display.player.max_mp,
+      display.monster.name, enemyHp.current, enemyHp.max, display.session.enemy_break, display.monster.break_max, display.state.log)],
     components: battleButtons(battleId, display.session.can_flee === 1),
   };
 }
@@ -663,11 +696,13 @@ export function buildSkillMenuReply(battleId: string, userId: string) {
   const skills = getUsableBattleSkills(userId);
   if (!skills.length) return null;
   const canFlee = display.session.can_flee === 1;
+  const enemyHp = getEnemyHpDisplay(display.session, display.state, display.monster);
+  const playerHp = getPlayerBattleDisplay(display.session, display.player);
   return {
     embeds: [battleEmbed(
       '技と術',
-      display.session.player_hp, display.player.max_hp, display.session.player_mp, display.player.max_mp,
-      display.monster.name, display.session.enemy_hp, display.monster.hp, display.session.enemy_break, display.monster.break_max,
+      playerHp.hp, display.player.max_hp, playerHp.mp, display.player.max_mp,
+      display.monster.name, enemyHp.current, enemyHp.max, display.session.enemy_break, display.monster.break_max,
       display.state.log, '*どの技を使う？*',
     )],
     components: [
@@ -692,11 +727,13 @@ export function buildItemMenuReply(battleId: string, userId: string) {
   `).all(userId) as Array<{ inventory_id: number; name: string; quantity: number }>;
   if (!items.length) return null;
   const canFlee = display.session.can_flee === 1;
+  const enemyHp = getEnemyHpDisplay(display.session, display.state, display.monster);
+  const playerHp = getPlayerBattleDisplay(display.session, display.player);
   return {
     embeds: [battleEmbed(
       '所持品',
-      display.session.player_hp, display.player.max_hp, display.session.player_mp, display.player.max_mp,
-      display.monster.name, display.session.enemy_hp, display.monster.hp, display.session.enemy_break, display.monster.break_max,
+      playerHp.hp, display.player.max_hp, playerHp.mp, display.player.max_mp,
+      display.monster.name, enemyHp.current, enemyHp.max, display.session.enemy_break, display.monster.break_max,
       display.state.log, '*戦いで使える品*',
     )],
     components: [

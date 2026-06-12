@@ -8,7 +8,7 @@ import { getUniqueWeapons } from './srcWeaponSystem';
 import { getJobs } from './jobSystem';
 import { formatEquipmentDisplay } from './equipmentSystem';
 import { getInventoryByCategory } from './inventorySystem';
-import { restAtInn, shrineHeal } from './innSystem';
+import { restAtInn, shrineHeal, formatRestPreview } from './innSystem';
 import { formatShopCatalogForPlayer, getShopCatalog, getSellableInventory } from './shopSystem';
 import { getActiveListings, getMyListings, formatListingList } from './marketSystem';
 import { formatCurrentEquipment } from './prepSystem';
@@ -59,19 +59,19 @@ export function getFacilityActions(facility: FacilityRow): FacAction[] {
 
   switch (facility.type) {
     case 'inn':
-      return [{ id: 'rest', label: '休む' }, talk, explain, home];
+      return [{ id: 'rest_preview', label: '休む' }, talk, explain, home];
     case 'blacksmith':
     case 'repair_shop': {
       const actions: FacAction[] = [
-        { id: 'enhance', label: '装備を強化する' },
-        { id: 'awaken', label: '武器を覚醒する' },
+        { id: 'enhance', label: '武器を鍛える（+強化）' },
+        { id: 'awaken', label: '真の力を引き出す（覚醒）' },
         { id: 'repair', label: '装備を修理する' },
         { id: 'dismantle', label: '装備を分解する' },
       ];
       if (facility.npc_id === 'npc_kai') {
         actions.splice(2, 0,
-          { id: 'kai_unique', label: 'カイに見せる（ユニーク昇華）' },
-          { id: 'kai_src', label: 'Srcへ昇華する' },
+          { id: 'kai_unique', label: '伝承する（ユニーク化）' },
+          { id: 'kai_src', label: 'Srcへ変質する' },
         );
       }
       return [...actions, talk, explain, home];
@@ -86,7 +86,7 @@ export function getFacilityActions(facility: FacilityRow): FacAction[] {
       ];
     case 'shrine':
       return [
-        { id: 'heal', label: '回復する' },
+        { id: 'heal_preview', label: '回復する' },
         talk,
         { id: 'explain', label: '救護について聞く' },
         { id: 'rescue_pre', label: '事前救難を出す' },
@@ -113,7 +113,7 @@ export function getFacilityActions(facility: FacilityRow): FacAction[] {
       return [
         { id: 'src_check', label: '古い武器を確かめる' },
         { id: 'src_manifest', label: '伝承の条件を聞く' },
-        { id: 'src_upgrade', label: '伝承武器を鍛える' },
+        { id: 'src_upgrade', label: 'Src武器を鍛える' },
         talk,
         home,
       ];
@@ -188,13 +188,21 @@ export function executeFacilityAction(userId: string, facilityId: string, action
 
   const npcId = facility.npc_id;
 
-  if (actionId === 'rest') {
+  if (actionId === 'rest_preview' || actionId === 'rest') {
+    const town = getCurrentTown(userId) as { id: string } | undefined;
+    return { type: 'inn_preview', message: formatRestPreview(userId, town?.id ?? 'start_starfield', '宿屋'), extra: 'inn' };
+  }
+  if (actionId === 'rest_confirm') {
     const town = getCurrentTown(userId) as { id: string } | undefined;
     const result = restAtInn(userId, town?.id ?? 'start_starfield');
     return { type: 'text', message: result.message };
   }
 
-  if (actionId === 'heal') {
+  if (actionId === 'heal_preview' || actionId === 'heal') {
+    const town = getCurrentTown(userId) as { id: string } | undefined;
+    return { type: 'inn_preview', message: formatRestPreview(userId, town?.id ?? 'start_starfield', '救護所'), extra: 'shrine' };
+  }
+  if (actionId === 'heal_confirm') {
     const town = getCurrentTown(userId) as { id: string } | undefined;
     const result = shrineHeal(userId, town?.id ?? 'start_starfield');
     return { type: 'text', message: result.message };
@@ -213,10 +221,30 @@ export function executeFacilityAction(userId: string, facilityId: string, action
     if (npc) return { type: 'text', message: buildNpcBody(npc, getDialogue(npcId, 'hint')) };
   }
 
-  if (actionId === 'enhance') return { type: 'upgrade_select', message: 'どの装備を鍛えますか？', extra: 'enhance' };
-  if (actionId === 'awaken') return { type: 'upgrade_select', message: 'どの武器を覚醒しますか？（同名合成）', extra: 'awaken' };
-  if (actionId === 'kai_unique') return { type: 'upgrade_select', message: 'カイに見せる武器を選んでください。', extra: 'kai_unique' };
-  if (actionId === 'kai_src') return { type: 'upgrade_select', message: 'Src昇華するユニーク武器を選んでください。', extra: 'kai_src' };
+  if (actionId === 'enhance') {
+    return { type: 'upgrade_select', message: '強化石とゴールドで、武器の+値を上げます。\nどの装備を鍛えますか？', extra: 'enhance' };
+  }
+  if (actionId === 'awaken') {
+    const candidates = getAwakeningCandidates(userId);
+    if (!candidates.length) {
+      return { type: 'text', message: '真の力を引き出す（覚醒）\n\n同じ武器を重ねて、武器の眠った力を引き出します。\n\n条件を満たす武器がまだありません。N/R/SR/URの未覚醒最大武器と同名武器が必要です。' };
+    }
+    return { type: 'upgrade_select', message: '同じ武器を重ねて、武器の眠った力を引き出します。\nどの武器を覚醒しますか？', extra: 'awaken' };
+  }
+  if (actionId === 'kai_unique') {
+    const candidates = getKaiUniqueCandidates(userId);
+    if (!candidates.length) {
+      return { type: 'text', message: '伝承する（ユニーク化）\n\n最大まで覚醒した職業武器を、カイが特別な武器へ昇華します。\n\n条件を満たす職業初期武器がありません。（覚醒V・カイ解放・白銀章以降）' };
+    }
+    return { type: 'upgrade_select', message: '最大まで覚醒した職業武器を、カイが特別な武器へ昇華します。', extra: 'kai_unique' };
+  }
+  if (actionId === 'kai_src') {
+    const candidates = getKaiSrcCandidates(userId);
+    if (!candidates.length) {
+      return { type: 'text', message: 'Srcへ変質する\n\n伝承武器と特別な素材を使い、Src武器へ変質させます。\n\n対象の伝承武器または素材（星巡の残響）が不足しています。' };
+    }
+    return { type: 'upgrade_select', message: '伝承武器と特別な素材を使い、Src武器へ変質させます。', extra: 'kai_src' };
+  }
   if (actionId === 'repair') return { type: 'upgrade_select', message: 'どの装備を修理しますか？', extra: 'repair' };
   if (actionId === 'dismantle') return { type: 'upgrade_select', message: 'どの装備を分解しますか？', extra: 'dismantle' };
   if (actionId === 'job') return { type: 'job_select', message: 'どの職能を選びますか？' };
@@ -240,7 +268,13 @@ export function executeFacilityAction(userId: string, facilityId: string, action
   if (actionId === 'equip') return { type: 'prep_menu', message: formatCurrentEquipment(userId), extra: facilityId };
   if (actionId === 'travel') return { type: 'travel', message: '' };
   if (actionId === 'src_check' || actionId === 'src_manifest') return { type: 'src_select', message: 'どの古い武器を確かめますか？', extra: actionId };
-  if (actionId === 'src_upgrade') return { type: 'upgrade_select', message: 'どの伝承武器を鍛えますか？', extra: 'src' };
+  if (actionId === 'src_upgrade') {
+    const items = getUpgradeSelectOptions(userId, 'src');
+    if (!items.length) {
+      return { type: 'text', message: 'Src武器を鍛える\n\nヴァルハラで得た素材を使い、Src武器を+10まで鍛えます。\n\n鍛えられるSrc武器がありません。' };
+    }
+    return { type: 'upgrade_select', message: 'ヴァルハラで得た素材を使い、Src武器を+10まで鍛えます。', extra: 'src' };
+  }
   if (actionId === 'rescue_pre' || actionId === 'rescue_info') {
     return { type: 'rescue_hint', message: '救難の便りは、救難掲示の場所へ届く。\n探索中に困ったら「救難を求める」から便りを出せ。\n高難度の探索前には、ここから事前救難を出すのも手だ。' };
   }

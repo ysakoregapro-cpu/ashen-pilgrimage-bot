@@ -20,6 +20,27 @@ export function calcInnCost(userId: string, townId: string): number {
   return Math.min(80, 30 + Math.floor(lv * 3));
 }
 
+/** 宿屋・救護所共通の回復料金 */
+export function calcRestCost(userId: string, townId: string): number {
+  return calcInnCost(userId, townId);
+}
+
+export function formatRestPreview(userId: string, townId: string, label: '宿屋' | '救護所'): string {
+  const player = requirePlayer(userId);
+  const cost = calcRestCost(userId, townId);
+  const canAfford = player.gold >= cost;
+  const lines = [
+    `**${label}**`,
+    '',
+    `利用料: **${cost}G**`,
+    '回復: HP/MP 全回復',
+    `所持金: **${player.gold}G**`,
+  ];
+  if (canAfford) lines.push(`利用後: **${player.gold - cost}G**`);
+  else lines.push(`不足: **${cost - player.gold}G**`);
+  return lines.join('\n');
+}
+
 export function restAtInn(userId: string, townId: string, freeHeal = false): {
   paid: boolean;
   relief: boolean;
@@ -27,7 +48,7 @@ export function restAtInn(userId: string, townId: string, freeHeal = false): {
   message: string;
 } {
   const player = requirePlayer(userId);
-  const cost = calcInnCost(userId, townId);
+  const cost = calcRestCost(userId, townId);
 
   if (freeHeal) {
     getDb().prepare('UPDATE players SET hp=max_hp, mp=max_mp, updated_at=? WHERE user_id=?').run(nowIso(), userId);
@@ -41,10 +62,9 @@ export function restAtInn(userId: string, townId: string, freeHeal = false): {
       relief: false,
       cost,
       message: [
-        `宿泊費: **${cost}G**`,
+        `利用料: **${cost}G**`,
+        '回復: HP/MP 全回復',
         `所持金: **${player.gold - cost}G**`,
-        '',
-        '休むとHP/MPが全回復し、状態異常が解除されます。',
         '',
         '深く眠り、傷と疲れを癒した。',
       ].join('\n'),
@@ -59,8 +79,9 @@ export function restAtInn(userId: string, townId: string, freeHeal = false): {
     relief: true,
     cost,
     message: [
-      `宿泊費: **${cost}G**`,
+      `利用料: **${cost}G**`,
       `所持金: **${player.gold}G**`,
+      `不足: **${cost - player.gold}G**`,
       '',
       '十分なゴールドがありません。',
       '宿泊はできませんが、最低限の手当てを受けます。',
@@ -70,30 +91,41 @@ export function restAtInn(userId: string, townId: string, freeHeal = false): {
   };
 }
 
-export function shrineHeal(userId: string, townId: string): { message: string } {
-  const cost = Math.max(20, Math.floor(calcInnCost(userId, townId) * 0.6));
+export function shrineHeal(userId: string, townId: string): { message: string; cost: number; paid: boolean } {
+  const cost = calcRestCost(userId, townId);
   const player = requirePlayer(userId);
   if (player.gold >= cost && spendGold(userId, cost)) {
     getDb().prepare('UPDATE players SET hp=max_hp, mp=max_mp, updated_at=? WHERE user_id=?').run(nowIso(), userId);
     return {
-      message: `救護の手当てを受けた。（-${cost}G）\nHP/MPが全回復した。`,
+      paid: true,
+      cost,
+      message: [
+        `利用料: **${cost}G**`,
+        '回復: HP/MP 全回復',
+        `所持金: **${player.gold - cost}G**`,
+        '',
+        '救護の手当てを受け、HP/MPが全回復した。',
+      ].join('\n'),
     };
   }
-  const reliefHp = Math.floor(player.max_hp * 0.35);
-  const reliefMp = Math.floor(player.max_mp * 0.15);
+  const reliefHp = Math.floor(player.max_hp * 0.4);
+  const reliefMp = Math.floor(player.max_mp * 0.2);
   getDb().prepare('UPDATE players SET hp=?, mp=?, updated_at=? WHERE user_id=?').run(reliefHp, reliefMp, nowIso(), userId);
   return {
-    message: `寄付が足りないが、最低限の手当てだけは受けられた。\nHP ${reliefHp} / MP ${reliefMp} まで回復。`,
+    paid: false,
+    cost,
+    message: [
+      `利用料: **${cost}G**`,
+      `所持金: **${player.gold}G**`,
+      `不足: **${cost - player.gold}G**`,
+      '',
+      '寄付が足りないが、最低限の手当てだけは受けられた。',
+      `HP ${reliefHp} / MP ${reliefMp} まで回復。`,
+    ].join('\n'),
   };
 }
 
+/** @deprecated use formatRestPreview */
 export function formatInnPreview(userId: string, townId: string): string {
-  const player = requirePlayer(userId);
-  const cost = calcInnCost(userId, townId);
-  return [
-    `宿泊費: **${cost}G**`,
-    `所持金: **${player.gold}G**`,
-    '',
-    '休むとHP/MPが全回復し、状態異常が解除されます。',
-  ].join('\n');
+  return formatRestPreview(userId, townId, '宿屋');
 }

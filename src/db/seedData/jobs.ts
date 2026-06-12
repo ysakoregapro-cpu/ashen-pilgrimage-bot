@@ -60,7 +60,7 @@ const SKILLS: { id: string; name: string; job: string; desc: string; mp: number;
   { id: 'skill_ice_needle', name: '氷針', job: '魔術師', desc: '氷属性の魔法。', mp: 6, power: 1.0, type: 'magical', element: 'ice' },
   { id: 'skill_star_bullet', name: '星弾', job: '魔術師', desc: '星属性の魔法。', mp: 8, power: 1.1, type: 'magical', element: 'star' },
   { id: 'skill_deep_thunder', name: '深層雷', job: '魔術師', desc: '雷属性の強魔法。', mp: 12, power: 1.4, type: 'magical', element: 'thunder' },
-  { id: 'skill_echo_blast', name: '残響爆破', job: '魔術師', desc: '残響属性の爆破。', mp: 14, power: 1.3, type: 'magical', element: 'echo', breakP: 15 },
+  { id: 'skill_echo_blast', name: '残響爆破', job: '魔術師', desc: '残響の爆破。', mp: 10, power: 1.2, type: 'magical', element: 'neutral', breakP: 12 },
   { id: 'skill_ash_circle', name: '灰術陣', job: '魔術師', desc: '継続ダメージ。', mp: 10, power: 0.5, type: 'magical', element: 'ash' },
   { id: 'skill_starfall', name: '星落とし', job: '魔術師', desc: '大威力星魔法。', mp: 20, power: 1.8, type: 'magical', element: 'star' },
   { id: 'skill_minor_heal', name: '小癒', job: '祈祷師', desc: 'HPを回復。', mp: 5, power: 0.3, type: 'heal' },

@@ -6,6 +6,10 @@ import { ACQUISITION_OVERRIDES } from '../db/seedData/equipmentMaster';
 import { getRoadmapHints } from './progressionSystem';
 import { getEnhanceRequirement } from './enhanceSystem';
 import { AREAS } from '../db/seedData/areas';
+import { AFFINITY_MULTIPLIER } from '../db/seedData/elementMaster';
+import { STARTER_WEAPON_IDS, STARTER_UNIQUE_TARGETS, JOB_STARTER_WEAPONS } from '../db/seedData/jobStarterWeapons';
+import { RARE_MONSTER_IDS } from './combatMath';
+import { AWAKENING_ELIGIBLE_RARITIES } from '../db/seedData/awakeningMaster';
 
 export type ValidationIssue = { severity: 'error' | 'warn'; category: string; message: string };
 
@@ -162,6 +166,61 @@ export function validateGameData(opts?: { userId?: string }): ValidationIssue[] 
     if (!s.element) {
       issues.push({ severity: 'warn', category: 'skill', message: `スキル ${s.name} (${s.id}) に属性未設定` });
     }
+    const skillRow = db.prepare('SELECT power, effect_type FROM skills WHERE id = ?').get(s.id) as { power: number; effect_type: string | null } | undefined;
+    if (skillRow && skillRow.power > 0 && ['slow', 'bind'].includes(skillRow.effect_type ?? '')) {
+      const fx = resolveSkillEffect(s.id, skillRow.effect_type, s.status_effect);
+      if (!fx.implemented) {
+        issues.push({ severity: 'warn', category: 'skill', message: `power>0 スキル ${s.name} (${s.id}) の状態異常path要確認` });
+      }
+      // power>0 + slow/bind + implemented = 複合スキル（damage→status）— OK
+    }
+  }
+
+  // Attribute multiplier sanity
+  if (AFFINITY_MULTIPLIER.major_weak > 1.4 || AFFINITY_MULTIPLIER.weak > 1.2) {
+    issues.push({ severity: 'warn', category: 'element', message: '弱点倍率が想定上限を超えています' });
+  }
+
+  // Job starter weapons
+  for (const [job, wId] of Object.entries(JOB_STARTER_WEAPONS)) {
+    if (!itemIds.has(wId)) {
+      issues.push({ severity: 'error', category: 'progression', message: `職業 ${job} の初期武器 ${wId} が存在しません` });
+    }
+  }
+  for (const starterId of STARTER_WEAPON_IDS) {
+    if (!STARTER_UNIQUE_TARGETS[starterId]) {
+      issues.push({ severity: 'warn', category: 'src', message: `職業初期武器 ${starterId} に伝承先がありません` });
+    }
+  }
+
+  // Src weapons should not be awakening-eligible in items table
+  const srcWeapons = db.prepare(`SELECT id FROM items WHERE rarity = 'Src'`).all() as Array<{ id: string }>;
+  for (const sw of srcWeapons) {
+    if (AWAKENING_ELIGIBLE_RARITIES.has('Src')) {
+      issues.push({ severity: 'error', category: 'awakening', message: 'Srcが覚醒対象になっています' });
+    }
+  }
+
+  // Src upgrade mats not in mid-game area rewards
+  const SRC_MIDS = ['src_echo_core', 'src_primordial', 'src_upg_shard', 'src_primordial_full'];
+  for (const a of db.prepare('SELECT id, reward_pool_json FROM exploration_areas').all() as Array<{ id: string; reward_pool_json: string }>) {
+    const pool = JSON.parse(a.reward_pool_json) as Array<{ item_id: string }>;
+    for (const p of pool) {
+      if (SRC_MIDS.includes(p.item_id) && !a.id.includes('valhalla') && !a.id.includes('deep') && !a.id.includes('furnace')) {
+        issues.push({ severity: 'warn', category: 'src', message: `探索 ${a.id} に中盤Src素材 ${p.item_id}` });
+      }
+    }
+  }
+
+  // Rare enemy classification
+  if (RARE_MONSTER_IDS.size < 5) {
+    issues.push({ severity: 'warn', category: 'monster', message: 'レア敵候補が不足しています' });
+  }
+
+  // Equipment set bonuses exist
+  const setCount = (db.prepare('SELECT COUNT(*) AS c FROM equipment_sets').get() as { c: number }).c;
+  if (setCount < 5) {
+    issues.push({ severity: 'warn', category: 'series', message: 'シリーズ装備セットが不足しています' });
   }
 
   return issues;

@@ -9,6 +9,7 @@ import { roll, randomInt, uuid } from '../utils/random';
 import { nowIso } from '../types';
 import { formatBattleLine } from '../utils/formatters';
 import { getPlayerElementResistances, applyPlayerElementResist } from './elementSystem';
+import { calcPlayerDamageToEnemy, calcEnemyDamageToPlayer } from './combatMath';
 
 type ParticipantState = {
   user_id: string; hp: number; mp: number; max_hp: number; max_mp: number;
@@ -101,7 +102,8 @@ function processRaidTurn(battleId: string): string {
     const mult = p.action === 'skill' ? 1.5 : 1.0;
     const stat = p.action === 'skill' ? p.magic : p.attack;
     const def = p.action === 'skill' ? monster.spirit : monster.defense;
-    const dmg = Math.max(1, Math.floor((stat * mult - def * 0.45) * (status.enemyBroken ? 1.25 : 1)));
+    const baseDmg = calcPlayerDamageToEnemy(stat, def, mult);
+    const dmg = Math.max(1, Math.floor(baseDmg * (status.enemyBroken ? 1.25 : 1)));
     eHp -= dmg;
     eBreak += dmg * 0.4;
     status.log.push(formatBattleLine('player_attack', `<@${p.user_id}> の攻撃。\n　**${dmg}** ダメージ。`));
@@ -114,9 +116,14 @@ function processRaidTurn(battleId: string): string {
   if (eHp > 0) {
     const alive = states.filter((s) => s.hp > 0);
     const target = alive[randomInt(0, alive.length - 1)]!;
-    const rawDmg = Math.max(1, Math.floor(monster.attack * 1.15 - target.defense * 0.4));
-    const baseDmg = target.action === 'defend' ? Math.floor(rawDmg * 0.45) : rawDmg;
-    const mit = applyPlayerElementResist(baseDmg, monster.element, getPlayerElementResistances(target.user_id));
+    const rawDmg = calcEnemyDamageToPlayer({
+      attack: Math.floor(monster.attack * 1.15),
+      playerDefense: target.defense,
+      playerMaxHp: target.max_hp,
+      threatTier: 'boss',
+      takenMult: target.action === 'defend' ? 0.45 : 1,
+    });
+    const mit = applyPlayerElementResist(rawDmg, monster.element, getPlayerElementResistances(target.user_id));
     target.hp -= mit.damage;
     status.log.push(formatBattleLine('enemy_attack', `${monster.name}の攻撃。\n　<@${target.user_id}>に **${mit.damage}** ダメージ。`));
     if (mit.logText) status.log.push(formatBattleLine('status', mit.logText));

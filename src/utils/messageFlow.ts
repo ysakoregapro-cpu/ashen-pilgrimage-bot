@@ -15,7 +15,7 @@ import { errorEmbed } from './embeds';
 import type { UiPayload } from './townUi';
 
 const STALE_MESSAGE =
-  'その道しるべは、もう古くなっているようです。\nいま見えている案内から選び直してください。';
+  'この操作は古くなっています。もう一度開き直してください。';
 
 const userPanelSession = new Map<string, string>();
 const userPanelMessageId = new Map<string, string>();

@@ -16,7 +16,7 @@ const MATERIALS: Mat[] = [
   { id: 'mat_twilight_shell', name: '薄明の貝殻', cat: 'area_material', rarity: 'R', desc: '薄明の貝殻。', source: '薄明の港町', usage: '強化', price: 25 },
   { id: 'mat_silver_ore', name: '白銀鉱石', cat: 'area_material', rarity: 'R', desc: '白銀鉱石。', source: '白銀鉱山街', usage: '強化', price: 30 },
   { id: 'mat_mist_leaf', name: '霧守りの葉', cat: 'area_material', rarity: 'R', desc: '霧守りの葉。', source: '霧深き森', usage: '強化', price: 30 },
-  { id: 'mat_moon_ink', name: '月下インク', cat: 'area_material', rarity: 'SR', desc: '月下のインク。', source: '月下図書館', usage: 'Src・強化', price: 50 },
+  { id: 'mat_moon_ink', name: '月下インク', cat: 'area_material', rarity: 'SR', desc: '月下のインク。', source: '月下図書館', usage: '高級装備素材・特殊強化', price: 50 },
   { id: 'mat_forgotten_sand', name: '忘却の黒砂', cat: 'area_material', rarity: 'SR', desc: '忘却の砂。', source: '忘却の地下市', usage: '強化', price: 55 },
   { id: 'mat_hourglass_shard', name: '砂時計の欠片', cat: 'area_material', rarity: 'SR', desc: '時計の欠片。', source: '砂時計の都', usage: 'Src', price: 60 },
   { id: 'mat_ash_crest', name: '灰冠の紋章片', cat: 'area_material', rarity: 'SSR', desc: '灰冠の紋章。', source: '灰冠の王都跡', usage: 'Src強化', price: 100 },

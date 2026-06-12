@@ -1,6 +1,7 @@
 import { getDb } from '../db/database';
 import { getUnlockedTowns, requirePlayer, addExp } from './playerSystem';
 import { finalizeExplorationLoot } from './inventorySystem';
+import { getPassiveNpcHints, formatPassiveHints } from './npcHintSystem';
 import { calcExploreReturnBonus, formatExpProgressBlock } from './expSystem';
 import { canTravelToTown } from './progressionGates';
 import { nowIso } from '../types';
@@ -92,6 +93,7 @@ export function travelToTown(userId: string, townId: string): string {
   const exploreBonus = grantExploreReturnBonus(userId, player.current_town_id);
   if (exploreBonus) msg += `\n\n${exploreBonus}`;
   if (loot.message) msg += `\n\n${loot.message}`;
+  msg += formatPassiveHints(getPassiveNpcHints(userId, 'town_arrival'));
   return msg;
 }
 
@@ -100,7 +102,8 @@ export function returnToTownHub(userId: string): string {
   const loot = finalizeExplorationLoot(userId);
   const exploreBonus = grantExploreReturnBonus(userId, player.current_town_id);
   const parts = [exploreBonus, loot.message].filter(Boolean);
-  return parts.join('\n\n');
+  const hints = formatPassiveHints(getPassiveNpcHints(userId, 'explore_return'));
+  return parts.join('\n\n') + hints;
 }
 
 export function getCurrentTown(userId: string) {

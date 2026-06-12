@@ -110,8 +110,8 @@ export function finalizeExplorationLoot(userId: string): { confirmed: string[]; 
   confirmPendingRewards(userId);
   const names = pending.map((p) => p.name);
   const msg = names.length === 1
-    ? '道中で得たものを荷に収めた。'
-    : '拾った品々は、無事に町まで持ち帰られた。';
+    ? '道中の荷物を整理しました。'
+    : '道中の荷物を整理しました。';
   return { confirmed: names, message: `${msg}\n・${names.join('、')}` };
 }
 

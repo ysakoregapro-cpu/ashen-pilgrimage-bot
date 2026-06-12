@@ -1,8 +1,8 @@
 import { getDb } from '../db/database';
 import { nowIso } from '../types';
 import {
-  AWAKENING_DUP_COST, AWAKENING_ELIGIBLE_RARITIES, MAX_AWAKENING_LEVEL,
-  awakeningLabel, totalDuplicatesForMaxAwakening,
+  AWAKENING_ELIGIBLE_RARITIES, MAX_AWAKENING_LEVEL,
+  awakeningLabel, getAwakeningDupCost, totalDuplicatesForMaxAwakening,
 } from '../db/seedData/awakeningMaster';
 import { getPrimaryStatKey } from './enhanceSystem';
 
@@ -23,9 +23,9 @@ export function getAwakeningInfo(userId: string, inventoryId: number): string {
   if (!row) return '覚醒できない装備です。';
   const cur = row.awakening_level;
   if (cur >= MAX_AWAKENING_LEVEL) {
-    return `**${row.name}** — ${awakeningLabel(cur)}（最大）\nカイに見せれば、ユニーク昇華の可能性がある。`;
+    return `**${row.name}** — ${awakeningLabel(cur)}（最大）\n職業初期武器なら、カイに見せて伝承できる。`;
   }
-  const need = AWAKENING_DUP_COST[cur] ?? 0;
+  const need = getAwakeningDupCost(row.rarity, cur);
   const have = countDuplicates(userId, row.item_id, inventoryId);
   const primary = getPrimaryStatKey({
     attack_bonus: row.attack_bonus, magic_bonus: row.magic_bonus,
@@ -33,11 +33,12 @@ export function getAwakeningInfo(userId: string, inventoryId: number): string {
     speed_bonus: 0, hp_bonus: 0, weapon_type: row.weapon_type, slot: row.slot,
   });
   const primaryLabel = { attack: '攻撃', magic: '魔力', defense: '防御', spirit: '精神' }[primary];
+  const totalNeed = totalDuplicatesForMaxAwakening(row.rarity);
   return [
     `**${row.name}** — ${awakeningLabel(cur)} → ${awakeningLabel(cur + 1)}`,
     `同名武器: ${have}/${need} 本必要`,
     `効果: ${primaryLabel}+1 / 耐久上限微増`,
-    `最大まで: 合計${totalDuplicatesForMaxAwakening()}本`,
+    `最大まで: 合計${totalNeed}本（${row.rarity}）`,
   ].join('\n');
 }
 
@@ -66,7 +67,7 @@ export function getAwakeningCandidates(userId: string): AwakenableRow[] {
     JOIN items i ON pi.item_id = i.id
     JOIN equipment e ON pi.item_id = e.item_id
     WHERE pi.user_id = ? AND pi.is_pending_reward = 0 AND pi.is_listed = 0
-      AND e.is_unique = 0 AND i.rarity IN ('N','R') AND pi.awakening_level < ?
+      AND e.is_unique = 0 AND i.rarity IN ('N','R','SR','UR','SSR') AND pi.awakening_level < ?
     ORDER BY i.name
     LIMIT 25
   `).all(userId, MAX_AWAKENING_LEVEL) as AwakenableRow[];
@@ -123,12 +124,13 @@ export function awakenEquipment(userId: string, inventoryId: number): { success:
   const row = loadAwakenable(userId, inventoryId);
   if (!row) return { success: false, message: '覚醒できない装備です。' };
   if (!AWAKENING_ELIGIBLE_RARITIES.has(row.rarity)) {
-    return { success: false, message: 'N/R装備のみ覚醒できます。' };
+    return { success: false, message: 'Src武器は覚醒できません。N/R/SR/URのみ覚醒可能です。' };
   }
   const cur = row.awakening_level;
   if (cur >= MAX_AWAKENING_LEVEL) return { success: false, message: 'すでに最大覚醒です。' };
 
-  const need = AWAKENING_DUP_COST[cur] ?? 0;
+  const need = getAwakeningDupCost(row.rarity, cur);
+  if (need <= 0) return { success: false, message: 'これ以上覚醒できません。' };
   const have = countDuplicates(userId, row.item_id, inventoryId);
   if (have < need) {
     return { success: false, message: `同名武器が足りません。（${have}/${need}）` };

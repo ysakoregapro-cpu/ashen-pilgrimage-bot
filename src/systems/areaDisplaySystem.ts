@@ -5,7 +5,7 @@ import { getRecommendedElementsFromMonsters } from '../db/seedData/areaMaster';
 import { formatElementHint } from './progressionSystem';
 import { classifyAreaThreats, formatAreaThreatLabels, getMonsterRow } from './monsterBossSystem';
 import { ELITE_MONSTER_IDS, TOUGH_MONSTER_IDS } from './combatMath';
-import { ELEMENT_LABELS } from '../db/seedData/elementMaster';
+import { formatMonsterAffinityHints } from './elementSystem';
 
 export function getAreaTier(areaId: string): 'early' | 'mid' | 'late' | 'valhalla' {
   const area = getDb().prepare('SELECT town_id, recommended_max_level FROM exploration_areas WHERE id = ?').get(areaId) as {
@@ -48,12 +48,9 @@ export function formatAreaDetail(userId: string, areaId: string): string {
     const mon = getMonsterRow(db, m.monster_id);
     if (mon) {
       if (monNames.length < 3) monNames.push(mon.name);
-      const def = db.prepare('SELECT weaknesses_json FROM monsters WHERE id = ?').get(m.monster_id) as { weaknesses_json: string | null } | undefined;
-      if (def?.weaknesses_json && monWeakHints.length < 3) {
-        try {
-          const wk = JSON.parse(def.weaknesses_json) as string[];
-          if (wk[0]) monWeakHints.push(`${mon.name}: ${wk.slice(0, 2).map((w) => ELEMENT_LABELS[w as keyof typeof ELEMENT_LABELS] ?? w).join('・')}弱点`);
-        } catch { /* ignore */ }
+      if (monWeakHints.length < 3) {
+        const tagRow = db.prepare('SELECT area_tag FROM monsters WHERE id = ?').get(m.monster_id) as { area_tag: string } | undefined;
+        monWeakHints.push(`${mon.name}: ${formatMonsterAffinityHints(m.monster_id, tagRow?.area_tag ?? 'library')}`);
       }
     }
   }

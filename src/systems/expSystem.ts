@@ -108,6 +108,6 @@ export function formatExpProgressBlock(expGained: number, result: AddExpResult):
   } else {
     lines.push(`現在Lv: ${result.newLevel}`);
   }
-  lines.push(`次のLvまで: あと ${result.expToNext} EXP`);
+  lines.push(`Lv${result.newLevel + 1} まであと ${result.expToNext} EXP`);
   return lines.join('\n');
 }

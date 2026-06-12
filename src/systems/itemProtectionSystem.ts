@@ -44,7 +44,7 @@ export function isProtectedInventory(row: InventoryProtectRow, action: ItemActio
     return '取引所に出品中の品は、いまは動かせない。';
   }
   if (row.is_pending_reward && action !== 'defeat_loss') {
-    return '道中で得た品は、町へ戻るまで手放せない。';
+    return '探索中に得た荷物です。町へ帰還すると整理され、売却できるようになります。';
   }
   if (!row.tradeable && (action === 'trade' || action === 'market_list' || action === 'sell')) {
     return 'それは、この旅に深く結びついた品だ。手放すことはできない。';

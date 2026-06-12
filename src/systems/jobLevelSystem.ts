@@ -153,7 +153,7 @@ export function getJobProgressText(userId: string, jobName: string): string {
   if (row.job_level >= JOB_LEVEL_CAP) return `${jobName} Lv${row.job_level}（極み）`;
   const need = jobExpRequired(row.job_level);
   const remain = Math.max(0, need - row.job_exp);
-  return `${jobName} Lv${row.job_level} まであと ${remain}`;
+  return `${jobName} Lv${row.job_level + 1} まであと ${remain}`;
 }
 
 export function getUpcomingSkills(jobName: string, currentLevel: number, learnedIds: Set<string>): Array<{ level: number; hint: string }> {

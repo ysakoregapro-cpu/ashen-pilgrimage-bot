@@ -11,7 +11,7 @@ const TAG_DEFAULTS: Record<string, MonsterElementDef> = {
   port: { element: 'undead', weaknesses: ['light', 'fire'], resistances: ['dark', 'ice'] },
   mine: { element: 'machine', weaknesses: ['thunder', 'fire'], resistances: ['ice'] },
   forest: { element: 'beast', weaknesses: ['fire', 'wind'], resistances: ['wind'] },
-  library: { element: 'dark', weaknesses: ['light'], resistances: ['dark', 'undead'] },
+  library: { element: 'dark', weaknesses: [], resistances: ['dark'] },
   undermarket: { element: 'dark', weaknesses: ['light', 'thunder'], resistances: ['dark', 'machine'] },
   capital: { element: 'old_king', weaknesses: ['light', 'valhalla'], resistances: ['dark', 'undead'] },
   furnace: { element: 'machine', weaknesses: ['thunder', 'ice'], resistances: ['fire', 'machine'] },
@@ -31,6 +31,11 @@ const MONSTER_OVERRIDES: Record<string, Partial<MonsterElementDef>> = {
   mon_old_king_shadow: { element: 'old_king', weaknesses: ['valhalla', 'light'], resistances: ['dark', 'old_king'] },
   mon_deep_core_boss: { element: 'valhalla', weaknesses: ['old_king', 'thunder'], resistances: ['machine', 'fire'] },
   mon_machina_echo: { element: 'machine', weaknesses: ['thunder'], resistances: ['valhalla'] },
+  mon_bookworm_swarm: { element: 'beast', weaknesses: ['light'], resistances: [] },
+  mon_ink_beast: { element: 'undead', weaknesses: ['fire', 'thunder'], resistances: ['light', 'dark'] },
+  mon_runaway_book: { element: 'dark', weaknesses: ['light'], resistances: [] },
+  mon_moon_observer: { element: 'dark', weaknesses: ['thunder'], resistances: ['light', 'dark'] },
+  mon_shadow_librarian: { element: 'undead', weaknesses: ['light'], resistances: ['dark'] },
 };
 
 export function getMonsterElementDef(monsterId: string, areaTag: string): MonsterElementDef {
