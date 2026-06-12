@@ -78,6 +78,14 @@ export function persistPlayerPoisonFromBattle(userId: string, poisonTurns: numbe
   setPlayerStatusEffect(userId, 'poison', poisonTurns);
 }
 
+export function syncBattleResourcesToPlayer(userId: string, hp: number, mp: number): void {
+  const player = requirePlayer(userId);
+  const clampedHp = Math.min(Math.max(0, hp), player.max_hp);
+  const clampedMp = Math.min(Math.max(0, mp), player.max_mp);
+  getDb().prepare('UPDATE players SET hp = ?, mp = ?, updated_at = ? WHERE user_id = ?')
+    .run(clampedHp, clampedMp, nowIso(), userId);
+}
+
 export function syncBattleStatusToPlayer(userId: string, state: BattleStatusState): void {
   persistPlayerPoisonFromBattle(userId, state.poisonTurns);
 }

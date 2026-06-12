@@ -52,6 +52,7 @@ import { buildEffectiveRewardPool } from './townLootSystem';
 import {
   loadBattleStatusFromPlayer,
   persistPlayerPoisonFromBattle,
+  syncBattleResourcesToPlayer,
   syncBattleStatusToPlayer,
 } from './playerStatusSystem';
 
@@ -364,6 +365,7 @@ export function processBattleAction(
     }
     const fleeChance = calcFleeRate(player, monster, diff, state, canFlee);
     if (roll(fleeChance)) {
+      syncBattleResourcesToPlayer(userId, pHp, pMp);
       syncBattleStatusToPlayer(userId, state);
       endBattle(sessionId, 'fled');
       return { done: true, status: 'fled', message: '足音を消し、戦いから離れた。', sessionId };
@@ -372,7 +374,7 @@ export function processBattleAction(
     const es = resolveEnemyState(session, state);
     const er = executeEnemiesTurn(es, player, state, diff, tutorial, pHp, session.is_boss === 1);
     pHp = er.pHp; state = er.state;
-    if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state);
+    if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state, pHp, pMp);
     const legacy = syncLegacyEnemyColumns(es);
     persistBattle(sessionId, userId, pHp, pMp, legacy.enemy_hp, legacy.enemy_break, state, es);
     return { done: false, status: 'active', message: state.log[state.log.length - 1] ?? '', sessionId };
@@ -461,19 +463,19 @@ function resolvePlayerTurn(
       eBreak = legacy.enemy_break;
       if (allEnemiesDefeated(enemyState)) {
         pushLog(state, 'info', enemyState.partySize > 1 ? '敵をすべて打ち倒した。' : `${monster.name}を打ち倒した。`);
-        return resolveVictory(sessionId, userId, session, monster, state, enemyState);
+        return resolveVictory(sessionId, userId, session, monster, state, enemyState, pHp, pMp);
       }
-      if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state);
+      if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state, pHp, pMp);
     } else {
       const r = executeEnemiesTurn(enemyState, player, state, diff, tutorial, pHp, session.is_boss === 1);
       pHp = r.pHp; state = r.state;
       const legacyE = syncLegacyEnemyColumns(enemyState);
       eHp = legacyE.enemy_hp;
       eBreak = legacyE.enemy_break;
-      if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state);
+      if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state, pHp, pMp);
       if (allEnemiesDefeated(enemyState)) {
         pushLog(state, 'info', enemyState.partySize > 1 ? '敵をすべて打ち倒した。' : `${monster.name}を打ち倒した。`);
-        return resolveVictory(sessionId, userId, session, monster, state, enemyState);
+        return resolveVictory(sessionId, userId, session, monster, state, enemyState, pHp, pMp);
       }
     }
   }
@@ -485,9 +487,9 @@ function resolvePlayerTurn(
   eHp = legacyTick.enemy_hp;
   if (allEnemiesDefeated(enemyState)) {
     pushLog(state, 'info', enemyState.partySize > 1 ? '敵をすべて打ち倒した。' : `${monster.name}を打ち倒した。`);
-    return resolveVictory(sessionId, userId, session, monster, state, enemyState);
+    return resolveVictory(sessionId, userId, session, monster, state, enemyState, pHp, pMp);
   }
-  if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state);
+  if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state, pHp, pMp);
 
   state.defending = false;
   state.guardStrong = false;
@@ -1002,11 +1004,14 @@ function resolveVictory(
   session: SessionRow,
   monster: MonsterRow,
   state: BattleState,
-  enemyState?: EnemyStateJson,
+  enemyState: EnemyStateJson | undefined,
+  pHp: number,
+  pMp: number,
 ) {
   const es = enemyState ?? state.enemyState ?? loadEnemyState(session);
   const rewardMult = es.rewardMult ?? 1;
   const wasFirstKill = session.is_boss ? hasBossFirstKill(userId, session.monster_id) : false;
+  syncBattleResourcesToPlayer(userId, pHp, pMp);
   syncBattleStatusToPlayer(userId, state);
   endBattle(sessionId, 'victory');
   const player = requirePlayer(userId);
@@ -1112,6 +1117,7 @@ function resolveVictory(
   lines.push('');
   if (levelResult.leveledUp && levelResult.levelUpMessage) {
     lines.push(levelResult.levelUpMessage);
+    lines.push('レベルアップによりHP/MPが回復した。');
     lines.push('');
   }
   lines.push(`Lv${levelResult.newLevel + 1} まであと ${levelResult.expToNext} EXP`);
@@ -1139,7 +1145,15 @@ function resolveVictory(
   };
 }
 
-function resolveDefeat(sessionId: string, userId: string, session: SessionRow, state: BattleState) {
+function resolveDefeat(
+  sessionId: string,
+  userId: string,
+  session: SessionRow,
+  state: BattleState,
+  pHp: number,
+  pMp: number,
+) {
+  syncBattleResourcesToPlayer(userId, pHp, pMp);
   syncBattleStatusToPlayer(userId, state);
   endBattle(sessionId, 'defeat');
   return { done: true, status: 'defeat' as BattleStatus, message: applyDefeat(userId, session.is_boss === 1, session.area_id), sessionId };
