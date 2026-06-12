@@ -1,8 +1,8 @@
 # Weapon Acquisition Audit
 
-Generated: 2026-06-12T21:30:40.525Z
+Generated: 2026-06-12T22:35:33.502Z
 
-Total weapons: 82 | Obtainable: 66 | Unobtainable: 16
+Total weapons: 82 | Obtainable: 82 | Unobtainable: 0
 
 ## 8-job routes
 | 職 | 初期 | Uni | Src | 状態 | UNKNOWN |
@@ -67,23 +67,6 @@ Total weapons: 82 | Obtainable: 66 | Unobtainable: 16
 - 状態: **Uni素材が共通すぎる** | UNKNOWN: starter not in area pool
 
 ## Unobtainable weapons
-| id | name | rarity |
-| --- | --- | --- |
-| wpn_cracked_axe | ひび割れた斧 | N |
-| wpn_wood_axe | 木こりの斧 | N |
-| wpn_broken_wrap | 欠けた拳帯 | N |
-| wpn_crude_spear | 粗末な槍 | N |
-| wpn_apprentice_staff | 見習い杖 | N |
-| wpn_training_shield | 訓練用大盾 | N |
-| wpn_starfield_sword | 星原の剣 | R |
-| wpn_silence_seal | 沈黙の聖印 | R |
-| wpn_iron_snow_shield | 鉄雪の盾 | R |
-| wpn_ash_knight_shield | 灰騎士の大盾 | SR |
-| wpn_prayer_robe_weapon | 祈り縫いの聖衣 | SSR |
-| wpn_iron_snow_greatshield | 鉄雪大盾 | SSR |
-| wpn_black_iron_blade | 黒鉄の処刑刃 | SSR |
-| wpn_old_king_staff | 旧王の魔杖 | UR |
-| wpn_ash_wing_twin | 灰翼の双刃 | UR |
-| wpn_iron_snow_king_shield | 鉄雪王盾 | UR |
+(none)
 
 Max awakening for Uni: 4

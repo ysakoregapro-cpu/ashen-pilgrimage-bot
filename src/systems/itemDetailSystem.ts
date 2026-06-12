@@ -17,7 +17,8 @@ import { JOB_SKILL_UNLOCKS } from '../db/seedData/jobSkillData';
 import { getShopCatalog, getSellableInventory } from './shopSystem';
 import { ELEMENT_LABELS, normalizeElement } from '../db/seedData/elementMaster';
 import { getResistancesFromGearPiece, formatElementResistLine, getPlayerElementResistances } from './elementSystem';
-import { formatAcquisitionHint, type AcquisitionSource, ACQUISITION_OVERRIDES } from '../db/seedData/equipmentMaster';
+import { formatAcquisitionHint, type AcquisitionSource, type AcquisitionJson, ACQUISITION_OVERRIDES } from '../db/seedData/equipmentMaster';
+import { EXCLUDED_EQUIPMENT } from '../db/seedData/equipmentClassification';
 import { resolveSkillEffect } from '../db/seedData/skillEffectMaster';
 import { getSkill, skillTypeLabel, scalingLabel } from './skillSystem';
 import { AREAS } from '../db/seedData/areas';
@@ -51,21 +52,30 @@ const WEAPON_TYPE_LABELS: Record<string, string> = {
   fist: '拳', spear: '槍', cannon: '機工砲', shield: '盾', spell_staff: '魔導杖',
 };
 
-function parseAcquisition(itemId: string): AcquisitionSource[] {
+function parseAcquisitionRaw(itemId: string): AcquisitionJson {
   const row = getDb().prepare('SELECT acquisition_json FROM items WHERE id = ?').get(itemId) as { acquisition_json: string | null } | undefined;
   if (row?.acquisition_json) {
-    try { return JSON.parse(row.acquisition_json) as AcquisitionSource[]; } catch { /* ignore */ }
+    try {
+      const parsed = JSON.parse(row.acquisition_json) as AcquisitionJson | AcquisitionSource[];
+      if (Array.isArray(parsed)) return { sources: parsed };
+      if (parsed && Array.isArray(parsed.sources)) return parsed;
+    } catch { /* ignore */ }
   }
-  return ACQUISITION_OVERRIDES[itemId] ?? [];
+  const ex = EXCLUDED_EQUIPMENT[itemId];
+  if (ex) return { sources: [], status: ex.classification === 'legacy' ? 'legacy' : 'excluded', reason: ex.reason };
+  return { sources: ACQUISITION_OVERRIDES[itemId] ?? [] };
 }
 
-function townForAreaHint(detail: string): string | null {
-  const area = AREAS.find((a) => detail.includes(a.name) || detail.includes(a.id));
-  return area?.town ?? null;
+function parseAcquisition(itemId: string): AcquisitionSource[] {
+  return parseAcquisitionRaw(itemId).sources;
 }
 
 export function buildAcquisitionHintLines(itemId: string, userId?: string): string[] {
-  const sources = parseAcquisition(itemId);
+  const acq = parseAcquisitionRaw(itemId);
+  if (acq.status === 'legacy' || acq.status === 'excluded') {
+    return ['現在通常入手不可'];
+  }
+  const sources = acq.sources;
   if (!sources.length) return [];
   const uid = userId ?? '';
   const lines: string[] = [];
@@ -73,14 +83,15 @@ export function buildAcquisitionHintLines(itemId: string, userId?: string): stri
     if (s.detail?.includes('UNKNOWN')) continue;
     if (uid) {
       const hint = getItemAcquisitionHint(uid, itemId);
-      if (hint && hint !== '探索・店・ボスなど各所') {
+      if (hint && hint !== '探索・店・ボスなど各所' && hint !== '現在調査中') {
         return hint.split('\n').slice(0, 5);
       }
     }
     const labels: Record<string, string> = {
-      shop: '店', drop_monster: '敵', drop_area: '探索', boss_reward: 'ボス',
-      raid_reward: 'レイド', story_reward: 'ストーリー', craft: 'カイの昇華',
-      upgrade_material: '強化', start: '初期', rematch: '再戦',
+      shop: '店', drop_monster: '敵', drop_area: '探索', boss_reward: 'ボス', boss_drop: 'ボス',
+      raid_reward: 'レイド', raid: 'レイド', story_reward: 'ストーリー', craft: 'カイの昇華',
+      upgrade_material: '強化', start: '初期', rematch: '再戦', kai_forge: 'カイ伝承', src_forge: 'Src変質',
+      valhalla: 'ヴァルハラ', legacy: '旧経路', excluded: '除外',
     };
     lines.push(`・${labels[s.type] ?? s.type}：${s.detail}`);
   }
@@ -88,9 +99,18 @@ export function buildAcquisitionHintLines(itemId: string, userId?: string): stri
 }
 
 export function formatAcquisitionSourceHint(itemId: string, userId?: string): string {
+  const acq = parseAcquisitionRaw(itemId);
+  if (acq.status === 'legacy' || acq.status === 'excluded') {
+    return '入手先：現在通常入手不可';
+  }
   const lines = buildAcquisitionHintLines(itemId, userId);
   if (!lines.length) return '入手先：現在調査中';
   return '入手先：\n' + lines.join('\n');
+}
+
+function townForAreaHint(detail: string): string | null {
+  const area = AREAS.find((a) => detail.includes(a.name) || detail.includes(a.id));
+  return area?.town ?? null;
 }
 
 export function getItemAcquisitionHint(userId: string, itemId: string): string {
@@ -490,7 +510,7 @@ function buildEquipmentDetail(userId: string, inventoryId: number): string {
     `${durabilityLabel(dur)}${durPen < 1 ? `（-${Math.round((1 - durPen) * 100)}%）` : ' — ペナルティなし'}`,
     '',
     formatFieldTitle('入手'),
-    getItemAcquisitionHint(userId, row.item_id as string),
+    formatAcquisitionSourceHint(row.item_id as string, userId),
     '',
     formatFieldTitle('取引'),
     isOwner ? `売却価格目安: ${sellPrice}G` : '他プレイヤーの出品品',

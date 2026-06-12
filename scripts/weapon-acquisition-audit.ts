@@ -8,6 +8,7 @@ import {
 import { MAX_AWAKENING_LEVEL } from '../src/db/seedData/awakeningMaster';
 import { getDb } from '../src/db/database';
 import { writeReport, writeCsv, mdTable } from './audit/reportWriter';
+import { runPhase21WeaponFailures, logPhase21Stats } from './audit/phase21Checks';
 
 function assessRoute(job: string, starter: string, uni: string, src: string, db: ReturnType<typeof getDb>, areaLocs: Map<string, string[]>, shopItems: Set<string>) {
   const unknown: string[] = [];
@@ -92,6 +93,15 @@ function main() {
   writeReport('weapon-acquisition-audit.md', md);
   writeCsv('weapon-acquisition-audit.csv', headers, csvRows);
   console.log(`✅ weapon-acquisition-audit → ${rows.length} weapons`);
+
+  logPhase21Stats();
+  const phase21Issues = runPhase21WeaponFailures();
+  if (phase21Issues.length) {
+    console.error('❌ Phase2.1 weapon checks failed:');
+    for (const i of phase21Issues) console.error('  -', i);
+    process.exit(1);
+  }
+  console.log('✅ Phase2.1 weapon completion checks passed');
 }
 
 main();

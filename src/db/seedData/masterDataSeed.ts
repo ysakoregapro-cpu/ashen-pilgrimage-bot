@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3';
 import { getMonsterElementDef, getMonsterExpTierMult } from './monsterElementMaster';
-import { getEquipmentElementDef, ACQUISITION_OVERRIDES, formatAcquisitionHint, type AcquisitionSource } from './equipmentMaster';
+import { getEquipmentElementDef, ACQUISITION_OVERRIDES, formatAcquisitionHint, type AcquisitionSource, type AcquisitionJson } from './equipmentMaster';
+import { EXCLUDED_EQUIPMENT, KAI_FORGE_WEAPON_IDS } from './equipmentClassification';
 import { SKILL_ELEMENT_DEFAULTS } from './skillEffectMaster';
 import { normalizeElement } from './elementMaster';
 import { AREAS } from './areas';
@@ -39,6 +40,18 @@ function buildAcquisitionMap(db: Database.Database): Map<string, AcquisitionSour
     for (const d of drops) {
       add(d.item_id, { type: 'drop_monster', detail: `${m.name}（${m.area_tag}）` });
     }
+  }
+
+  const srcRows = db.prepare('SELECT base_item_id, src_item_id, name FROM src_weapons').all() as Array<{
+    base_item_id: string; src_item_id: string; name: string;
+  }>;
+  for (const s of srcRows) {
+    add(s.base_item_id, { type: 'kai_forge', detail: `Uni基礎 → ${s.name}` });
+    add(s.src_item_id, { type: 'src_forge', detail: `Src変質：${s.name}` });
+  }
+
+  for (const id of KAI_FORGE_WEAPON_IDS) {
+    add(id, { type: 'kai_forge', detail: 'カイ伝承（Uni昇華）' });
   }
 
   return map;
@@ -99,12 +112,19 @@ export function ensureMasterDataSeed(db: Database.Database): void {
   const acqMap = buildAcquisitionMap(db);
   const updItem = db.prepare(`UPDATE items SET acquisition_json = ?, source_text = COALESCE(source_text, ?) WHERE id = ?`);
   for (const [itemId, sources] of acqMap) {
-    const hint = formatAcquisitionHint(sources);
-    updItem.run(JSON.stringify(sources), hint.split(' / ')[0]?.replace(/^[^:]+:/, '') ?? '探索', itemId);
+    const ex = EXCLUDED_EQUIPMENT[itemId];
+    let payload: AcquisitionJson;
+    if (ex) {
+      payload = { sources: [], status: ex.classification === 'legacy' ? 'legacy' : 'excluded', reason: ex.reason };
+    } else {
+      payload = { sources };
+    }
+    const hint = ex ? '現在通常入手不可' : formatAcquisitionHint(sources);
+    updItem.run(JSON.stringify(payload), hint.split(' / ')[0]?.replace(/^[^:]+:/, '') ?? '探索', itemId);
   }
   // Ensure all equipment has at least generic source
   db.prepare(`
-    UPDATE items SET acquisition_json = '[{"type":"drop_area","detail":"探索・ボス・店"}]',
+    UPDATE items SET acquisition_json = '{"sources":[{"type":"drop_area","detail":"探索・ボス・店"}]}',
       source_text = COALESCE(source_text, '探索・店')
     WHERE category = 'equipment' AND (acquisition_json IS NULL OR acquisition_json = '')
   `).run();

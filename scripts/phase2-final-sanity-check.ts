@@ -4,6 +4,10 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { getDb } from '../src/db/database';
 import { writeReport } from './audit/reportWriter';
+import {
+  runPhase21AcquisitionFailures,
+  logPhase21Stats,
+} from './audit/phase21Checks';
 
 const REQUIRED_FILES = [
   'src/systems/jobUiSystem.ts',
@@ -13,23 +17,29 @@ const REQUIRED_FILES = [
   'src/systems/kaiForgeSystem.ts',
   'src/db/seedData/ensurePhase2EquipmentRoutes.ts',
   'src/db/seedData/jobMultiplierMaster.ts',
+  'src/db/seedData/equipmentClassification.ts',
+  'src/systems/equipmentAcquisitionAudit.ts',
   'scripts/advanced-trial-flow-check.ts',
   'scripts/enemy-balance-design-audit.ts',
   'scripts/job-sub-ui-check.ts',
   'scripts/job-ui-entry-check.ts',
+  'scripts/equipment-completion-audit.ts',
 ];
 
 const CODE_CHECKS: Array<{ label: string; file: string; pattern: RegExp }> = [
   { label: 'trial UI buttons', file: 'src/systems/jobUiSystem.ts', pattern: /job:trial:start/ },
   { label: 'inv:use handler', file: 'src/index.ts', pattern: /parts\[0\] === 'inv'/ },
   { label: 'consumable out-of-battle', file: 'src/systems/inventoryUseSystem.ts', pattern: /useConsumableOutOfBattle/ },
-  { label: 'acquisition hint', file: 'src/systems/itemDetailSystem.ts', pattern: /getItemAcquisitionHint/ },
+  { label: 'acquisition hint', file: 'src/systems/itemDetailSystem.ts', pattern: /formatAcquisitionSourceHint/ },
+  { label: 'buildAcquisitionHintLines', file: 'src/systems/itemDetailSystem.ts', pattern: /buildAcquisitionHintLines/ },
+  { label: 'legacy display', file: 'src/systems/itemDetailSystem.ts', pattern: /現在通常入手不可/ },
   { label: 'Src echo x3', file: 'src/db/seedData/forgeMaster.ts', pattern: /SRC_FORGE_ECHO_QTY = 3/ },
   { label: 'arms drop weight', file: 'src/systems/equipmentDropSystem.ts', pattern: /arms:\s*\d+/ },
   { label: 'phase2 sub UI', file: 'src/systems/jobUiSystem.ts', pattern: /getSelectableSubJobs/ },
   { label: 'job UI entry', file: 'src/interactions/uxHandler.ts', pattern: /buildJobMenuView/ },
   { label: 'safe select menu', file: 'src/systems/jobUiSystem.ts', pattern: /safeSelectMenu/ },
   { label: 'Uni material drops', file: 'src/db/seedData/jobProgressionMaster.ts', pattern: /PHASE2_UNI_MATERIAL_DROPS/ },
+  { label: 'sanitizeComponents', file: 'src/utils/messageFlow.ts', pattern: /sanitizeComponents/ },
 ];
 
 function gitStatusShort(): string {
@@ -80,6 +90,10 @@ function main() {
   if (!trialCols) issues.push('battle_sessions.trial_type missing');
   lines.push('', '## DB trial columns', trialCols ? 'OK' : 'FAIL');
 
+  logPhase21Stats();
+  issues.push(...runPhase21AcquisitionFailures());
+  lines.push('', '## Phase2.1 equipment completion', issues.filter((i) => i.includes('入手') || i.includes('unknown') || i.includes('セット')).length ? 'see issues' : 'OK');
+
   lines.push('', '## Summary', issues.length ? `FAIL (${issues.length})` : 'PASS');
   if (issues.length) {
     lines.push('', '### Issues');
@@ -89,6 +103,7 @@ function main() {
   writeReport('phase2-final-sanity-check.md', lines.join('\n'));
   if (issues.length) {
     console.error(`FAIL: ${issues.length} issue(s)`);
+    for (const i of issues.slice(0, 25)) console.error('  -', i);
     process.exit(1);
   }
   console.log('PASS');

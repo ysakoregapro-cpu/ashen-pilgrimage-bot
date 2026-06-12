@@ -74,8 +74,16 @@ export function getEquipmentElementDef(
 }
 
 export type AcquisitionSource = {
-  type: 'shop' | 'drop_monster' | 'drop_area' | 'boss_reward' | 'raid_reward' | 'story_reward' | 'craft' | 'upgrade_material' | 'trade_only' | 'unique' | 'start';
+  type: 'shop' | 'drop_monster' | 'drop_area' | 'boss_reward' | 'boss_drop' | 'rematch_drop'
+    | 'kai_forge' | 'src_forge' | 'valhalla' | 'raid_reward' | 'raid' | 'story_reward' | 'craft'
+    | 'upgrade_material' | 'trade_only' | 'unique' | 'start' | 'legacy' | 'excluded';
   detail: string;
+};
+
+export type AcquisitionJson = {
+  sources: AcquisitionSource[];
+  status?: 'legacy' | 'excluded';
+  reason?: string;
 };
 
 /** Manual overrides for key items; others derived at seed time */
@@ -102,6 +110,8 @@ export const ACQUISITION_OVERRIDES: Record<string, AcquisitionSource[]> = {
     { type: 'shop', detail: 'はじまりの星原（間接）' },
   ],
   wpn_traveler_sword: [{ type: 'start', detail: '冒険開始時' }],
+  wpn_unique_silence: [{ type: 'legacy', detail: '旧Uni経路（現在は通常入手不可）' }],
+  acc_raid_random: [{ type: 'raid', detail: 'レイド報酬（残響の指輪）' }],
   mat_star_pilgrim_echo: [
     { type: 'boss_reward', detail: '炉熱の番人（低確率・周回）' },
     { type: 'craft', detail: 'カイSrc昇華に使用' },
@@ -112,9 +122,11 @@ export function formatAcquisitionHint(sources: AcquisitionSource[]): string {
   if (!sources.length) return '入手: 探索・店・ボス';
   return sources.map((s) => {
     const labels: Record<string, string> = {
-      shop: '店', drop_monster: '敵', drop_area: '探索', boss_reward: 'ボス',
-      raid_reward: 'レイド', story_reward: 'ストーリー', craft: '作成',
+      shop: '店', drop_monster: '敵', drop_area: '探索', boss_reward: 'ボス', boss_drop: 'ボス',
+      raid_reward: 'レイド', raid: 'レイド', story_reward: 'ストーリー', craft: '作成',
       upgrade_material: '強化', trade_only: '取引所', unique: '一点物', start: '初期',
+      kai_forge: 'カイ伝承', src_forge: 'Src変質', valhalla: 'ヴァルハラ', rematch_drop: '再戦',
+      legacy: '旧経路', excluded: '除外',
     };
     return `${labels[s.type] ?? s.type}:${s.detail}`;
   }).join(' / ');

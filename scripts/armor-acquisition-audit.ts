@@ -3,11 +3,12 @@ import {
   buildArmorAuditRows, getSlotDropAnalysis, getUnplacedSets, initAuditDb,
 } from './audit/acquisitionIndex';
 import { writeReport, writeCsv, mdTable } from './audit/reportWriter';
+import { runPhase21ArmorFailures, logPhase21Stats } from './audit/phase21Checks';
 
 function main() {
   initAuditDb();
   const rows = buildArmorAuditRows();
-  const { summary, weights, battleTables, normalizeNote } = getSlotDropAnalysis();
+  const { summary, weights, battleTables } = getSlotDropAnalysis();
   const unplaced = getUnplacedSets();
 
   const headers = [
@@ -53,11 +54,8 @@ function main() {
       return `- **${s.setId}**: ${status} — ${pieceList}`;
     }),
     '',
-    '## Phase2 endgame set placement (DB pools via ensurePhase2EquipmentRoutes)',
-    '- set_iron_snow → area_red_watchtower, area_fire_training',
-    '- set_valhalla → area_valhalla_outer, area_deep_core',
-    '- set_black_lamp → area_cinder_passage, area_black_lantern_alley',
-    '- set_old_king → area_broken_throne, area_ash_boulevard',
+    '## Phase2.1 endgame set placement',
+    '- set_iron_snow / set_valhalla / set_black_lamp / set_old_king — 5部位 pool 配置（equipment-completion-audit 参照）',
     '',
     '## Unobtainable armor',
     mdTable(['id', 'name', 'slot', 'series'], rows.filter((r) => r.obtainable === 'NO').slice(0, 30).map((r) => [r.item_id, r.name, r.slot, r.series])),
@@ -66,6 +64,15 @@ function main() {
   writeReport('armor-acquisition-audit.md', md);
   writeCsv('armor-acquisition-audit.csv', headers, csvRows);
   console.log(`✅ armor-acquisition-audit → ${rows.length} pieces`);
+
+  logPhase21Stats();
+  const phase21Issues = runPhase21ArmorFailures();
+  if (phase21Issues.length) {
+    console.error('❌ Phase2.1 armor checks failed:');
+    for (const i of phase21Issues.slice(0, 30)) console.error('  -', i);
+    process.exit(1);
+  }
+  console.log('✅ Phase2.1 armor completion checks passed');
 }
 
 main();

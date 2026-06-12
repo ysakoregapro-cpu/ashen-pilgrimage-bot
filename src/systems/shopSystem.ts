@@ -13,11 +13,15 @@ export interface ShopItem {
 }
 
 const SHOP_ADDITIONS: Record<string, string[]> = {
-  start_starfield: ['wpn_leather_gauntlet', 'arm_set_starfield_arms', 'arm_set_starfield_legs', 'arm_set_starfield_feet'],
+  start_starfield: [
+    'wpn_leather_gauntlet', 'wpn_starfield_sword', 'arm_set_starfield_head',
+    'arm_set_starfield_arms', 'arm_set_starfield_legs', 'arm_set_starfield_feet', 'acc_traveler_talisman',
+  ],
   old_road_village: ['wpn_training_hammer', 'wpn_old_bow', 'wpn_leather_gauntlet', 'arm_set_old_road_arms', 'arm_set_old_road_legs', 'arm_set_old_road_feet'],
   silver_mine: ['wpn_training_hammer', 'wpn_mini_cannon', 'arm_set_silver_arms', 'arm_set_silver_legs', 'arm_set_silver_feet'],
   mist_forest: ['wpn_old_bow'],
   deep_furnace_outpost: ['wpn_mini_cannon'],
+  valhalla_fortress: ['acc_valhalla_necklace'],
 };
 
 const TOWN_SHOP_CATALOG: Record<string, string[]> = {
@@ -31,7 +35,7 @@ const TOWN_SHOP_CATALOG: Record<string, string[]> = {
   hourglass_city: ['cons_heal_large', 'cons_status_cure', 'upg_fine_stone', 'rep_silver_clip'],
   ash_capital: ['cons_heal_large', 'cons_status_cure', 'upg_fine_stone', 'upg_rare_stone', 'rep_deep_repair'],
   deep_furnace_outpost: ['cons_heal_large', 'cons_lamp_bottle', 'upg_rare_stone', 'upg_deep_core_stone', 'rep_deep_repair', 'cons_status_cure', ...SHOP_ADDITIONS.deep_furnace_outpost!],
-  valhalla_fortress: ['cons_heal_large', 'cons_lamp_bottle', 'cons_status_cure', 'upg_rare_stone', 'upg_deep_core_stone', 'rep_deep_repair'],
+  valhalla_fortress: ['cons_heal_large', 'cons_lamp_bottle', 'cons_status_cure', 'upg_rare_stone', 'upg_deep_core_stone', 'rep_deep_repair', ...SHOP_ADDITIONS.valhalla_fortress!],
   rain_ruins: ['cons_heal_potion', 'cons_heal_medium', 'cons_antidote', 'upg_rough_stone', 'wpn_rain_bow'],
 };
 
@@ -141,4 +145,8 @@ export function sellInventoryItem(userId: string, inventoryId: number, quantity 
   }
   addGold(userId, total);
   return { ok: true, message: `「${row.name}」×${quantity}を${total}Gで売却した。` };
+}
+
+export function getShopCatalogItemIds(): Record<string, string[]> {
+  return TOWN_SHOP_CATALOG;
 }
