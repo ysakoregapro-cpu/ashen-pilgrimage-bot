@@ -203,7 +203,7 @@ export const ALL_JOB_SKILLS: BattleSkillDef[] = [
   { id: 'bs_silver_fortress_ultimate', name: '白銀城塞奥義', job: '重騎士', desc: '重騎士の奥義。', mp: 18, power: 1.4, skill_type: 'special', scaling_stat: 'defense', break_power: 45 },
 
   // --- 狩人 ---
-  { id: 'bs_aim_shot', name: '狙い撃ち', job: '狩人', desc: '精密な一射。', mp: 4, power: 1.38, skill_type: 'technique', scaling_stat: 'attack', hit_bonus: 0.08, target_type: 'single_enemy' },
+  { id: 'bs_aim_shot', name: '狙い撃ち', job: '狩人', desc: '精密な一射。', mp: 4, power: 1.28, skill_type: 'technique', scaling_stat: 'attack', hit_bonus: 0.08, target_type: 'single_enemy' },
   { id: 'bs_bind_arrow', name: '足止め矢', job: '狩人', desc: '敵の足を止める。', mp: 5, power: 0.8, skill_type: 'debuff', scaling_stat: 'attack', effect_type: 'slow', target_type: 'single_enemy' },
   { id: 'bs_trap', name: '罠設置', job: '狩人', desc: '罠を仕掛ける。', mp: 6, power: 0, skill_type: 'break', scaling_stat: 'speed', effect_type: 'trap' },
   { id: 'bs_weak_shot', name: '弱点射撃', job: '狩人', desc: '急所を狙う。', mp: 7, power: 1.35, skill_type: 'technique', scaling_stat: 'attack', crit_bonus: 0.15, break_power: 12, target_type: 'single_enemy' },

@@ -70,6 +70,9 @@ export type CoopParticipantState = {
   tauntActive: boolean;
   coverTarget: string | null;
   defeated: boolean;
+  atkBuff: number;
+  magBuff: number;
+  defBuff: number;
 };
 
 export type CoopEnemyState = {

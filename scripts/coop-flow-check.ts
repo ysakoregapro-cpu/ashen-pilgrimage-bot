@@ -27,6 +27,9 @@ import {
 import { grantCoopBattleRewards, applyRescueLeaderRecovery, getCoopReward } from '../src/systems/coop/coopRewardSystem';
 import { RESCUE_HP_MULT, RAID_HP_MULT } from '../src/systems/coop/coopTypes';
 import { setStoryFlag } from '../src/systems/storySystem';
+import { setCoopBattleMessage } from '../src/systems/coop/coopMessageSync';
+import { runCoopPollTickForTest, startCoopPolling, stopCoopPolling } from '../src/systems/coop/coopMaintenance';
+import { nextActionButtons } from '../src/utils/nextActionButtons';
 
 const GUILD = 'coop-test-guild';
 const LEADER = 'coop-leader';
@@ -62,7 +65,7 @@ function cleanupCoop() {
   db.prepare('DELETE FROM coop_recruits').run();
 }
 
-function main() {
+async function main() {
   const db = getDb();
   ensurePhase2Seed(db);
   cleanupCoop();
@@ -247,6 +250,33 @@ function main() {
   const lateJoin = joinCoopRecruit(r6.recruitId!, H3);
   if (!lateJoin.includes('終了') && !lateJoin.includes('開始')) issues.push('開始後参加を弾いていない');
 
+  // message columns + polling
+  const cols = db.prepare('PRAGMA table_info(coop_battle_sessions)').all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === 'message_id')) issues.push('coop_battle_sessions.message_id なし');
+  if (!cols.some((c) => c.name === 'channel_id')) issues.push('coop_battle_sessions.channel_id なし');
+
+  cleanupCoop();
+  const r7 = createCoopRecruit(GUILD, LEADER, 'rescue', { monster_id: 'mon_bandit' });
+  joinCoopRecruit(r7.recruitId!, H2);
+  startCoopRecruit(r7.recruitId!, LEADER);
+  const b7 = getCoopBattleByRecruit(r7.recruitId!)!;
+  setCoopBattleMessage(b7.id, 'test-msg', 'test-ch');
+  const row = db.prepare('SELECT message_id, channel_id FROM coop_battle_sessions WHERE id = ?').get(b7.id) as {
+    message_id: string; channel_id: string;
+  };
+  if (row.message_id !== 'test-msg') issues.push('battle message_id 保存失敗');
+
+  db.prepare("UPDATE coop_battle_sessions SET turn_deadline_at = datetime('now', '-10 minutes'), status = 'active' WHERE id = ?").run(b7.id);
+  startCoopPolling();
+  startCoopPolling();
+  await runCoopPollTickForTest();
+  stopCoopPolling();
+  const pendingAfterPoll = getPendingActionCount(b7.id, 1);
+  if (pendingAfterPoll > 0) issues.push('ポーリング後も未入力が残る');
+
+  const raidBtns = nextActionButtons('coop_raid_result');
+  if (!raidBtns.length || !JSON.stringify(raidBtns).includes('flow:raid')) issues.push('coop_raid_result ボタン不足');
+
   console.log('coop-flow-check');
   if (issues.length) {
     console.error('FAIL');
@@ -256,4 +286,4 @@ function main() {
   console.log('OK — coop recruit, battle, rewards, HP scale, stale guards');
 }
 
-main();
+main().catch((e) => { console.error(e); process.exit(1); });

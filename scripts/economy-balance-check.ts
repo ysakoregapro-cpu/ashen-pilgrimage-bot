@@ -4,6 +4,7 @@ import { ensurePhase2Seed } from '../src/db/seedData/phase2Seed';
 import { ensureMaterialsSeed } from '../src/db/seedData/materials';
 import { calcInnCost, calcShrineCost } from '../src/systems/innSystem';
 import { createPlayer, getPlayer } from '../src/systems/playerSystem';
+import { RESCUE_HP_MULT, RAID_HP_MULT } from '../src/systems/coop/coopTypes';
 
 const TEST_USER = 'economy-balance-check-user';
 const issues: string[] = [];
@@ -33,15 +34,41 @@ function main() {
   const shrineCost = calcShrineCost(TEST_USER, 'twilight_port');
   if (shrineCost !== Math.floor(innCost * 0.5)) issues.push(`救護所料金 ${shrineCost} ≠ 宿屋半額 ${Math.floor(innCost * 0.5)}`);
 
-  // 10 lamp bottles sell should not exceed 2000G early game
   const lampTotal = sell * 10;
   if (lampTotal >= 2000) issues.push(`灯火10個売却 ${lampTotal}G ≥ 2000G`);
 
-  const avgBattleGold = db.prepare(`
-    SELECT AVG(gold_reward) AS avg FROM monsters WHERE is_boss = 0 AND area_tag IN ('starfield', 'port')
-  `).get() as { avg: number };
-  if (avgBattleGold.avg * 20 > innCost * 3) {
-    // soft check - 20 battles shouldn't trivially afford 3 rests
+  // レイド/救難報酬の売却金策チェック
+  const raidItems = ['wpn_valhalla_blade', 'acc_raid_random', 'raid_deep_core'];
+  for (const id of raidItems) {
+    const row = db.prepare('SELECT sell_price, shop_sell_price, rarity FROM items WHERE id = ?').get(id) as {
+      sell_price: number; shop_sell_price: number | null; rarity: string;
+    } | undefined;
+    if (!row) continue;
+    const sp = row.shop_sell_price ?? row.sell_price ?? 0;
+    if (id === 'wpn_valhalla_blade' && sp > 800) issues.push(`URレイド武器売却 ${sp}G 高すぎ`);
+    if (id === 'raid_deep_core' && sp > 120) issues.push(`レイド素材売却 ${sp}G 高すぎ`);
+  }
+
+  // 救難は通常戦闘より控えめ（bandit基準）
+  const bandit = db.prepare('SELECT exp_reward, gold_reward FROM monsters WHERE id = ?').get('mon_bandit') as {
+    exp_reward: number; gold_reward: number;
+  };
+  if (bandit) {
+    const rescueLeaderGold = Math.floor(bandit.gold_reward * 0.3);
+    const rescueHelperGold = Math.floor(bandit.gold_reward * 0.2);
+    const normalGold = Math.floor(bandit.gold_reward * 1.2);
+    if (rescueLeaderGold >= normalGold * 0.5) issues.push('救難主催ゴールド高すぎ');
+    if (rescueHelperGold >= normalGold * 0.35) issues.push('救難助っ人ゴールド高すぎ');
+    console.log(`   救難報酬目安: 主催${rescueLeaderGold}G / 助っ人${rescueHelperGold}G (通常${normalGold}G)`);
+  }
+
+  const boss = db.prepare('SELECT exp_reward, gold_reward, hp FROM monsters WHERE id = ?').get('mon_deep_core_boss') as {
+    exp_reward: number; gold_reward: number; hp: number;
+  };
+  if (boss) {
+    const raidGold = Math.floor(boss.gold_reward * 2 * 1.2);
+    if (raidGold > 5000) issues.push(`レイド基本G ${raidGold} 高すぎ`);
+    console.log(`   レイドHP倍率: x${RAID_HP_MULT[4]} / 救難HP倍率: x${RESCUE_HP_MULT[4]}`);
   }
 
   if (issues.length) {

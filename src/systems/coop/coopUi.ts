@@ -17,6 +17,7 @@ import {
 import { formatCoopBattleStatus, getCoopBattle, needsTargetSelection } from './coopBattleSystem';
 import { getUsableBattleSkills } from '../skillSystem';
 import { getDb } from '../../db/database';
+import { nextActionButtons } from '../../utils/nextActionButtons';
 import type { CoopMode } from './coopTypes';
 
 export function buildCoopRecruitEmbed(recruitId: string): EmbedBuilder {
@@ -194,27 +195,9 @@ export function buildCoopTargetButtons(
   return rows;
 }
 
-export function buildCoopResultButtons(recruitId?: string, mode?: CoopMode, status?: string): ActionRowBuilder<ButtonBuilder>[] {
+export function buildCoopResultButtons(_recruitId?: string, mode?: CoopMode, status?: string): ActionRowBuilder<ButtonBuilder>[] {
   if (status !== 'victory' && status !== 'defeat') return [];
-  const rows: ActionRowBuilder<ButtonBuilder>[] = [
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('town:home').setLabel('町へ戻る').setStyle(ButtonStyle.Primary),
-    ),
-  ];
-  if (mode === 'raid') {
-    rows[0]!.addComponents(
-      new ButtonBuilder().setCustomId('flow:raid').setLabel('レイドメニュー').setStyle(ButtonStyle.Secondary),
-    );
-  }
-  if (recruitId && mode) {
-    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`coop:recruit:${mode}`).setLabel('再募集').setStyle(ButtonStyle.Success),
-    ));
-  }
-  rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId('town:explore').setLabel('探索へ向かう').setStyle(ButtonStyle.Success),
-  ));
-  return rows;
+  return nextActionButtons(mode === 'raid' ? 'coop_raid_result' : 'coop_rescue_result') as ActionRowBuilder<ButtonBuilder>[];
 }
 
 export { needsTargetSelection };

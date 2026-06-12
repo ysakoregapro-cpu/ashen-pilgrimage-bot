@@ -180,6 +180,8 @@ export function runMigrations(db: Database.Database): void {
   addColumn(db, 'items', 'shop_sell_price', 'INTEGER');
 
   addColumn(db, 'player_inventory', 'is_listed', 'INTEGER DEFAULT 0');
+  addColumn(db, 'coop_battle_sessions', 'channel_id', 'TEXT');
+  addColumn(db, 'coop_battle_sessions', 'message_id', 'TEXT');
   ensureMonstersIsBossColumn(db);
   addColumn(db, 'monsters', 'spirit', 'INTEGER DEFAULT 0');
 

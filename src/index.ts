@@ -86,7 +86,8 @@ import {
   type StoryEventPayload,
 } from './systems/storySystem';
 
-import { runCoopMaintenance } from './systems/coop/coopMaintenance';
+import { runCoopMaintenance, startCoopPolling } from './systems/coop/coopMaintenance';
+import { setCoopDiscordClient } from './systems/coop/coopMessageSync';
 import {
   handleCoopRecruitButton,
   handleCoopBattleButton,
@@ -117,6 +118,10 @@ client.once(Events.ClientReady, (c) => {
     console.log(`Coop maintenance: expired=${maint.expiredRecruits} stale=${maint.staleBattles}`);
 
   }
+
+  setCoopDiscordClient(c);
+
+  startCoopPolling();
 
   console.log(`灰星巡礼録 起動完了: ${c.user.tag}`);
 

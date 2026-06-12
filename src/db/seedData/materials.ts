@@ -55,13 +55,13 @@ const MATERIALS: Mat[] = [
   { id: 'mat_starfall_obsidian', name: '星見の残光', cat: 'boss_material', rarity: 'SSR', desc: '星落ちの観測者が残す核片。カイの伝承に使う。', source: '月下の観測者（再戦・低確率）', usage: 'カイ伝承', price: 0, trade: 0 },
   { id: 'mat_black_lantern_cinder', name: '黒灯の残滓', cat: 'boss_material', rarity: 'SSR', desc: '黒灯の残影が残す煤核。カイの伝承に使う。', source: '黒灯の残影（再戦・低確率）', usage: 'カイ伝承', price: 0, trade: 0 },
   { id: 'boss_silent_page', name: '無答の守護者の頁', cat: 'boss_material', rarity: 'UR', desc: '禁書の頁。', source: '無答の守護者', usage: 'Src', price: 500 },
-  { id: 'raid_valhalla_plate', name: 'ヴァルハラ装甲片', cat: 'raid_material', rarity: 'UR', desc: 'レイド報酬。', source: 'ヴァルハラレイド', usage: 'Src+10', price: 400, trade: 1 },
-  { id: 'raid_sky_core', name: '空塞機兵の中枢', cat: 'raid_material', rarity: 'UR', desc: '空塞機兵の中枢。', source: 'ヴァルハラレイド', usage: 'Src強化', price: 450, trade: 1 },
-  { id: 'raid_furnace_unit', name: '炉心防衛ユニット核', cat: 'raid_material', rarity: 'UR', desc: '炉心防衛核。', source: '深層炉心', usage: 'Src+10', price: 500, trade: 1 },
-  { id: 'raid_control_chip', name: '旧統治軍制御片', cat: 'raid_material', rarity: 'UR', desc: '制御片。', source: 'ヴァルハラ', usage: 'Src', price: 400, trade: 1 },
-  { id: 'raid_deep_core', name: '深層炉心核片', cat: 'raid_material', rarity: 'UR', desc: '炉心核片。', source: '深層炉心', usage: 'Src+10', price: 550, trade: 1 },
-  { id: 'raid_machina_echo', name: 'マキナの残響片', cat: 'raid_material', rarity: 'UR', desc: 'マキナ残響。', source: 'マキナ区画', usage: 'Src+10', price: 550, trade: 1 },
-  { id: 'raid_old_king_film', name: '旧王の影片', cat: 'raid_material', rarity: 'UR', desc: '旧王の影片。', source: '旧王の玉座', usage: 'Src+10', price: 600, trade: 1 },
+  { id: 'raid_valhalla_plate', name: 'ヴァルハラ装甲片', cat: 'raid_material', rarity: 'UR', desc: 'レイド報酬。', source: 'ヴァルハラレイド', usage: 'Src+10', price: 95, trade: 1 },
+  { id: 'raid_sky_core', name: '空塞機兵の中枢', cat: 'raid_material', rarity: 'UR', desc: '空塞機兵の中枢。', source: 'ヴァルハラレイド', usage: 'Src強化', price: 95, trade: 1 },
+  { id: 'raid_furnace_unit', name: '炉心防衛ユニット核', cat: 'raid_material', rarity: 'UR', desc: '炉心防衛核。', source: '深層炉心', usage: 'Src+10', price: 100, trade: 1 },
+  { id: 'raid_control_chip', name: '旧統治軍制御片', cat: 'raid_material', rarity: 'UR', desc: '制御片。', source: 'ヴァルハラ', usage: 'Src', price: 90, trade: 1 },
+  { id: 'raid_deep_core', name: '深層炉心核片', cat: 'raid_material', rarity: 'UR', desc: '炉心核片。', source: '深層炉心', usage: 'Src+10', price: 95, trade: 1 },
+  { id: 'raid_machina_echo', name: 'マキナの残響片', cat: 'raid_material', rarity: 'UR', desc: 'マキナ残響。', source: 'マキナ区画', usage: 'Src+10', price: 95, trade: 1 },
+  { id: 'raid_old_king_film', name: '旧王の影片', cat: 'raid_material', rarity: 'UR', desc: '旧王の影片。', source: '旧王の玉座', usage: 'Src+10', price: 100, trade: 1 },
   { id: 'src_primordial', name: '原初刻印の欠片', cat: 'src_core', rarity: 'SSR', desc: 'Src発現素材。', source: '高難度クエスト', usage: 'Src発現', price: 800, trade: 1 },
   { id: 'src_star_mark', name: '星印の欠片', cat: 'src_core', rarity: 'SSR', desc: 'Src発現素材。', source: '星落ち観測所', usage: 'Src発現', price: 800, trade: 1 },
   { id: 'src_ash_star', name: '灰星結晶', cat: 'src_core', rarity: 'UR', desc: '灰星結晶。', source: '灰冠・レイド', usage: 'Src発現', price: 1000, trade: 1 },
@@ -116,4 +116,5 @@ export function ensureMaterialsSeed(db: Database.Database): void {
   for (const m of MATERIALS) {
     upsert.run(m.id, m.name, m.cat, m.rarity, m.desc, m.source, m.usage, m.price, m.trade ?? 1, ts);
   }
+  db.prepare(`UPDATE items SET shop_sell_price = sell_price WHERE category = 'raid_material'`).run();
 }

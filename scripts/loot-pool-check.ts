@@ -61,6 +61,23 @@ function main() {
     issues.push('探索地詳細に共通pool説明がない');
   }
 
+  // エリアrankが上がるほど高rarityが増えるか（簡易）
+  const rankRarity: Record<number, number[]> = {};
+  for (const a of areas) {
+    const rank = getAreaRank(a.id);
+    const pool = buildEffectiveRewardPool(a.town_id, a.id);
+    for (const p of pool) {
+      const item = db.prepare('SELECT rarity FROM items WHERE id = ?').get(p.item_id) as { rarity: string } | undefined;
+      const score = item?.rarity === 'SSR' ? 4 : item?.rarity === 'SR' ? 3 : item?.rarity === 'R' ? 2 : 1;
+      if (!rankRarity[rank]) rankRarity[rank] = [];
+      rankRarity[rank]!.push(score);
+    }
+  }
+  const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / (arr.length || 1);
+  if (rankRarity[1] && rankRarity[3] && avg(rankRarity[3]!) < avg(rankRarity[1]!)) {
+    issues.push('rank3の平均レア度がrank1より低い');
+  }
+
   if (issues.length) {
     console.error('❌ loot-pool-check failed:');
     for (const i of issues) console.error('  -', i);

@@ -29,6 +29,8 @@ export type NextActionContext =
   | 'error'
   | 'explore_area'
   | 'item_detail'
+  | 'coop_raid_result'
+  | 'coop_rescue_result'
   | 'generic';
 
 export type UpgradeActionKind =
@@ -191,6 +193,31 @@ export function nextActionButtons(
           btn('flow:rescue', '救難を求める', ButtonStyle.Danger),
           btn('flow:equip', '身支度', ButtonStyle.Secondary),
           btn('guide:chapter:defeat', '敗北について聞く', ButtonStyle.Secondary),
+        ),
+      ];
+
+    case 'coop_raid_result':
+      return [
+        row(
+          btn('flow:raid', 'レイド募集へ', ButtonStyle.Primary),
+          btn('town:home', '町へ戻る', ButtonStyle.Secondary),
+          btn('town:explore', '探索へ向かう', ButtonStyle.Success),
+        ),
+        row(
+          btn('coop:recruit:raid', '再募集', ButtonStyle.Success),
+          btn('flow:equip', '身支度', ButtonStyle.Secondary),
+        ),
+      ];
+
+    case 'coop_rescue_result':
+      return [
+        row(
+          btn('flow:rescue', '救難を再要請', ButtonStyle.Danger),
+          btn('town:home', '町へ戻る', ButtonStyle.Primary),
+          btn('town:explore', '探索へ向かう', ButtonStyle.Success),
+        ),
+        row(
+          btn('flow:equip', '身支度', ButtonStyle.Secondary),
         ),
       ];
 

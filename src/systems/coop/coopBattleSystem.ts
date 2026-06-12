@@ -8,6 +8,12 @@ import { calcPlayerDamageToEnemy, calcEnemyDamageToPlayer } from '../combatMath'
 import { getPlayerElementResistances, applyPlayerElementResist } from '../elementSystem';
 import { removeItem } from '../inventorySystem';
 import {
+  statBlockFromPlayer,
+  calcSkillHitDamage,
+  calcSkillHeal,
+  resolveSkillEffectMeta,
+} from '../skillBattleCore';
+import {
   COOP_TURN_DEADLINE_MS,
   COOP_RESOLVE_LOCK_STALE_MS,
   RESCUE_HP_MULT,
@@ -38,6 +44,8 @@ export type CoopBattleRow = {
   status_json: string;
   resolving_lock: string | null;
   turn_deadline_at: string | null;
+  channel_id: string | null;
+  message_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -144,6 +152,9 @@ export function createCoopBattleFromRecruit(recruitId: string): { ok: boolean; m
       tauntActive: false,
       coverTarget: null,
       defeated: p.hp <= 0,
+      atkBuff: 0,
+      magBuff: 0,
+      defBuff: 0,
     });
   }
 
@@ -478,21 +489,38 @@ function applyCoopSkill(
   const skill = getSkill(skillId);
   if (!skill) return;
   caster.mp = Math.max(0, caster.mp - skill.mp_cost);
-
-  const powerMult = (skill.power || 100) / 100;
+  const stats = statBlockFromPlayer(caster.user_id);
+  const effect = skill.effect_type ?? '';
+  const fx = resolveSkillEffectMeta(skill);
   const isMag = ['magic', 'divine', 'machine', 'prayer'].includes(skill.skill_type);
+  const enemyDef = isMag ? enemy.spirit : enemy.defense;
 
-  if (skill.skill_type === 'recovery' || skill.effect_type === 'heal') {
+  if (skill.skill_type === 'recovery' || effect === 'heal') {
     const allies = resolveAllies(caster, participants, skill, target);
     for (const ally of allies) {
-      const heal = Math.floor(caster.magic * powerMult * 0.6 + 20);
+      const heal = calcSkillHeal(stats, skill);
       ally.hp = Math.min(ally.max_hp, ally.hp + heal);
-      pushLog(meta, 'player_heal', `<@${caster.user_id}> → <@${ally.user_id}> **${heal}** 回復。`);
+      pushLog(meta, 'player_heal', `<@${caster.user_id}> ${skill.name} → <@${ally.user_id}> **${heal}**`);
     }
     return;
   }
 
-  if (skill.skill_type === 'guard' || skill.target_type === 'cover') {
+  if (effect === 'guard' || effect === 'guard_strong') {
+    caster.defending = true;
+    pushLog(meta, 'player_attack', `<@${caster.user_id}> ${skill.name}（${effect === 'guard_strong' ? '強' : ''}防御）`);
+    return;
+  }
+
+  if (effect === 'cure_poison') {
+    const allies = resolveAllies(caster, participants, skill, target);
+    for (const ally of allies) {
+      ally.poisonTurns = 0;
+      pushLog(meta, 'player_heal', `<@${ally.user_id}> の毒が治った。`);
+    }
+    return;
+  }
+
+  if (skill.skill_type === 'guard' || skill.target_type === 'cover' || effect === 'cover') {
     const cover = resolveSingleAlly(caster, participants, target);
     if (cover && !cover.defeated) {
       caster.coverTarget = cover.user_id;
@@ -501,37 +529,79 @@ function applyCoopSkill(
     return;
   }
 
-  if (skill.target_type === 'taunt' || skill.effect_type === 'taunt') {
+  if (skill.target_type === 'taunt' || effect === 'taunt') {
     caster.tauntActive = true;
-    pushLog(meta, 'player_attack', `<@${caster.user_id}> が挑発した。`);
+    pushLog(meta, 'player_attack', `<@${caster.user_id}> ${skill.name}（挑発）`);
     return;
   }
 
-  if (['debuff', 'break'].includes(skill.skill_type) || skill.break_power > 0) {
-    const breakAdd = skill.break_power || 15;
-    enemy.break += breakAdd;
-    pushLog(meta, 'break', `<@${caster.user_id}> の${skill.name}。ブレイク+${breakAdd}`);
-    checkBreak(enemy, meta);
+  if (effect === 'mag_buff') { caster.magBuff += 0.2; pushLog(meta, 'player_skill', `<@${caster.user_id}> 魔力強化`); return; }
+  if (effect === 'atk_buff') { caster.atkBuff += 0.2; pushLog(meta, 'player_skill', `<@${caster.user_id}> 攻撃強化`); return; }
+  if (effect === 'def_buff') { caster.defBuff += 0.15; pushLog(meta, 'player_heal', `<@${caster.user_id}> 防御強化`); return; }
+  if (effect === 'scan') { pushLog(meta, 'player_skill', `<@${caster.user_id}> 弱点看破`); enemy.break += 10; checkBreak(enemy, meta); return; }
+
+  const aoeMult = (skill.target_type === 'all_enemies' || skill.target_type === 'all') ? 0.72 : 1;
+  const hits = skill.hits ?? 1;
+
+  if (skill.power <= 0 && (skill.break_power > 0 || skill.status_effect)) {
+    if (skill.break_power > 0) {
+      enemy.break += skill.break_power;
+      pushLog(meta, 'break', `<@${caster.user_id}> ${skill.name} ブレイク+${skill.break_power}`);
+      checkBreak(enemy, meta);
+    }
+    applyCoopStatusEffect(caster, enemy, meta, skill, mode, fx);
+    return;
   }
 
-  const targets = skill.target_type === 'all_enemies' || skill.target_type === 'all'
-    ? [enemy]
-    : [enemy];
-
-  for (const _t of targets) {
-    const dmg = applyPlayerDamage(caster, enemy, meta, isMag, powerMult);
+  for (let i = 0; i < hits; i++) {
+    const result = calcSkillHitDamage(stats, skill, enemyDef, {
+      atkBuff: caster.atkBuff,
+      magBuff: caster.magBuff,
+      perHitMult: aoeMult / hits,
+    });
+    if (!result.hit) {
+      pushLog(meta, 'player_skill', `<@${caster.user_id}> ${skill.name} 外れた`);
+      continue;
+    }
+    let dmg = result.damage;
+    if (meta.breakRemainingHits > 0) {
+      dmg = Math.floor(dmg * meta.playerBreakDamageMult);
+      meta.breakRemainingHits--;
+    }
     enemy.hp -= dmg;
-    enemy.break += dmg * 0.25;
-    pushLog(meta, isMag ? 'player_skill' : 'player_attack', `<@${caster.user_id}> ${skill.name} **${dmg}**`);
+    enemy.break += (skill.break_power ?? 0) + dmg * 0.25;
+    const critTag = result.crit ? '（会心）' : '';
+    pushLog(meta, isMag ? 'player_skill' : 'player_attack', `<@${caster.user_id}> ${skill.name}${hits > 1 ? `(${i + 1})` : ''} **${dmg}**${critTag}`);
     checkBreak(enemy, meta);
   }
 
-  if (skill.status_effect === 'poison' && mode === 'raid') {
-    pushLog(meta, 'status', 'レイドボスは毒を弱体化として受け、次の攻撃が鈍る。');
+  applyCoopStatusEffect(caster, enemy, meta, skill, mode, fx);
+}
+
+function applyCoopStatusEffect(
+  caster: CoopParticipantState,
+  enemy: CoopEnemyState,
+  meta: CoopBattleMeta,
+  skill: SkillRow,
+  mode: CoopMode,
+  fx: ReturnType<typeof resolveSkillEffectMeta>,
+): void {
+  const status = skill.status_effect ?? fx.statusEffect;
+  if (!status) return;
+
+  if (mode === 'raid') {
+    if (status === 'poison' || status === 'silence' || status === 'bind') {
+      meta.enemyNextAtkReduceActive = true;
+      meta.enemyNextAtkReducePct = Math.max(meta.enemyNextAtkReducePct, 0.15);
+      if (status === 'silence') meta.raidHeavyPending = false;
+      pushLog(meta, 'status', `${skill.name}: レイドボスは状態異常を弱体化として受けた。`);
+      return;
+    }
+  }
+
+  if (status === 'poison') {
+    pushLog(meta, 'status', `${skill.name}: 敵に毒がかかった（coop簡略）。`);
     meta.enemyNextAtkReduceActive = true;
-  } else if (skill.status_effect === 'silence' && mode === 'raid') {
-    pushLog(meta, 'status', '完全停止は効かないが、次の大技予兆が弱まった。');
-    meta.raidHeavyPending = false;
   }
 }
 
@@ -738,6 +808,11 @@ export function cleanupStaleCoopBattles(): number {
     WHERE status = 'resolving' AND updated_at <= ?
   `).run(nowIso(), staleBefore);
   return r.changes;
+}
+
+export function getActiveCoopBattleIds(): string[] {
+  return (getDb().prepare("SELECT id FROM coop_battle_sessions WHERE status = 'active'").all() as Array<{ id: string }>)
+    .map((r) => r.id);
 }
 
 export function validateCoopBattleAction(battleId: string, userId: string): { ok: boolean; message: string } {

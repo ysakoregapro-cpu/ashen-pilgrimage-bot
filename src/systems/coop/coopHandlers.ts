@@ -4,33 +4,32 @@ import {
   leaveCoopRecruit,
   startCoopRecruit,
   cancelCoopRecruit,
-  validateRecruitOperation,
   setCoopRecruitMessage,
 } from './coopRecruitSystem';
 import {
   submitCoopAction,
-  tryResolveCoopTurn,
   validateCoopBattleAction,
-  formatCoopBattleStatus,
   getCoopBattle,
   needsTargetSelection,
 } from './coopBattleSystem';
 import {
   buildCoopRecruitEmbed,
   buildCoopRecruitButtons,
-  buildCoopBattleEmbed,
-  buildCoopBattleButtons,
   buildCoopSkillMenu,
   buildCoopItemMenu,
   buildCoopTargetButtons,
-  buildCoopResultButtons,
 } from './coopUi';
-import { getSkill } from '../skillSystem';
+import {
+  syncRecruitChannelMessage,
+  syncBattleChannelMessage,
+  promoteRecruitMessageToBattle,
+} from './coopMessageSync';
 import { getOrCreatePublicChannel } from '../../utils/channels';
 import { getEnvOptional } from '../../utils/permissions';
 import { successEmbed, errorEmbed } from '../../utils/embeds';
 import type { CoopActionTarget, CoopMode, CoopContext } from './coopTypes';
 import { createCoopRecruit } from './coopRecruitSystem';
+import { getSkill } from '../skillSystem';
 
 export async function postCoopRecruitToGuild(
   guild: Guild,
@@ -69,27 +68,25 @@ export async function handleCoopRecruitButton(interaction: ButtonInteraction, op
       await interaction.reply({ embeds: [errorEmbed(result.message)], ephemeral: true });
       return true;
     }
-    const battle = result.battleId ? getCoopBattle(result.battleId) : undefined;
-    await interaction.reply({
-      embeds: [
-        successEmbed(result.message),
-        ...(result.battleId ? [buildCoopBattleEmbed(result.battleId)] : []),
-      ],
-      components: result.battleId ? buildCoopBattleButtons(result.battleId, userId) : [],
-    });
+    await interaction.reply({ embeds: [successEmbed(result.message)], ephemeral: true });
+    if (result.battleId) {
+      await promoteRecruitMessageToBattle(recruitId, result.battleId);
+    } else {
+      await syncRecruitChannelMessage(recruitId, userId);
+    }
     return true;
   } else {
     return false;
   }
 
-  const check = validateRecruitOperation(recruitId);
-  if (check.recruit && interaction.message.editable) {
+  await syncRecruitChannelMessage(recruitId, userId);
+  if (interaction.message.editable) {
     try {
       await interaction.message.edit({
         embeds: [buildCoopRecruitEmbed(recruitId)],
         components: buildCoopRecruitButtons(recruitId, userId),
       });
-    } catch { /* stale message */ }
+    } catch { /* interaction message fallback */ }
   }
 
   await interaction.reply({ embeds: [successEmbed(message)], ephemeral: true });
@@ -129,7 +126,7 @@ export async function handleCoopBattleButton(interaction: ButtonInteraction, par
 
   if (action === 'attack' || action === 'defend') {
     const result = submitCoopAction(battleId, userId, action as 'attack' | 'defend');
-    await replyCoopBattleResult(interaction, battleId, result.message, userId);
+    await replyCoopBattleAck(interaction, battleId, result.message);
     return true;
   }
 
@@ -163,7 +160,7 @@ export async function handleCoopTargetButton(interaction: ButtonInteraction, par
     itemId: kind === 'item' ? Number(ref) : undefined,
     target,
   });
-  await replyCoopBattleResult(interaction, battleId, result.message, userId);
+  await replyCoopBattleAck(interaction, battleId, result.message);
   return true;
 }
 
@@ -190,7 +187,7 @@ export async function handleCoopSkillSelect(interaction: StringSelectMenuInterac
   if (tt === 'all_allies') target = { kind: 'all_allies' };
 
   const result = submitCoopAction(battleId, userId, 'skill', { skillId, target });
-  await replyCoopBattleResult(interaction, battleId, result.message, userId);
+  await replyCoopBattleAck(interaction, battleId, result.message);
   return true;
 }
 
@@ -205,23 +202,18 @@ export async function handleCoopItemSelect(interaction: StringSelectMenuInteract
   return true;
 }
 
-async function replyCoopBattleResult(
+async function replyCoopBattleAck(
   interaction: ButtonInteraction | StringSelectMenuInteraction,
   battleId: string,
   message: string,
-  userId: string,
 ): Promise<void> {
   const battle = getCoopBattle(battleId);
   const finished = battle && ['victory', 'defeat'].includes(battle.status);
-  const embeds = finished
-    ? [buildCoopBattleEmbed(battleId)]
-    : [successEmbed(`${message}\n\n${formatCoopBattleStatus(battleId)}`)];
-
-  const components = finished
-    ? buildCoopResultButtons(battle?.recruit_id, battle?.mode as CoopMode, battle?.status)
-    : buildCoopBattleButtons(battleId, userId);
-
-  await interaction.reply({ embeds, components, ephemeral: true });
+  const short = finished
+    ? (battle.status === 'victory' ? '協力戦に勝利した！' : '協力戦に敗北した…')
+    : (message.includes('待ち') ? message : '行動を登録した。');
+  await interaction.reply({ embeds: [successEmbed(short)], ephemeral: true });
+  await syncBattleChannelMessage(battleId);
 }
 
 export async function handleLegacyRaidDepart(interaction: ButtonInteraction, raidId: string, userId: string, startRaidFn: (id: string, uid: string) => { message: string; battleId?: string }): Promise<void> {
@@ -230,10 +222,8 @@ export async function handleLegacyRaidDepart(interaction: ButtonInteraction, rai
     await interaction.reply({ embeds: [successEmbed(result.message)], ephemeral: true });
     return;
   }
-  await interaction.reply({
-    embeds: [buildCoopBattleEmbed(result.battleId)],
-    components: buildCoopBattleButtons(result.battleId, userId),
-  });
+  await interaction.reply({ embeds: [successEmbed(result.message)], ephemeral: true });
+  await promoteRecruitMessageToBattle(raidId, result.battleId);
 }
 
 export async function handleLegacyRescueDepart(interaction: ButtonInteraction, rescueId: string, userId: string): Promise<void> {
@@ -242,8 +232,6 @@ export async function handleLegacyRescueDepart(interaction: ButtonInteraction, r
     await interaction.reply({ embeds: [errorEmbed(result.message)], ephemeral: true });
     return;
   }
-  await interaction.reply({
-    embeds: [buildCoopBattleEmbed(result.battleId)],
-    components: buildCoopBattleButtons(result.battleId, userId),
-  });
+  await interaction.reply({ embeds: [successEmbed(result.message)], ephemeral: true });
+  await promoteRecruitMessageToBattle(rescueId, result.battleId);
 }
