@@ -55,7 +55,13 @@ export function formatShopCatalogForPlayer(userId: string, townId: string): stri
   return [`所持金: **${player.gold}G**`, '', ...lines].join('\n');
 }
 
-export function buyShopItem(userId: string, itemId: string, townId: string): { ok: boolean; message: string } {
+export function calcMaxBuyable(gold: number, unitPrice: number): number {
+  if (unitPrice <= 0) return 0;
+  return Math.floor(gold / unitPrice);
+}
+
+export function buyShopItem(userId: string, itemId: string, townId: string, quantity = 1): { ok: boolean; message: string } {
+  const qty = Math.max(1, Math.floor(quantity));
   const catalog = getShopCatalog(townId);
   if (!catalog.some((c) => c.item_id === itemId)) {
     return { ok: false, message: 'この店では扱っていない品だ。' };
@@ -63,12 +69,26 @@ export function buyShopItem(userId: string, itemId: string, townId: string): { o
   const item = getItemPricing(itemId);
   if (!item) return { ok: false, message: '品が見つかりません。' };
   const price = resolveShopBuyPrice(item);
-  if (!spendGold(userId, price)) {
-    return { ok: false, message: `ゴールドが足りません。（${price}G必要）` };
+  const total = price * qty;
+  const player = requirePlayer(userId);
+  if (player.gold < total) {
+    const max = calcMaxBuyable(player.gold, price);
+    return { ok: false, message: max > 0
+      ? `ゴールドが足りません。（${total}G必要・最大${max}個まで）`
+      : `ゴールドが足りません。（${total}G必要）` };
   }
-  addItem(userId, itemId, 1);
+  if (!spendGold(userId, total)) {
+    return { ok: false, message: `ゴールドが足りません。（${total}G必要）` };
+  }
+  addItem(userId, itemId, qty);
   const name = (getDb().prepare('SELECT name FROM items WHERE id = ?').get(itemId) as { name: string }).name;
-  return { ok: true, message: `「${name}」を${price}Gで買った。` };
+  const afterGold = requirePlayer(userId).gold;
+  return {
+    ok: true,
+    message: qty === 1
+      ? `「${name}」を${total}Gで買った。\n所持金: ${player.gold}G → ${afterGold}G`
+      : `「${name}」×${qty}を${total}Gで買った。\n所持金: ${player.gold}G → ${afterGold}G`,
+  };
 }
 
 export function getSellableInventory(userId: string) {

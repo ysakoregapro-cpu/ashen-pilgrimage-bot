@@ -1,8 +1,10 @@
 import type Database from 'better-sqlite3';
+import { computeSrcBaseStats } from '../../systems/enhanceSystem';
 
 const SRC_WEAPONS = [
   { id: 'src_twilight', base: 'wpn_unique_twilight', srcItem: 'wpn_src_twilight', name: 'Src: 黄昏剣', jobs: ['剣士', '剣豪', '魔剣士', '星剣士'], skill: 'skill_twilight_combo', plus10: '敵HP50%以下で追撃', manifest: { gold: 5000, materials: [{ id: 'src_primordial', qty: 3 }, { id: 'mat_hourglass_shard', qty: 5 }] } },
   { id: 'src_lamp', base: 'wpn_unique_lamp', srcItem: 'wpn_src_lamp', name: 'Src: 灯火杖', jobs: ['祈祷師', '司祭', '癒し手', '繋ぎ手'], skill: 'skill_lamp_prayer', plus10: '蘇生時に味方全体へ小バリア', manifest: { gold: 5000, materials: [{ id: 'src_lamp_core', qty: 3 }, { id: 'src_bind_thread', qty: 5 }] } },
+  { id: 'src_mist_lantern', base: 'wpn_unique_mist_lantern', srcItem: 'wpn_src_mist_lantern', name: 'Src: 霧灯星杖', jobs: ['魔術師', '星読み', '黒魔導士', '調律師'], skill: 'skill_lamp_prayer', plus10: '星属性魔法の与ダメージ上昇', manifest: { gold: 5000, materials: [{ id: 'src_echo_core', qty: 3 }, { id: 'mat_starfall_shard', qty: 5 }] } },
   { id: 'src_deep', base: 'wpn_unique_deep', srcItem: 'wpn_src_deep', name: 'Src: 深層砲', jobs: ['機工師', '錬機師', '砲術師', 'アーク技師'], skill: 'skill_deep_pierce', plus10: 'ブレイクゲージ削り大幅上昇', manifest: { gold: 6000, materials: [{ id: 'src_deep_furnace', qty: 3 }, { id: 'mat_deep_soot', qty: 10 }] } },
   { id: 'src_echo', base: 'wpn_unique_echo', srcItem: 'wpn_src_echo', name: 'Src: 残響弓', jobs: ['狩人', '追跡者', '弓聖'], skill: 'skill_echo_shot', plus10: '弱点命中時に追加射撃', manifest: { gold: 5000, materials: [{ id: 'src_echo_core', qty: 3 }, { id: 'mat_moon_ink', qty: 8 }] } },
   { id: 'src_mirror', base: 'wpn_unique_mirror', srcItem: 'wpn_src_mirror', name: 'Src: 灰鏡刀', jobs: ['斥候', '暗部', '執行者'], skill: 'skill_mirror_slash', plus10: '回避成功後、次攻撃が確定会心', manifest: { gold: 5500, materials: [{ id: 'src_mirror_shard', qty: 3 }, { id: 'src_ash_star', qty: 2 }] } },
@@ -32,8 +34,8 @@ export function seedSrcWeapons(db: Database.Database): void {
   for (const s of SRC_WEAPONS) {
     const baseEq = db.prepare('SELECT * FROM equipment WHERE item_id = ?').get(s.base) as { weapon_type: string; attack_bonus: number; magic_bonus: number } | undefined;
     const wtype = baseEq?.weapon_type ?? 'sword';
-    const atk = (baseEq?.attack_bonus ?? 18) + 8;
-    const mag = (baseEq?.magic_bonus ?? 0) + 8;
+    const atk = computeSrcBaseStats(baseEq?.attack_bonus ?? 0, 0).atk;
+    const mag = computeSrcBaseStats(0, baseEq?.magic_bonus ?? 0).mag;
 
     insItem.run(s.srcItem, s.name, `${s.name} — 伝承武器`, ts);
     insEq.run(s.srcItem, wtype, atk, mag, s.skill, s.id);

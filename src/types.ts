@@ -1,4 +1,4 @@
-export type Rarity = 'N' | 'R' | 'SR' | 'SSR' | 'UR' | 'Src';
+export type Rarity = 'N' | 'R' | 'SR' | 'SSR' | 'UR' | 'Uni' | 'Src';
 export type EquipmentSlot =
   | 'weapon'
   | 'head'
@@ -239,6 +239,7 @@ export const RARITY_EMOJI: Record<Rarity, string> = {
   SR: '🟣',
   SSR: '🟡',
   UR: '🔴',
+  Uni: '🌟',
   Src: '✨',
 };
 

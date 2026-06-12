@@ -12,7 +12,11 @@ export { getEnhanceRequirement, formatEnhancePreview } from './enhanceSystem';
 
 type EnhanceReq = ReturnType<typeof getEnhanceRequirement>;
 
-function statPreview(row: { attack_bonus?: number; defense_bonus?: number; magic_bonus?: number; spirit_bonus?: number; weapon_type?: string | null; slot: string }, level: number, srcLevel: number): string {
+function statPreview(
+  row: { attack_bonus?: number; defense_bonus?: number; magic_bonus?: number; spirit_bonus?: number; weapon_type?: string | null; slot: string; rarity: string },
+  level: number,
+  srcLevel: number,
+): string {
   return formatEnhanceDiff(
     {
       attack_bonus: row.attack_bonus ?? 0,
@@ -26,6 +30,7 @@ function statPreview(row: { attack_bonus?: number; defense_bonus?: number; magic
     },
     level,
     srcLevel,
+    row.rarity,
   );
 }
 

@@ -27,7 +27,7 @@ import { loadCommands } from './commands/index';
 
 import { getEnv } from './utils/permissions';
 
-import { errorEmbed, successEmbed } from './utils/embeds';
+import { errorEmbed, successEmbed, baseEmbed } from './utils/embeds';
 import { nextActionButtons, errorRecoveryPayload } from './utils/nextActionButtons';
 import type { UiPayload } from './utils/townUi';
 import { townHubEmbed } from './utils/townUi';
@@ -456,11 +456,79 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
   }
 
   if (prefix === 'shop' && action === 'buy') {
-    const { buyShopItem } = await import('./systems/shopSystem');
+    const { getShopCatalog, calcMaxBuyable } = await import('./systems/shopSystem');
     const { getCurrentTown } = await import('./systems/townSystem');
+    const { requirePlayer } = await import('./systems/playerSystem');
     const town = getCurrentTown(userId) as { id: string } | undefined;
-    const r = buyShopItem(userId, value, town?.id ?? 'start_starfield');
-    await sendSelectResultLog(interaction, { embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    const townId = town?.id ?? 'start_starfield';
+    const catalog = getShopCatalog(townId);
+    const entry = catalog.find((c) => c.item_id === value);
+    if (!entry) {
+      await sendSelectResultLog(interaction, { embeds: [errorEmbed('この店では扱っていない品だ。')], components: nextActionButtons('facility') });
+      return;
+    }
+    const itemRow = getDb().prepare('SELECT category FROM items WHERE id = ?').get(value) as { category: string } | undefined;
+    const player = requirePlayer(userId);
+    const maxBuy = calcMaxBuyable(player.gold, entry.buy_price);
+    if (maxBuy < 1) {
+      await sendSelectResultLog(interaction, { embeds: [errorEmbed(`所持金が足りません。（単価 ${entry.buy_price}G）`)], components: nextActionButtons('facility') });
+      return;
+    }
+    const stackable = itemRow?.category !== 'equipment';
+    if (!stackable) {
+      const { buyShopItem } = await import('./systems/shopSystem');
+      const r = buyShopItem(userId, value, townId, 1);
+      await sendSelectResultLog(interaction, { embeds: [r.ok ? successEmbed(r.message) : errorEmbed(r.message)], components: nextActionButtons('facility') });
+      return;
+    }
+    const opts = [
+      { label: '1個', value: '1' },
+      { label: '3個', value: '3' },
+      { label: '5個', value: '5' },
+      { label: '10個', value: '10' },
+      { label: '買えるだけ', value: String(maxBuy) },
+    ].filter((o) => Number(o.value) >= 1 && Number(o.value) <= maxBuy).slice(0, 25);
+    await sendSelectResultLog(interaction, {
+      embeds: [baseEmbed('購入数を選ぶ', [
+        `**${entry.name}**`,
+        `単価: ${entry.buy_price}G`,
+        `所持金: ${player.gold}G`,
+        '',
+        '購入数を選んでください。',
+      ].join('\n'))],
+      components: [selectMenu(`shop:buy_qty:${value}`, '購入数', opts)],
+    });
+    return;
+  }
+
+  if (prefix === 'shop' && action === 'buy_qty' && extra) {
+    const itemId = extra;
+    const qty = Math.max(1, Number(value));
+    const { getShopCatalog } = await import('./systems/shopSystem');
+    const { getCurrentTown } = await import('./systems/townSystem');
+    const { requirePlayer } = await import('./systems/playerSystem');
+    const town = getCurrentTown(userId) as { id: string } | undefined;
+    const townId = town?.id ?? 'start_starfield';
+    const entry = getShopCatalog(townId).find((c) => c.item_id === itemId);
+    if (!entry) {
+      await sendSelectResultLog(interaction, { embeds: [errorEmbed('品が見つかりません。')], components: nextActionButtons('facility') });
+      return;
+    }
+    const player = requirePlayer(userId);
+    const total = entry.buy_price * qty;
+    await sendSelectResultLog(interaction, {
+      embeds: [baseEmbed('購入確認', [
+        `**${entry.name}** ×${qty}`,
+        `合計: ${total}G`,
+        `所持金: ${player.gold}G`,
+        '',
+        '購入しますか？',
+      ].join('\n'))],
+      components: [new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId(`shop:confirm_buy:${itemId}:${qty}`).setLabel('購入する').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(`shop:buy_pick:${itemId}`).setLabel('個数を選び直す').setStyle(ButtonStyle.Secondary),
+      )],
+    });
     return;
   }
 
@@ -564,6 +632,23 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
     return;
   }
 
+  if (prefix === 'rematch' && action === 'boss') {
+    const { startBossRematch } = await import('./systems/bossRematchSystem');
+    const r = startBossRematch(userId, value);
+    if (!r.ok || !r.battleId) {
+      await sendSelectResultLog(interaction, { embeds: [errorEmbed(r.message)], components: nextActionButtons('facility') });
+      return;
+    }
+    const { buildBattleReply } = await import('./systems/battleSystem');
+    const payload = buildBattleReply(r.battleId, userId);
+    if (!payload) {
+      await sendSelectResultLog(interaction, { embeds: [errorEmbed('戦闘の開始に失敗しました。')], components: nextActionButtons('facility') });
+      return;
+    }
+    await sendSelectResultLog(interaction, payload);
+    return;
+  }
+
   if (prefix === 'prep' && action === 'confirm') {
     return;
   }
@@ -601,10 +686,18 @@ async function handleBattleResult(
 
       await channel.send(buildPostVictory(result.message));
 
-      const session = getDb().prepare('SELECT monster_id FROM battle_sessions WHERE id = ?').get(sessionId) as { monster_id: string } | undefined;
+      const session = getDb().prepare('SELECT monster_id, status_json FROM battle_sessions WHERE id = ?').get(sessionId) as {
+        monster_id: string; status_json: string;
+      } | undefined;
+      let isRematch = false;
+      if (session?.status_json) {
+        try {
+          isRematch = !!(JSON.parse(session.status_json) as { isRematch?: boolean }).isRematch;
+        } catch { /* ignore */ }
+      }
       const storyEvents: StoryEventPayload[] = [
         ...triggerFirstVictory(interaction.user.id),
-        ...(session ? triggerBossDefeated(interaction.user.id, session.monster_id) : []),
+        ...(session && !isRematch ? triggerBossDefeated(interaction.user.id, session.monster_id) : []),
       ];
       if (result.jobLeveledUp?.length) {
         for (const jobName of result.jobLeveledUp) {
@@ -901,6 +994,21 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
       await channel.send(buildEquipmentDetailView(userId, invId, { compare: true, context: 'equip' }));
       return;
     }
+  }
+
+  if (parts[0] === 'shop' && parts[1] === 'confirm_buy') {
+    const itemId = parts[2]!;
+    const qty = Math.max(1, Number(parts[3] ?? 1));
+    const { buyShopItem } = await import('./systems/shopSystem');
+    const { getCurrentTown } = await import('./systems/townSystem');
+    const town = getCurrentTown(userId) as { id: string } | undefined;
+    await disableOldComponents(interaction.message);
+    const channel = getSendableChannel(interaction.channel);
+    if (!channel) return;
+    await interaction.deferUpdate();
+    const r = buyShopItem(userId, itemId, town?.id ?? 'start_starfield', qty);
+    await channel.send({ embeds: [r.ok ? successEmbed(r.message) : errorEmbed(r.message)], components: nextActionButtons('facility') });
+    return;
   }
 
   if (parts[0] === 'shop' && parts[1] === 'confirm_sell') {

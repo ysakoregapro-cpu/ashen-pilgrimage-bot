@@ -74,7 +74,7 @@ export const AREAS: AreaDef[] = [
   { id: 'area_confessional', town: 'silent_monastery', name: '懺悔室', desc: '懺悔室。', min: 44, max: 54, monsters: ['mon_cursed_tool', 'mon_capital_undead'], rewards: ['mat_silent_holy', 'wpn_silence_seal_sr'] },
   { id: 'area_prayer_room', town: 'silent_monastery', name: '祈りの間', desc: '祈りの間。', min: 46, max: 56, monsters: ['mon_silent_guardian', 'mon_tide_ghost'], rewards: ['src_lamp_core', 'arm_set_silence_head'] },
   { id: 'area_holy_workshop', town: 'silent_monastery', name: '聖水工房跡', desc: '聖水工房。', min: 48, max: 58, monsters: ['mon_lost_mushroom', 'mon_drift_undead'], rewards: ['mat_silent_holy', 'cons_pilgrim_charm'] },
-  { id: 'area_silent_pilgrim', town: 'silent_monastery', name: '無言の巡礼路', desc: '無言の巡礼路。', min: 50, max: 60, monsters: ['mon_silent_guardian', 'mon_throne_shadow'], rewards: ['wpn_unique_silence', 'src_silence_tune'] },
+  { id: 'area_silent_pilgrim', town: 'silent_monastery', name: '無言の巡礼路', desc: '無言の巡礼路。', min: 50, max: 60, monsters: ['mon_silent_guardian', 'mon_throne_shadow'], rewards: ['wpn_silence_seal_sr', 'src_silence_tune'] },
   // 硝子沼
   { id: 'area_glass_marsh_main', town: 'glass_marsh', name: '硝子沼', desc: '硝子のような沼。', min: 36, max: 46, monsters: ['mon_poison_vine_slime', 'mon_lost_mushroom'], rewards: ['arm_set_glass_head', 'wpn_glass_blade'] },
   { id: 'area_cracked_surface', town: 'glass_marsh', name: '割れた水面', desc: '割れた水面。', min: 38, max: 48, monsters: ['mon_crystal_spider', 'mon_ink_beast'], rewards: ['arm_set_glass_body', 'wpn_glass_blade'] },
@@ -108,6 +108,9 @@ export const AREAS: AreaDef[] = [
   { id: 'area_sky_lift', town: 'valhalla_fortress', name: '空塞昇降路', desc: '空塞昇降路。', min: 60, max: 70, monsters: ['mon_sky_mech', 'mon_old_army'], rewards: ['wpn_sky_bow_fress', 'raid_sky_core'] },
   { id: 'area_control_room', town: 'valhalla_fortress', name: '統治軍制御室', desc: '統治軍制御室。', min: 62, max: 72, monsters: ['mon_old_army', 'mon_furnace_defense'], rewards: ['raid_control_chip', 'wpn_zero_shield'] },
   { id: 'area_machina_zone', town: 'valhalla_fortress', name: 'マキナの残響区画', desc: 'マキナの残響。', min: 66, max: 76, monsters: ['mon_machina_echo', 'mon_deep_core_boss'], rewards: ['raid_machina_echo', 'src_machina_core'] },
+  // 黒灯りの路地
+  { id: 'area_black_lantern_alley', town: 'black_lantern_lane', name: '黒灯りの路地', desc: '黒い灯りだけが灯る路地。', min: 50, max: 58, monsters: ['mon_black_lantern_wraith', 'mon_masked_thief'], rewards: ['mat_forgotten_sand', 'wpn_black_lamp_twin'] },
+  { id: 'area_cinder_passage', town: 'black_lantern_lane', name: '煤煙の抜け道', desc: '煤煙に覆われた抜け道。', min: 52, max: 60, monsters: ['mon_black_lantern_wraith', 'mon_cursed_tool'], rewards: ['mat_forgotten_sand', 'acc_black_lamp_ring'] },
 ];
 
 export function seedExplorationAreas(db: Database.Database): void {

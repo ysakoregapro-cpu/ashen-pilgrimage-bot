@@ -2,6 +2,30 @@ import { getDb } from '../db/database';
 import { requirePlayer } from './playerSystem';
 import { hasStoryFlag } from './storySystem';
 import { STORY_TOWN_UNLOCKS } from '../db/seedData/progressionMaster';
+import { BOSS_CHAPTER_REWARDS, STORY_BOSS_MONSTERS } from '../db/seedData/storyData';
+
+/** 町解放に必要な章ボス討伐フラグ（townId → boss_defeated:xxx） */
+export const TOWN_UNLOCK_BOSS_FLAGS: Record<string, string> = Object.fromEntries(
+  Object.entries(BOSS_CHAPTER_REWARDS)
+    .filter(([, r]) => r.unlockTown)
+    .map(([bossKey, r]) => [r.unlockTown!, `boss_defeated:${bossKey}`]),
+);
+
+/** 章完了フラグに必要なボス討伐 */
+export const CHAPTER_BOSS_FLAGS: Record<string, string> = Object.fromEntries(
+  Object.entries(BOSS_CHAPTER_REWARDS).map(([bossKey, r]) => [r.chapterFlag, `boss_defeated:${bossKey}`]),
+);
+
+export function getRequiredBossFlagForTown(townId: string): string | null {
+  return TOWN_UNLOCK_BOSS_FLAGS[townId] ?? null;
+}
+
+export function canAdvanceWithoutBoss(userId: string, targetTownId: string): { ok: boolean; reason?: string } {
+  const bossFlag = getRequiredBossFlagForTown(targetTownId);
+  if (!bossFlag) return { ok: true };
+  if (hasStoryFlag(userId, bossFlag)) return { ok: true };
+  return { ok: false, reason: '章ボスを倒さないと次の町へ進めない。' };
+}
 
 /** Town travel requires story unlock — level alone is never enough for new towns */
 export function canTravelToTown(userId: string, townId: string): { ok: boolean; reason?: string } {
@@ -14,6 +38,10 @@ export function canTravelToTown(userId: string, townId: string): { ok: boolean; 
   const unlocked = getDb().prepare('SELECT 1 FROM player_town_unlocks WHERE user_id = ? AND town_id = ?')
     .get(userId, townId);
   if (!unlocked) {
+    const bossFlag = getRequiredBossFlagForTown(townId);
+    if (bossFlag && !hasStoryFlag(userId, bossFlag)) {
+      return { ok: false, reason: `${town.name}へは、章ボスを倒してから道が開く。` };
+    }
     const flagEntry = Object.entries(STORY_TOWN_UNLOCKS).find(([, t]) => t === townId);
     const hint = flagEntry ? '物語を進めると道が開く。' : 'まだ道が通っていない。';
     return { ok: false, reason: `${town.name}へは、${hint}` };

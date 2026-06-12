@@ -7,6 +7,9 @@ import { underlevelWarning } from './difficultySystem';
 import { incrementExploreAction } from './townSystem';
 import { getMonsterThreatTier, getThreatLabel } from './combatMath';
 import { weightedChoice, roll, randomInt } from '../utils/random';
+import {
+  getAreaLootTier, rollChestLoot, resolveEquipSlot, pickEquipmentFromAreaPool, pickMaterialFromPool,
+} from './equipmentDropSystem';
 
 export function getAreasForTown(townId: string) {
   return getDb().prepare('SELECT * FROM exploration_areas WHERE town_id = ? ORDER BY recommended_min_level').all(townId);
@@ -99,9 +102,19 @@ export function exploreArea(userId: string, areaId: string): {
           battleId,
         };
       }
-      if (roll(0.3)) {
-        const itemId = pickRewardItem(userId, pool, area.recommended_min_level);
+      const lootTier = getAreaLootTier(area.recommended_min_level, area.town_id);
+      const chestRoll = rollChestLoot(lootTier);
+      if (chestRoll.kind === 'material') {
+        const itemId = pickMaterialFromPool(pool);
         if (itemId) {
+          addItem(userId, itemId, randomInt(1, 2), { pending: true });
+          const item = getDb().prepare('SELECT name FROM items WHERE id = ?').get(itemId) as { name: string };
+          return { type: 'treasure', message: `${prefix}古い箱を見つけた。${item.name}を手に入れた。` };
+        }
+      } else if (chestRoll.rarity) {
+        const slot = resolveEquipSlot();
+        const itemId = pickEquipmentFromAreaPool(pool, chestRoll.rarity, slot);
+        if (itemId && canDropEquipment(userId, itemId, area.recommended_min_level)) {
           addItem(userId, itemId, 1, { pending: true });
           const item = getDb().prepare('SELECT name FROM items WHERE id = ?').get(itemId) as { name: string };
           return { type: 'treasure', message: `${prefix}古い箱を見つけた。${item.name}を手に入れた。` };

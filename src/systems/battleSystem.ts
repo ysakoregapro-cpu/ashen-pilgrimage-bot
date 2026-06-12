@@ -1,7 +1,10 @@
 import { getDb } from '../db/database';
 import { getDifficultyModifiers } from './difficultySystem';
 import { calcBattleExp, calcBossExp } from './expSystem';
-import { PRE_VALHALA_BOSS_MONSTER, SRC_FORGE_MATERIAL_ID, SRC_FORGE_MATERIAL_DROP_RATE } from '../db/seedData/awakeningMaster';
+import { SRC_FORGE_MATERIAL_ID, SRC_FORGE_MATERIAL_DROP_RATE } from '../db/seedData/awakeningMaster';
+import {
+  REMATCH_MATERIAL_BOSSES, UNI_FORGE_DROP_RATE, SRC_FARM_MONSTER_IDS,
+} from '../db/seedData/forgeMaster';
 import { calcElementDamageMultiplier, applyElementToDamage, resolveAttackElement, getPlayerElementResistances, applyPlayerElementResist } from './elementSystem';
 import {
   applyStatusEffect, attemptApplyEnemyStatus, tickStatusEffects, isEnemyActionBlocked,
@@ -16,7 +19,12 @@ import { applyDefeat } from './defeatSystem';
 import { incrementWeeklyProgress } from './weeklySystem';
 import { getUsableBattleSkills, isUsableBattleSkill, skillTypeLabel, scalingLabel, type SkillRow } from './skillSystem';
 import { grantBattleJobExp, getJobProgressText } from './jobLevelSystem';
-import { roll, uuid, randomInt } from '../utils/random';
+import { roll, uuid, randomInt, weightedChoice } from '../utils/random';
+import {
+  getAreaLootTier, rollBattleEquipmentRarity, resolveEquipSlot, pickEquipmentFromAreaPool,
+  pickMaterialFromPool, pickHighMaterialFromPool, rollRematchGenericLoot,
+  type BattleThreatTier,
+} from './equipmentDropSystem';
 import { nowIso, type BattleStatus } from '../types';
 import { formatBattleLine, type BattleLogType } from '../utils/formatters';
 import { battleButtons, battleEmbed, selectMenu } from '../utils/embeds';
@@ -40,6 +48,7 @@ export interface BattleState extends BattleStatusState {
   breakBonus: number;
   guardStrong: boolean;
   combatScale?: ScaledMonster;
+  isRematch?: boolean;
 }
 
 type MonsterRow = {
@@ -66,7 +75,7 @@ function countCompletedBattles(userId: string): number {
   return row.c;
 }
 
-export function createBattle(userId: string, monsterId: string, areaId: string | null, opts?: { isBoss?: boolean; isRaid?: boolean; isEvent?: boolean }): string {
+export function createBattle(userId: string, monsterId: string, areaId: string | null, opts?: { isBoss?: boolean; isRaid?: boolean; isEvent?: boolean; isRematch?: boolean }): string {
   const player = requirePlayer(userId);
   recalculatePlayerStats(userId);
   const p = requirePlayer(userId);
@@ -77,6 +86,7 @@ export function createBattle(userId: string, monsterId: string, areaId: string |
   const isBoss = opts?.isBoss ?? false;
   const isRaid = opts?.isRaid ?? false;
   const isEvent = opts?.isEvent ?? false;
+  const isRematch = opts?.isRematch ?? false;
   const canFlee = (!isBoss && !isRaid && !isEvent) ? 1 : 0;
   const tutorialBattle = monsterId === 'mon_star_slime' && countCompletedBattles(userId) === 0;
   const scaled = scaleMonsterForBattle(
@@ -91,6 +101,7 @@ export function createBattle(userId: string, monsterId: string, areaId: string |
     fleeBonus: 0, atkBuff: 0, magBuff: 0, defBuff: 0, trapActive: false,
     hitBonus: 0, breakBonus: 0, guardStrong: false,
     combatScale: scaled,
+    isRematch,
     log: tutorialBattle
       ? [formatBattleLine('info', monster.name + 'が現れた。…最初の一歩。油断は禁物だ。')]
       : [
@@ -623,30 +634,87 @@ function hasBossFirstKill(userId: string, monsterId: string): boolean {
 }
 
 function resolveVictory(sessionId: string, userId: string, session: SessionRow, monster: MonsterRow, state: BattleState) {
+  const wasFirstKill = session.is_boss ? hasBossFirstKill(userId, session.monster_id) : false;
   endBattle(sessionId, 'victory');
   const player = requirePlayer(userId);
   const scale = getCombatScale(state, monster);
   const tierExpMult = scale.threatTier === 'rare' ? 1.85 : scale.threatTier === 'elite' ? 1.9 : scale.threatTier === 'tough' ? 1.35 : 1;
   const tierGoldMult = scale.threatTier === 'rare' ? 1.75 : scale.threatTier === 'elite' ? 1.85 : scale.threatTier === 'tough' ? 1.3 : 1;
-  let exp = calcBattleExp(Math.floor(monster.exp_reward * tierExpMult), player.level, monster.level);
+  const rematchMult = state.isRematch ? 0.55 : 1;
+  let exp = calcBattleExp(Math.floor(monster.exp_reward * tierExpMult * rematchMult), player.level, monster.level);
   if (session.is_boss) {
-    const first = hasBossFirstKill(userId, session.monster_id);
-    exp = calcBossExp(calcBattleExp(Math.floor(monster.exp_reward * tierExpMult), player.level, monster.level), first);
+    const first = state.isRematch ? false : wasFirstKill;
+    exp = calcBossExp(calcBattleExp(Math.floor(monster.exp_reward * tierExpMult * rematchMult), player.level, monster.level), first);
   }
-  const gold = Math.floor(monster.gold_reward * tierGoldMult * 1.2);
+  const gold = Math.floor(monster.gold_reward * tierGoldMult * 1.2 * rematchMult);
   const levelResult = addExp(userId, exp);
   const jobResults = grantBattleJobExp(userId, exp);
   addGold(userId, gold);
   // Pending rewards are confirmed on town return; battle victory keeps them pending until then
-  const drops = JSON.parse(monster.drop_pool_json || '[]') as Array<{ item_id: string; weight: number }>;
   const dropMsgs: string[] = [];
-  if (drops.length && roll(0.4)) {
-    const drop = drops[randomInt(0, drops.length - 1)]!;
-    addItem(userId, drop.item_id, 1, { pending: true });
-    const item = getDb().prepare('SELECT name FROM items WHERE id = ?').get(drop.item_id) as { name: string };
-    dropMsgs.push(item.name);
+  const areaRow = session.area_id
+    ? getDb().prepare('SELECT reward_pool_json, recommended_min_level, town_id FROM exploration_areas WHERE id = ?').get(session.area_id) as {
+      reward_pool_json: string; recommended_min_level: number; town_id: string;
+    } | undefined
+    : undefined;
+  const rewardPool = areaRow
+    ? JSON.parse(areaRow.reward_pool_json) as Array<{ item_id: string; weight: number }>
+    : (JSON.parse(monster.drop_pool_json || '[]') as Array<{ item_id: string; weight: number }>);
+  const lootTier = areaRow ? getAreaLootTier(areaRow.recommended_min_level, areaRow.town_id) : 'mid';
+  const threat = (scale.threatTier ?? 'normal') as BattleThreatTier;
+
+  if (state.isRematch) {
+    const rematchKind = rollRematchGenericLoot();
+    if (rematchKind === 'normal_mat') {
+      const matId = pickMaterialFromPool(rewardPool.length ? rewardPool : [{ item_id: 'mat_iron_scrap', weight: 10 }]);
+      if (matId) {
+        addItem(userId, matId, 1, { pending: true });
+        dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(matId) as { name: string }).name);
+      }
+    } else if (rematchKind === 'high_mat') {
+      const matId = pickHighMaterialFromPool(rewardPool.length ? rewardPool : [{ item_id: 'upg_stone', weight: 10 }]);
+      if (matId) {
+        addItem(userId, matId, 1, { pending: true });
+        dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(matId) as { name: string }).name);
+      }
+    } else if (rematchKind === 'equip') {
+      const eqRarity = rollBattleEquipmentRarity(threat, lootTier);
+      if (eqRarity) {
+        const slot = resolveEquipSlot();
+        const eqId = pickEquipmentFromAreaPool(rewardPool, eqRarity, slot);
+        if (eqId) {
+          addItem(userId, eqId, 1, { pending: true });
+          dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(eqId) as { name: string }).name);
+        }
+      }
+    }
+    for (const [matId, cfg] of Object.entries(REMATCH_MATERIAL_BOSSES)) {
+      if (cfg.monsterId !== session.monster_id) continue;
+      if (roll(UNI_FORGE_DROP_RATE)) {
+        addItem(userId, matId, 1, { pending: true });
+        dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(matId) as { name: string }).name);
+      }
+    }
+  } else {
+    const equipRarity = rollBattleEquipmentRarity(threat, lootTier);
+    if (equipRarity && rewardPool.length) {
+      const slot = resolveEquipSlot();
+      const eqId = pickEquipmentFromAreaPool(rewardPool, equipRarity, slot);
+      if (eqId) {
+        addItem(userId, eqId, 1, { pending: true });
+        dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(eqId) as { name: string }).name);
+      }
+    } else if (rewardPool.length && roll(0.35)) {
+      const matPool = rewardPool.filter((p) => {
+        const row = getDb().prepare('SELECT category FROM items WHERE id = ?').get(p.item_id) as { category: string } | undefined;
+        return row && row.category !== 'equipment';
+      });
+      const pick = weightedChoice(matPool.length ? matPool : rewardPool);
+      addItem(userId, pick.item_id, 1, { pending: true });
+      dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(pick.item_id) as { name: string }).name);
+    }
   }
-  if (session.monster_id === PRE_VALHALA_BOSS_MONSTER && roll(SRC_FORGE_MATERIAL_DROP_RATE)) {
+  if ((state.isRematch || !wasFirstKill) && SRC_FARM_MONSTER_IDS.includes(session.monster_id as typeof SRC_FARM_MONSTER_IDS[number]) && roll(SRC_FORGE_MATERIAL_DROP_RATE)) {
     addItem(userId, SRC_FORGE_MATERIAL_ID, 1, { pending: true });
     const mat = getDb().prepare('SELECT name FROM items WHERE id = ?').get(SRC_FORGE_MATERIAL_ID) as { name: string };
     dropMsgs.push(mat.name);
@@ -692,6 +760,7 @@ function resolveVictory(sessionId: string, userId: string, session: SessionRow, 
     status: 'victory' as BattleStatus,
     message: lines.join('\n'),
     sessionId,
+    isRematch: state.isRematch ?? false,
     skillLearned: skillLearned.length ? skillLearned : undefined,
     jobLeveledUp: jobLeveledUp.length ? jobLeveledUp : undefined,
   };

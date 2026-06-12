@@ -4,6 +4,7 @@ import { requirePlayer, getPlayer, recalculatePlayerStats } from './playerSystem
 import { getEnhanceableEquipment } from './upgradeSystem';
 import { getAwakeningCandidates } from './awakeningSystem';
 import { getKaiUniqueCandidates, getKaiSrcCandidates } from './kaiForgeSystem';
+import { formatRematchBossList, getRematchableBosses } from './bossRematchSystem';
 import { getUniqueWeapons } from './srcWeaponSystem';
 import { getJobs } from './jobSystem';
 import { formatEquipmentDisplay } from './equipmentSystem';
@@ -70,7 +71,7 @@ export function getFacilityActions(facility: FacilityRow): FacAction[] {
       ];
       if (facility.npc_id === 'npc_kai') {
         actions.splice(2, 0,
-          { id: 'kai_unique', label: '伝承する（ユニーク化）' },
+          { id: 'kai_unique', label: '伝承する（Uni化）' },
           { id: 'kai_src', label: 'Srcへ変質する' },
         );
       }
@@ -78,6 +79,7 @@ export function getFacilityActions(facility: FacilityRow): FacAction[] {
     }
     case 'guild_board':
       return [
+        { id: 'boss_rematch', label: 'ボス再戦' },
         { id: 'job', label: '職能を選ぶ' },
         { id: 'profile', label: '旅人の記録を見る' },
         talk,
@@ -104,6 +106,7 @@ export function getFacilityActions(facility: FacilityRow): FacAction[] {
     case 'library':
       return [
         { id: 'codex', label: '図鑑を見る' },
+        { id: 'boss_rematch', label: 'ボス再戦' },
         talk,
         { id: 'explain', label: '記録について聞く' },
         { id: 'hint', label: '古い噂を聞く' },
@@ -179,7 +182,7 @@ function getExplainLabel(type: string): string {
 
 export function executeFacilityAction(userId: string, facilityId: string, actionId: string): {
   type: 'text' | 'upgrade_select' | 'job_select' | 'travel' | 'profile' | 'inventory' | 'equip' | 'src_select' | 'rescue_hint' | 'raid_hint'
-    | 'shop_browse' | 'shop_buy' | 'shop_sell' | 'market_browse' | 'market_sell' | 'market_my' | 'prep_equip' | 'prep_menu' | 'inn_preview';
+    | 'shop_browse' | 'shop_buy' | 'shop_sell' | 'market_browse' | 'market_sell' | 'market_my' | 'prep_equip' | 'prep_menu' | 'inn_preview' | 'boss_rematch_select';
   message: string;
   extra?: string;
 } {
@@ -240,16 +243,27 @@ export function executeFacilityAction(userId: string, facilityId: string, action
   if (actionId === 'kai_unique') {
     const candidates = getKaiUniqueCandidates(userId);
     if (!candidates.length) {
-      return { type: 'text', message: '伝承する（ユニーク化）\n\n最大まで覚醒した職業武器を、カイが特別な武器へ昇華します。\n\n条件を満たす職業初期武器がありません。（覚醒V・カイ解放・白銀章以降）' };
+      return { type: 'text', message: '伝承する（Uni化）\n\n最大覚醒した職業初期武器と再戦素材で、カイがUni武器へ刻印します。\n\n条件を満たす武器がありません。' };
     }
-    return { type: 'upgrade_select', message: '最大まで覚醒した職業武器を、カイが特別な武器へ昇華します。', extra: 'kai_unique' };
+    return { type: 'upgrade_select', message: '最大覚醒した職業初期武器を、カイがUni武器へ伝承します。', extra: 'kai_unique' };
   }
   if (actionId === 'kai_src') {
     const candidates = getKaiSrcCandidates(userId);
     if (!candidates.length) {
-      return { type: 'text', message: 'Srcへ変質する\n\n伝承武器と特別な素材を使い、Src武器へ変質させます。\n\n対象の伝承武器または素材（星巡の残響）が不足しています。' };
+      return { type: 'text', message: 'Srcへ変質する\n\nUni武器と星巡の残響を使い、Src武器へ変質させます。\n\n対象のUni武器または素材が不足しています。' };
     }
-    return { type: 'upgrade_select', message: '伝承武器と特別な素材を使い、Src武器へ変質させます。', extra: 'kai_src' };
+    return { type: 'upgrade_select', message: 'Uni武器と星巡の残響を使い、Src武器へ変質させます。', extra: 'kai_src' };
+  }
+  if (actionId === 'boss_rematch') {
+    const bosses = getRematchableBosses(userId);
+    if (!bosses.length) {
+      return { type: 'text', message: formatRematchBossList(userId) };
+    }
+    return {
+      type: 'boss_rematch_select',
+      message: formatRematchBossList(userId),
+      extra: facilityId,
+    };
   }
   if (actionId === 'repair') return { type: 'upgrade_select', message: 'どの装備を修理しますか？', extra: 'repair' };
   if (actionId === 'dismantle') return { type: 'upgrade_select', message: 'どの装備を分解しますか？', extra: 'dismantle' };

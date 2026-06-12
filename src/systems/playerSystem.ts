@@ -113,11 +113,12 @@ export function recalculatePlayerStats(userId: string): Player {
       {
         attack_bonus: eq.attack_bonus, magic_bonus: eq.magic_bonus, defense_bonus: eq.defense_bonus,
         spirit_bonus: eq.spirit_bonus, speed_bonus: eq.speed_bonus, hp_bonus: eq.hp_bonus,
-        slot: eq.slot,
+        slot: eq.slot, weapon_type: eq.weapon_type,
       },
       eq.upgrade_level,
       eq.src_level,
       durPenalty,
+      eq.rarity,
     );
     base.attack += stats.attack;
     base.magic += stats.magic;

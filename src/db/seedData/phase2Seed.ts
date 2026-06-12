@@ -1,6 +1,8 @@
 import type Database from 'better-sqlite3';
 import { nowIso } from '../../types';
+import { computeSrcBaseStats } from '../../systems/enhanceSystem';
 import { STORY_BOSS_MONSTERS } from './storyData';
+import { ensureExistingPlayerProgressionBackfill } from './existingPlayerProgressionBackfill';
 import { MONSTER_SEED_DATA } from './monsters';
 import { ensureMonstersIsBossColumn } from '../monsterSchema';
 
@@ -121,7 +123,7 @@ function applyMonsterBalanceOverrides(db: Database.Database): void {
   }
 }
 
-const RARITY_REQ: Record<string, number> = { N: 1, R: 5, SR: 20, SSR: 40, UR: 58, Src: 50 };
+const RARITY_REQ: Record<string, number> = { N: 1, R: 5, SR: 20, SSR: 40, UR: 58, Uni: 40, Src: 50 };
 
 function applyBossStats(db: Database.Database): void {
   const updBoss = db.prepare('UPDATE monsters SET is_boss = 1, break_max = 180 WHERE id = ?');
@@ -293,8 +295,155 @@ export function ensurePhase2Seed(db: Database.Database): void {
   `);
   insWpnItem.run('wpn_training_hammer', '訓練用槌', 'N', '重騎士の訓練用槌。', '古い訓練場・低確率', 50, ts);
   insWpnEq.run('wpn_training_hammer', 'hammer', 9, 0, 0, null);
-  insWpnItem.run('wpn_unique_old_hammer', '古炉の訓練槌', 'SR', 'カイ伝承の槌。', 'カイ伝承', 0, ts);
+  insWpnItem.run('wpn_unique_old_hammer', '古炉の訓練槌', 'Uni', 'カイ伝承の槌。', 'カイ伝承', 0, ts);
   insWpnEq.run('wpn_unique_old_hammer', 'hammer', 20, 0, 1, 'src_silver');
+
+  ensureForgeProgressionSeed(db, ts);
+  ensureExistingPlayerProgressionBackfill(db);
+}
+
+function ensureForgeProgressionSeed(db: Database.Database, ts: string): void {
+  const uniIds = [
+    'wpn_unique_twilight', 'wpn_unique_lamp', 'wpn_unique_deep', 'wpn_unique_echo',
+    'wpn_unique_mirror', 'wpn_unique_silver', 'wpn_unique_old_hammer', 'wpn_unique_mist_lantern',
+    'wpn_unique_old_shield', 'wpn_unique_star_scar', 'wpn_unique_tuner', 'wpn_unique_black_fox', 'wpn_unique_bind',
+  ];
+  for (const id of uniIds) {
+    db.prepare(`UPDATE items SET rarity = 'Uni' WHERE id = ?`).run(id);
+  }
+
+  db.prepare(`
+    UPDATE items SET rarity = 'SR', source_text = '探索・沈黙修道院', description = '静寂の聖印の武器'
+    WHERE id = 'wpn_unique_silence'
+  `).run();
+  db.prepare(`
+    UPDATE equipment SET is_unique = 0, src_weapon_id = NULL, max_upgrade_level = 7, magic_bonus = 20
+    WHERE item_id = 'wpn_unique_silence'
+  `).run();
+
+  const insItem = db.prepare(`
+    INSERT INTO items (id, name, category, rarity, description, source_text, usage_text, sell_price, tradeable, created_at)
+    VALUES (?, ?, 'equipment', ?, ?, ?, '装備', ?, 0, ?)
+    ON CONFLICT(id) DO UPDATE SET rarity=excluded.rarity, name=excluded.name, source_text=excluded.source_text, tradeable=0
+  `);
+  const insEq = db.prepare(`
+    INSERT INTO equipment (item_id, slot, weapon_type, attack_bonus, magic_bonus, defense_bonus, max_upgrade_level, is_unique, src_weapon_id)
+    VALUES (?, 'weapon', ?, ?, ?, 0, 7, 1, ?)
+    ON CONFLICT(item_id) DO UPDATE SET
+      weapon_type=excluded.weapon_type, magic_bonus=excluded.magic_bonus, attack_bonus=excluded.attack_bonus,
+      is_unique=1, src_weapon_id=excluded.src_weapon_id, max_upgrade_level=7
+  `);
+  insItem.run('wpn_unique_mist_lantern', '霧灯の星杖', 'Uni', '霧払いの杖が伝承で得るUni杖。', 'カイ伝承', 0, ts);
+  insEq.run('wpn_unique_mist_lantern', 'staff', 0, 29, 'src_mist_lantern');
+
+  const insMon = db.prepare(`
+    INSERT INTO monsters (id, name, area_tag, level, hp, mp, attack, magic, defense, spirit, speed, break_max, drop_pool_json, exp_reward, gold_reward, ai_pattern_json, is_boss)
+    VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, 180, ?, ?, ?, ?, 1)
+    ON CONFLICT(id) DO UPDATE SET name=excluded.name, is_boss=1, break_max=180
+  `);
+  insMon.run(
+    'mon_black_lantern_wraith', '黒灯の残影', 'undermarket', 54, 380, 34, 36, 22,
+    18, 16, JSON.stringify([{ item_id: 'mat_forgotten_sand', weight: 10 }]), 130, 75,
+    JSON.stringify({ pattern: 'boss' }),
+  );
+  db.prepare(`UPDATE monsters SET is_boss = 1, break_max = 180 WHERE id = 'mon_moon_observer'`).run();
+
+  const insArea = db.prepare(`
+    INSERT INTO exploration_areas (id, town_id, name, description, recommended_min_level, recommended_max_level, monster_pool_json, reward_pool_json, event_pool_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO NOTHING
+  `);
+  insArea.run(
+    'area_black_lantern_alley', 'black_lantern_lane', '黒灯りの路地', '黒い灯りだけが灯る路地。',
+    50, 58,
+    JSON.stringify([{ monster_id: 'mon_black_lantern_wraith', weight: 12 }, { monster_id: 'mon_masked_thief', weight: 10 }]),
+    JSON.stringify([{ item_id: 'mat_forgotten_sand', weight: 10 }, { item_id: 'wpn_black_lamp_twin', weight: 5 }]),
+    JSON.stringify(EVENT_POOLS.late),
+  );
+  insArea.run(
+    'area_cinder_passage', 'black_lantern_lane', '煤煙の抜け道', '煤煙に覆われた抜け道。',
+    52, 60,
+    JSON.stringify([{ monster_id: 'mon_black_lantern_wraith', weight: 14 }, { monster_id: 'mon_cursed_tool', weight: 10 }]),
+    JSON.stringify([{ item_id: 'mat_forgotten_sand', weight: 8 }, { item_id: 'acc_black_lamp_ring', weight: 5 }]),
+    JSON.stringify(EVENT_POOLS.late),
+  );
+
+  const updReward = db.prepare('UPDATE exploration_areas SET reward_pool_json = ? WHERE id = ?');
+  const silent = db.prepare('SELECT reward_pool_json FROM exploration_areas WHERE id = ?').get('area_silent_pilgrim') as { reward_pool_json: string } | undefined;
+  if (silent) {
+    const pool = JSON.parse(silent.reward_pool_json) as Array<{ item_id: string; weight: number }>;
+    const next = pool.map((p) => (p.item_id === 'wpn_unique_silence' ? { ...p, item_id: 'wpn_silence_seal_sr' } : p));
+    updReward.run(JSON.stringify(next), 'area_silent_pilgrim');
+  }
+
+  const srcExists = db.prepare('SELECT 1 FROM src_weapons WHERE id = ?').get('src_mist_lantern');
+  if (!srcExists) {
+    db.prepare(`
+      INSERT INTO items (id, name, category, rarity, description, source_text, usage_text, sell_price, tradeable, created_at)
+      VALUES ('wpn_src_mist_lantern', 'Src: 霧灯星杖', 'equipment', 'Src', 'Src: 霧灯星杖 — 伝承武器', 'Src化', '装備', 0, 0, ?)
+    `).run(ts);
+    db.prepare(`
+      INSERT INTO equipment (item_id, slot, weapon_type, attack_bonus, magic_bonus, max_upgrade_level, is_unique, src_weapon_id, skill_id)
+      VALUES ('wpn_src_mist_lantern', 'weapon', 'staff', 0, 42, 10, 0, 'src_mist_lantern', 'skill_lamp_prayer')
+    `).run();
+    db.prepare(`
+      INSERT INTO src_weapons (id, base_item_id, src_item_id, name, jobs_json, innate_skill_id, plus10_effect, manifest_requirements_json)
+      VALUES ('src_mist_lantern', 'wpn_unique_mist_lantern', 'wpn_src_mist_lantern', 'Src: 霧灯星杖', ?, 'skill_lamp_prayer', '星属性魔法の与ダメージ上昇', ?)
+    `).run(JSON.stringify(['魔術師', '星読み', '黒魔導士', '調律師']), JSON.stringify({ gold: 5000, materials: [{ id: 'src_echo_core', qty: 3 }, { id: 'mat_starfall_shard', qty: 5 }] }));
+  }
+
+  applyUniWeaponBalance(db);
+  applySrcWeaponBalance(db);
+
+  const areasWithCinder = db.prepare(`
+    SELECT id, reward_pool_json FROM exploration_areas WHERE reward_pool_json LIKE ?
+  `).all('%mat_black_lantern_cinder%') as Array<{ id: string; reward_pool_json: string }>;
+  const updArea = db.prepare('UPDATE exploration_areas SET reward_pool_json = ? WHERE id = ?');
+  for (const a of areasWithCinder) {
+    const pool = JSON.parse(a.reward_pool_json) as Array<{ item_id: string; weight: number }>;
+    updArea.run(JSON.stringify(pool.map((p) => (
+      p.item_id === 'mat_black_lantern_cinder' ? { ...p, item_id: 'mat_forgotten_sand' } : p
+    ))), a.id);
+  }
+}
+
+const UNI_WEAPON_STATS: Record<string, { atk?: number; mag?: number }> = {
+  wpn_unique_twilight: { atk: 28 },
+  wpn_unique_lamp: { mag: 29 },
+  wpn_unique_deep: { atk: 28, mag: 14 },
+  wpn_unique_echo: { atk: 28 },
+  wpn_unique_mirror: { atk: 28 },
+  wpn_unique_silver: { atk: 28 },
+  wpn_unique_old_hammer: { atk: 28 },
+  wpn_unique_mist_lantern: { mag: 29 },
+  wpn_unique_old_shield: { atk: 13 },
+  wpn_unique_star_scar: { atk: 28 },
+  wpn_unique_tuner: { mag: 27 },
+  wpn_unique_black_fox: { atk: 28 },
+  wpn_unique_bind: { mag: 27 },
+};
+
+function applyUniWeaponBalance(db: Database.Database): void {
+  const upd = db.prepare(`
+    UPDATE equipment SET attack_bonus = ?, magic_bonus = ?
+    WHERE item_id = ?
+  `);
+  for (const [id, s] of Object.entries(UNI_WEAPON_STATS)) {
+    upd.run(s.atk ?? 0, s.mag ?? 0, id);
+  }
+}
+
+function applySrcWeaponBalance(db: Database.Database): void {
+  const rows = db.prepare(`
+    SELECT sw.src_item_id, ue.attack_bonus AS uni_atk, ue.magic_bonus AS uni_mag
+    FROM src_weapons sw
+    JOIN equipment ue ON sw.base_item_id = ue.item_id
+  `).all() as Array<{ src_item_id: string; uni_atk: number; uni_mag: number }>;
+  const upd = db.prepare('UPDATE equipment SET attack_bonus = ?, magic_bonus = ? WHERE item_id = ?');
+  for (const r of rows) {
+    const base = computeSrcBaseStats(r.uni_atk, r.uni_mag);
+    upd.run(base.atk, base.mag, r.src_item_id);
+  }
 }
 
 function parseEffect(s: string): Record<string, number> {

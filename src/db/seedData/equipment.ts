@@ -137,6 +137,7 @@ const SR_WEAPONS: Wpn[] = [
   { id: 'wpn_moon_staff_sr', name: '月読の杖', rarity: 'SR', wtype: 'staff', mag: 22 },
   { id: 'wpn_dragon_fist_sr', name: '竜骨の拳甲', rarity: 'SR', wtype: 'fist', atk: 22 },
   { id: 'wpn_silence_seal_sr', name: '沈黙の聖印', rarity: 'SR', wtype: 'seal', mag: 20 },
+  { id: 'wpn_unique_silence', name: '静寂の聖印', rarity: 'SR', wtype: 'seal', mag: 20 },
   { id: 'wpn_red_ash_axe_sr', name: '赤灰の戦斧', rarity: 'SR', wtype: 'axe', atk: 24 },
   { id: 'wpn_starfall_spear', name: '星落ちの槍', rarity: 'SR', wtype: 'spear', atk: 23 },
   { id: 'wpn_black_exec_blade', name: '黒灯の処刑刃', rarity: 'SR', wtype: 'sword', atk: 22, effect: 'crit_rate:0.03' },
@@ -167,19 +168,19 @@ const UR_WEAPONS: Wpn[] = [
 ];
 
 const UNIQUE_WEAPONS: Wpn[] = [
-  { id: 'wpn_unique_twilight', name: '黄昏の古剣', rarity: 'SR', wtype: 'sword', atk: 18, unique: true, srcId: 'src_twilight' },
-  { id: 'wpn_unique_lamp', name: '灯火の古杖', rarity: 'SR', wtype: 'rod', mag: 18, unique: true, srcId: 'src_lamp' },
-  { id: 'wpn_unique_deep', name: '深層の砲筒', rarity: 'SR', wtype: 'cannon', atk: 16, mag: 10, unique: true, srcId: 'src_deep' },
-  { id: 'wpn_unique_echo', name: '残響の古弓', rarity: 'SR', wtype: 'bow', atk: 17, unique: true, srcId: 'src_echo' },
-  { id: 'wpn_unique_mirror', name: '灰鏡の刀', rarity: 'SR', wtype: 'dagger', atk: 17, unique: true, srcId: 'src_mirror' },
-  { id: 'wpn_unique_silver', name: '白銀の古槌', rarity: 'SR', wtype: 'hammer', atk: 20, unique: true, srcId: 'src_silver' },
-  { id: 'wpn_unique_old_hammer', name: '古炉の訓練槌', rarity: 'SR', wtype: 'hammer', atk: 20, unique: true, srcId: 'src_silver' },
-  { id: 'wpn_unique_silence', name: '静寂の聖印', rarity: 'SR', wtype: 'seal', mag: 18, unique: true, srcId: 'src_silence' },
-  { id: 'wpn_unique_old_shield', name: '古王の割盾', rarity: 'SR', wtype: 'shield', atk: 10, unique: true, srcId: 'src_old_shield' },
-  { id: 'wpn_unique_star_scar', name: '星痕の古槍', rarity: 'SR', wtype: 'spear', atk: 19, unique: true, srcId: 'src_star_scar' },
-  { id: 'wpn_unique_tuner', name: '壊れた調律器', rarity: 'SR', wtype: 'tuner', mag: 16, unique: true, srcId: 'src_tuner' },
-  { id: 'wpn_unique_black_fox', name: '黒狐の短刃', rarity: 'SR', wtype: 'dagger', atk: 18, unique: true, srcId: 'src_black_fox' },
-  { id: 'wpn_unique_bind', name: '古びた繋ぎ糸', rarity: 'SR', wtype: 'bind', mag: 16, unique: true, srcId: 'src_bind' },
+  { id: 'wpn_unique_twilight', name: '黄昏の古剣', rarity: 'Uni', wtype: 'sword', atk: 28, unique: true, srcId: 'src_twilight' },
+  { id: 'wpn_unique_lamp', name: '灯火の古杖', rarity: 'Uni', wtype: 'rod', mag: 29, unique: true, srcId: 'src_lamp' },
+  { id: 'wpn_unique_deep', name: '深層の砲筒', rarity: 'Uni', wtype: 'cannon', atk: 28, mag: 14, unique: true, srcId: 'src_deep' },
+  { id: 'wpn_unique_echo', name: '残響の古弓', rarity: 'Uni', wtype: 'bow', atk: 28, unique: true, srcId: 'src_echo' },
+  { id: 'wpn_unique_mirror', name: '灰鏡の刀', rarity: 'Uni', wtype: 'dagger', atk: 28, unique: true, srcId: 'src_mirror' },
+  { id: 'wpn_unique_silver', name: '白銀の古槌', rarity: 'Uni', wtype: 'hammer', atk: 28, unique: true, srcId: 'src_silver' },
+  { id: 'wpn_unique_old_hammer', name: '古炉の訓練槌', rarity: 'Uni', wtype: 'hammer', atk: 28, unique: true, srcId: 'src_silver' },
+  { id: 'wpn_unique_mist_lantern', name: '霧灯の星杖', rarity: 'Uni', wtype: 'staff', mag: 29, unique: true, srcId: 'src_mist_lantern' },
+  { id: 'wpn_unique_old_shield', name: '古王の割盾', rarity: 'Uni', wtype: 'shield', atk: 13, unique: true, srcId: 'src_old_shield' },
+  { id: 'wpn_unique_star_scar', name: '星痕の古槍', rarity: 'Uni', wtype: 'spear', atk: 28, unique: true, srcId: 'src_star_scar' },
+  { id: 'wpn_unique_tuner', name: '壊れた調律器', rarity: 'Uni', wtype: 'tuner', mag: 27, unique: true, srcId: 'src_tuner' },
+  { id: 'wpn_unique_black_fox', name: '黒狐の短刃', rarity: 'Uni', wtype: 'dagger', atk: 28, unique: true, srcId: 'src_black_fox' },
+  { id: 'wpn_unique_bind', name: '古びた繋ぎ糸', rarity: 'Uni', wtype: 'bind', mag: 27, unique: true, srcId: 'src_bind' },
 ];
 
 function genArmor(setId: string, setName: string, rarity: string, baseDef: number): Armor[] {
@@ -215,7 +216,7 @@ export function seedEquipmentAndSets(db: Database.Database, ts: string): void {
     VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, 0, ?, ?, ?, ?)
   `);
 
-  const rarityMax: Record<string, number> = { N: 5, R: 5, SR: 7, SSR: 10, UR: 15, Src: 10 };
+  const rarityMax: Record<string, number> = { N: 5, R: 5, SR: 7, SSR: 10, UR: 15, Uni: 7, Src: 10 };
   const allWeapons = [...N_WEAPONS, ...R_WEAPONS, ...SR_WEAPONS, ...SSR_WEAPONS, ...UR_WEAPONS, ...UNIQUE_WEAPONS];
 
   for (const w of allWeapons) {

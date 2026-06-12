@@ -21,7 +21,11 @@ import { resolveSkillEffect } from '../db/seedData/skillEffectMaster';
 import { getSkill, skillTypeLabel, scalingLabel } from './skillSystem';
 import { AREAS } from '../db/seedData/areas';
 import { DURABILITY_PENALTY, RARITY_EMOJI, SLOT_LABELS, type DurabilityState, type Rarity } from '../types';
-import { awakeningLabel, MAX_AWAKENING_LEVEL, getAwakeningDupCost, AWAKENING_ELIGIBLE_RARITIES } from '../db/seedData/awakeningMaster';
+import {
+  awakeningLabel, MAX_AWAKENING_LEVEL, getAwakeningDupCost, AWAKENING_ELIGIBLE_RARITIES,
+  AWAKENING_MAX_HINT, KAI_UNI_MATERIAL_HINT, isMaxAwakening,
+} from '../db/seedData/awakeningMaster';
+import { isJobStarterWeapon } from '../db/seedData/jobStarterWeapons';
 import { ButtonBuilder, ButtonStyle, ActionRowBuilder, type MessageActionRowComponentBuilder } from 'discord.js';
 
 export type DetailContext = 'inventory' | 'shop_buy' | 'shop_sell' | 'market' | 'upgrade' | 'equip' | 'skill' | 'general';
@@ -35,7 +39,9 @@ const UPGRADE_STONE_USAGE: Record<string, string> = {
 };
 
 const SPECIAL_MATERIAL_USAGE: Record<string, string> = {
-  mat_star_pilgrim_echo: 'カイによるSrc昇華（売却不可）',
+  mat_star_pilgrim_echo: 'カイによるSrc変質（売却不可）',
+  mat_starfall_obsidian: 'カイ伝承（星見の残光）',
+  mat_black_lantern_cinder: 'カイ伝承（黒灯の残滓）',
 };
 
 const WEAPON_TYPE_LABELS: Record<string, string> = {
@@ -335,7 +341,7 @@ function buildEquipmentDetail(userId: string, inventoryId: number): string {
         defense_bonus: row.defense_bonus as number, spirit_bonus: row.spirit_bonus as number,
         speed_bonus: row.speed_bonus as number, hp_bonus: row.hp_bonus as number,
         weapon_type: wtype, slot,
-      }, upg + 1, srcLv)}`;
+      }, upg + 1, srcLv, rarity)}`;
     }
   } else if (srcLv > 0) {
     enhanceBlock += `\nSrc +${srcLv}`;
@@ -348,14 +354,20 @@ function buildEquipmentDetail(userId: string, inventoryId: number): string {
   } else if (awLv < MAX_AWAKENING_LEVEL && AWAKENING_ELIGIBLE_RARITIES.has(rarity) && !(row.is_unique as number)) {
     const need = getAwakeningDupCost(rarity, awLv);
     awakenBlock += `\n次の覚醒: 同名武器 ${need} 本`;
-  } else if (awLv >= MAX_AWAKENING_LEVEL && slot === 'weapon' && !(row.is_unique as number)) {
-    awakenBlock += '\n最大覚醒 — 職業初期武器ならカイで伝承可能';
+  } else if (isMaxAwakening(awLv) && slot === 'weapon' && !(row.is_unique as number) && row.rarity !== 'Uni') {
+    if (isJobStarterWeapon(row.item_id as string)) {
+      awakenBlock += '\n最大覚醒 — カイの伝承でUni化可能';
+      awakenBlock += `\n${AWAKENING_MAX_HINT}`;
+      awakenBlock += `\n${KAI_UNI_MATERIAL_HINT}`;
+    } else {
+      awakenBlock += '\n最大覚醒';
+    }
   }
   const meta = row.metadata_json as string | null;
   const kaiUnique = meta?.includes('kai_unique');
   const typeTags: string[] = [];
   if (rarity === 'Src' || srcLv > 0) typeTags.push('Src武器');
-  else if ((row.is_unique as number) || kaiUnique) typeTags.push('ユニーク武器');
+  else if (rarity === 'Uni' || (row.is_unique as number) || kaiUnique) typeTags.push('Uni武器');
   const reqLv = (row.required_level as number) ?? 1;
   const reqJob = row.required_job as string | null;
   const cond = [`Lv${reqLv}以上`, reqJob ? `${reqJob}向け` : null].filter(Boolean).join(' / ');

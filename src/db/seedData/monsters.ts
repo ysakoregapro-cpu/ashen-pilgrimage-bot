@@ -43,7 +43,7 @@ export const MONSTER_SEED_DATA = mons([
   { id: 'mon_ink_beast', name: 'インクの魔物', tag: 'library', lv: 26, hp: 148, atk: 24, mag: 28, def: 16, spd: 10, exp: 46, gold: 24 },
   { id: 'mon_broken_terminal', name: '壊れた記録端末', tag: 'library', lv: 28, hp: 150, atk: 18, mag: 20, def: 16, spd: 8, exp: 50, gold: 26 },
   { id: 'mon_shadow_librarian', name: '影写しの司書', tag: 'library', lv: 30, hp: 130, atk: 16, mag: 28, def: 12, spd: 14, exp: 54, gold: 28 },
-  { id: 'mon_moon_observer', name: '月下の観測者', tag: 'library', lv: 32, hp: 240, atk: 22, mag: 30, def: 14, spd: 12, exp: 58, gold: 30 },
+  { id: 'mon_moon_observer', name: '月下の観測者', tag: 'library', lv: 32, hp: 240, atk: 22, mag: 30, def: 14, spd: 12, exp: 58, gold: 30, boss: true },
   { id: 'mon_silent_guardian', name: '無答の守護者', tag: 'library', lv: 38, hp: 400, atk: 30, mag: 36, def: 26, spd: 10, exp: 150, gold: 100, boss: true },
   // 地下市
   { id: 'mon_black_market_thug', name: '黒市の用心棒', tag: 'undermarket', lv: 28, hp: 160, atk: 28, mag: 4, def: 16, spd: 12, exp: 52, gold: 35 },
@@ -78,6 +78,7 @@ export const MONSTER_SEED_DATA = mons([
   { id: 'mon_machina_echo', name: 'マキナの残響', tag: 'valhalla', lv: 68, hp: 500, atk: 50, mag: 44, def: 36, spd: 14, exp: 200, gold: 130, boss: true },
   { id: 'mon_old_king_shadow', name: '旧王の影', tag: 'valhalla', lv: 70, hp: 550, atk: 52, mag: 48, def: 38, spd: 12, exp: 220, gold: 150, boss: true },
   { id: 'mon_deep_core_boss', name: '深層炉心核', tag: 'valhalla', lv: 72, hp: 600, atk: 54, mag: 50, def: 44, spd: 10, exp: 250, gold: 180, boss: true },
+  { id: 'mon_black_lantern_wraith', name: '黒灯の残影', tag: 'undermarket', lv: 54, hp: 380, atk: 34, mag: 36, def: 22, spd: 16, exp: 130, gold: 75, boss: true },
 ]);
 
 export function seedMonsters(db: Database.Database): void {

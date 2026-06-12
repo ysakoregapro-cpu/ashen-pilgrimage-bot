@@ -16,6 +16,10 @@ import {
   scaleMonsterForBattle, getMonsterThreatTier, calcPhysicalDamage, calcEnemyDamageToPlayer,
 } from '../src/systems/combatMath';
 import { getDifficultyModifiers } from '../src/systems/difficultySystem';
+import { calcUpgradeStatBonuses } from '../src/systems/enhanceSystem';
+import {
+  buildWeaponPowerComparison, formatStaffDetailTable, formatWeaponPowerTable,
+} from '../src/systems/weaponPowerComparison';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -313,6 +317,14 @@ function main() {
     mdRow(['---', '---', '---', '---', '---', '---', '---', '---', '---', '---']),
     ...simLines,
   ].join('\n'));
+
+  const { ensurePhase2Seed } = require('../src/db/seedData/phase2Seed');
+  const { ensureMaterialsSeed } = require('../src/db/seedData/materials');
+  ensureMaterialsSeed(db);
+  ensurePhase2Seed(db);
+  const powerRows = buildWeaponPowerComparison(db, calcUpgradeStatBonuses);
+  section('WEAPON_POWER_COMPARISON', formatWeaponPowerTable(powerRows));
+  section('STAFF_WEAPON_DETAIL', formatStaffDetailTable(db, calcUpgradeStatBonuses));
 }
 
 main();

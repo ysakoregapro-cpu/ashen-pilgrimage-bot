@@ -309,6 +309,19 @@ async function handleFacilityResult(
         components: nextActionButtons('facility', { facilityId: facId }),
       });
       break;
+    case 'boss_rematch_select': {
+      const { getRematchableBosses } = await import('../systems/bossRematchSystem');
+      const bosses = getRematchableBosses(userId);
+      await sendPanelAfterAction(interaction, userId, {
+        embeds: [townHubEmbed(facilityName, result.message)],
+        components: [selectMenu('rematch:boss', '再戦するボス', bosses.slice(0, 25).map((b) => ({
+          label: b.name,
+          value: b.monsterId,
+          description: b.category === 'material' ? '素材' : '章ボス',
+        })))],
+      });
+      break;
+    }
     case 'inn_preview': {
       const { restConfirmButtons } = await import('../utils/townUi');
       const mode = result.extra === 'shrine' ? 'shrine' : 'inn';
