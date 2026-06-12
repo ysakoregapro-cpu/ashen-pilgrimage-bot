@@ -1,5 +1,6 @@
 import { AREAS } from './areas';
 import { STARTER_WEAPON_IDS } from './jobStarterWeapons';
+import { NORMAL_EXPLORE_POOL_EXCLUDED, TOWN_LOOT_ITEM_OVERRIDES } from './dropBalanceMaster';
 
 export type TownLootCategory = 'equipment' | 'material' | 'consumable' | 'gold';
 
@@ -43,10 +44,18 @@ function inferValueTier(itemId: string, areaMinLv: number): number {
   return 1;
 }
 
-function defaultWeight(category: TownLootCategory, tier: number): number {
-  if (category === 'equipment') return tier >= 4 ? 5 : 8;
+function defaultWeight(category: TownLootCategory, tier: number, rarity?: string): number {
+  if (category === 'equipment') {
+    if (rarity === 'UR') return 2;
+    if (rarity === 'SSR') return 3;
+    if (rarity === 'SR') return 5;
+    return tier >= 4 ? 6 : 8;
+  }
   if (category === 'consumable') return tier >= 4 ? 4 : 6;
   if (category === 'gold') return 10;
+  if (rarity === 'UR') return 3;
+  if (rarity === 'SSR') return 5;
+  if (rarity === 'SR') return 8;
   return tier >= 4 ? 6 : 12;
 }
 
@@ -73,16 +82,17 @@ function buildTownLootPools(): Record<string, TownLootEntry[]> {
       const area = townAreas[i]!;
       const rank = i + 1;
       for (const itemId of area.rewards) {
-        if (EXCLUDED_FROM_POOL.has(itemId)) continue;
+        if (EXCLUDED_FROM_POOL.has(itemId) || NORMAL_EXPLORE_POOL_EXCLUDED.has(itemId)) continue;
         const category = categorizeItem(itemId);
         const valueTier = inferValueTier(itemId, area.min);
+        const ov = TOWN_LOOT_ITEM_OVERRIDES[itemId];
         const entry: TownLootEntry = {
           item_id: itemId,
           category,
-          base_weight: defaultWeight(category, valueTier),
-          min_area_rank: rank,
-          max_area_rank: townAreas.length,
-          value_tier: valueTier,
+          base_weight: ov?.base_weight ?? defaultWeight(category, valueTier, undefined),
+          min_area_rank: ov?.min_area_rank ?? rank,
+          max_area_rank: ov?.max_area_rank ?? rank,
+          value_tier: ov?.value_tier ?? valueTier,
         };
         townMap.set(itemId, mergeEntry(townMap.get(itemId), entry));
       }

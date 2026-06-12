@@ -23,23 +23,23 @@ export const CHEST_LOOT_TABLES: Record<LootTier, Array<{ kind: 'material' | 'equ
     { kind: 'equip', rarity: 'SR', weight: 2 },
   ],
   mid: [
-    { kind: 'material', weight: 45 },
-    { kind: 'equip', rarity: 'N', weight: 12 },
+    { kind: 'material', weight: 50 },
+    { kind: 'equip', rarity: 'N', weight: 10 },
     { kind: 'equip', rarity: 'R', weight: 28 },
-    { kind: 'equip', rarity: 'SR', weight: 13 },
-    { kind: 'equip', rarity: 'SSR', weight: 2 },
+    { kind: 'equip', rarity: 'SR', weight: 10 },
+    { kind: 'equip', rarity: 'SSR', weight: 1 },
   ],
   late: [
-    { kind: 'material', weight: 40 },
-    { kind: 'equip', rarity: 'R', weight: 15 },
-    { kind: 'equip', rarity: 'SR', weight: 30 },
-    { kind: 'equip', rarity: 'SSR', weight: 15 },
+    { kind: 'material', weight: 45 },
+    { kind: 'equip', rarity: 'R', weight: 18 },
+    { kind: 'equip', rarity: 'SR', weight: 28 },
+    { kind: 'equip', rarity: 'SSR', weight: 9 },
   ],
   valhalla: [
-    { kind: 'material', weight: 40 },
-    { kind: 'equip', rarity: 'SR', weight: 15 },
-    { kind: 'equip', rarity: 'SSR', weight: 30 },
-    { kind: 'equip', rarity: 'UR', weight: 15 },
+    { kind: 'material', weight: 45 },
+    { kind: 'equip', rarity: 'SR', weight: 18 },
+    { kind: 'equip', rarity: 'SSR', weight: 27 },
+    { kind: 'equip', rarity: 'UR', weight: 10 },
   ],
 };
 
@@ -47,42 +47,42 @@ export type BattleThreatTier = 'normal' | 'tough' | 'rare' | 'elite' | 'boss';
 
 export const BATTLE_EQUIP_TABLES: Record<BattleThreatTier, Array<{ rarity?: string; kind?: 'none'; weight: number }>> = {
   normal: [
-    { kind: 'none', weight: 92 },
-    { rarity: 'N', weight: 4 },
-    { rarity: 'R', weight: 4 },
-    { rarity: 'SR', weight: 1 },
+    { kind: 'none', weight: 94 },
+    { rarity: 'N', weight: 3 },
+    { rarity: 'R', weight: 3 },
+    { rarity: 'SR', weight: 0.5 },
   ],
   tough: [
-    { kind: 'none', weight: 88 },
-    { rarity: 'R', weight: 6 },
-    { rarity: 'SR', weight: 5 },
+    { kind: 'none', weight: 90 },
+    { rarity: 'R', weight: 5 },
+    { rarity: 'SR', weight: 4 },
     { rarity: 'SSR', weight: 1 },
   ],
   rare: [
-    { kind: 'none', weight: 82 },
-    { rarity: 'SR', weight: 10 },
-    { rarity: 'SSR', weight: 5 },
-    { rarity: 'UR', weight: 3 },
+    { kind: 'none', weight: 86 },
+    { rarity: 'SR', weight: 9 },
+    { rarity: 'SSR', weight: 4 },
+    { rarity: 'UR', weight: 1 },
   ],
   elite: [
+    { kind: 'none', weight: 82 },
+    { rarity: 'SR', weight: 11 },
+    { rarity: 'SSR', weight: 5 },
+    { rarity: 'UR', weight: 2 },
+  ],
+  boss: [
     { kind: 'none', weight: 78 },
     { rarity: 'SR', weight: 12 },
     { rarity: 'SSR', weight: 7 },
     { rarity: 'UR', weight: 3 },
   ],
-  boss: [
-    { kind: 'none', weight: 75 },
-    { rarity: 'SR', weight: 12 },
-    { rarity: 'SSR', weight: 8 },
-    { rarity: 'UR', weight: 5 },
-  ],
 };
 
 export const REMATCH_LOOT_TABLE = [
-  { kind: 'normal_mat' as const, weight: 55 },
-  { kind: 'high_mat' as const, weight: 20 },
-  { kind: 'equip' as const, weight: 8 },
-  { kind: 'nothing' as const, weight: 17 },
+  { kind: 'normal_mat' as const, weight: 58 },
+  { kind: 'high_mat' as const, weight: 22 },
+  { kind: 'equip' as const, weight: 5 },
+  { kind: 'nothing' as const, weight: 15 },
 ];
 
 export function resolveEquipSlot(): string {

@@ -4,6 +4,28 @@ import { isJobStarterWeapon } from '../db/seedData/jobStarterWeapons';
 import { roll, weightedChoice } from '../utils/random';
 import { requirePlayer } from './playerSystem';
 
+const RARITY_RANK: Record<string, number> = { N: 1, R: 2, SR: 3, SSR: 4, UR: 5, Uni: 6, Src: 7 };
+
+function isAllowedForAreaMinLv(itemId: string, areaMinLv: number, townId: string): boolean {
+  const row = getDb().prepare('SELECT category, rarity FROM items WHERE id = ?').get(itemId) as {
+    category: string; rarity: string;
+  } | undefined;
+  if (!row) return true;
+  const rank = RARITY_RANK[row.rarity] ?? 1;
+  if (row.category === 'equipment') {
+    if (rank >= 5 && areaMinLv < 50 && townId !== 'valhalla_fortress') return false;
+    if (rank >= 4 && areaMinLv < 28) return false;
+  }
+  if (itemId.startsWith('boss_') && areaMinLv < 30) return false;
+  if ((itemId.startsWith('src_') || itemId.startsWith('raid_')) && areaMinLv < 40 && townId !== 'valhalla_fortress') {
+    if (!itemId.startsWith('src_echo') && !itemId.startsWith('src_lamp') && !itemId.startsWith('src_bind')) return false;
+  }
+  if (itemId.startsWith('mat_starfall') || itemId.startsWith('mat_deep_soot') || itemId.startsWith('mat_valhalla')) {
+    if (areaMinLv < 48) return false;
+  }
+  return true;
+}
+
 function canDropEquipment(userId: string, itemId: string, areaMinLv: number): boolean {
   const player = requirePlayer(userId);
   const item = getDb().prepare(`
@@ -55,9 +77,13 @@ function effectiveWeight(entry: TownLootEntry, areaRank: number): number {
 export function buildEffectiveRewardPool(townId: string, areaId: string): Array<{ item_id: string; weight: number }> {
   const pool = TOWN_LOOT_POOLS[townId] ?? [];
   const areaRank = getAreaRank(areaId);
+  const areaMinLv = (getDb().prepare('SELECT recommended_min_level FROM exploration_areas WHERE id = ?').get(areaId) as {
+    recommended_min_level: number;
+  } | undefined)?.recommended_min_level ?? 1;
   const result: Array<{ item_id: string; weight: number }> = [];
   for (const entry of pool) {
     if (entry.category === 'gold') continue;
+    if (!isAllowedForAreaMinLv(entry.item_id, areaMinLv, townId)) continue;
     const weight = effectiveWeight(entry, areaRank);
     if (weight > 0) result.push({ item_id: entry.item_id, weight });
   }

@@ -2,6 +2,7 @@
 import { getDb } from '../../src/db/database';
 import { ensurePhase2Seed } from '../../src/db/seedData/phase2Seed';
 import { ensurePhase2EquipmentRoutes } from '../../src/db/seedData/ensurePhase2EquipmentRoutes';
+import { ensureDropBalanceSeed } from '../../src/db/seedData/dropBalanceSeed';
 import { ensureMaterialsSeed } from '../../src/db/seedData/materials';
 import { ensureMasterDataSeed } from '../../src/db/seedData/masterDataSeed';
 import { AREAS } from '../../src/db/seedData/areas';
@@ -113,6 +114,7 @@ export function initAuditDb() {
   ensureMaterialsSeed(db);
   ensurePhase2Seed(db);
   ensurePhase2EquipmentRoutes(db);
+  ensureDropBalanceSeed(db);
   ensureMasterDataSeed(db);
   return db;
 }
