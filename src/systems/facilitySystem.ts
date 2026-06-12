@@ -4,6 +4,11 @@ import { requirePlayer, getPlayer, recalculatePlayerStats } from './playerSystem
 import { getEnhanceableEquipment } from './upgradeSystem';
 import { getAwakeningCandidates } from './awakeningSystem';
 import { getKaiUniqueCandidates, getKaiSrcCandidates } from './kaiForgeSystem';
+import {
+  mapInventoryRowToEquipmentSelect,
+  toOwnedEquipmentSelectOption,
+  type OwnedEquipmentSelectRow,
+} from './equipmentLabelSystem';
 import { formatRematchBossList, getRematchableBosses } from './bossRematchSystem';
 import { getUniqueWeapons } from './srcWeaponSystem';
 import { getJobs } from './jobSystem';
@@ -322,23 +327,40 @@ export function executeFacilityAction(userId: string, facilityId: string, action
   return { type: 'text', message: '……今日は、ここまでにしておこう。' };
 }
 
-export function getUpgradeSelectOptions(userId: string, mode: string) {
+export function getUpgradeSelectOptions(userId: string, mode: string): OwnedEquipmentSelectRow[] {
   if (mode === 'awaken') {
-    return getAwakeningCandidates(userId).map((i) => ({
-      id: i.id, name: i.name, rarity: i.rarity, src_level: 0,
+    return getAwakeningCandidates(userId).map((i) => mapInventoryRowToEquipmentSelect({
+      id: i.id, name: i.name, rarity: i.rarity, upgrade_level: i.upgrade_level,
+      src_level: 0, awakening_level: i.awakening_level, durability_state: '良好',
+      is_equipped: 0, slot: i.slot,
     }));
   }
   if (mode === 'kai_unique') {
-    return getKaiUniqueCandidates(userId).map((i) => ({ id: i.id, name: i.name, rarity: 'N', src_level: 0 }));
+    return getKaiUniqueCandidates(userId).map((i) => mapInventoryRowToEquipmentSelect({
+      id: i.id, name: i.name, rarity: 'N', upgrade_level: 0, src_level: 0,
+      awakening_level: i.awakening_level, durability_state: '良好', is_equipped: 0, slot: 'weapon',
+    }));
   }
   if (mode === 'kai_src') {
-    return getKaiSrcCandidates(userId).map((i) => ({ id: i.id, name: i.name, rarity: 'SR', src_level: 0 }));
+    return getKaiSrcCandidates(userId).map((i) => mapInventoryRowToEquipmentSelect({
+      id: i.id, name: i.name, rarity: 'SR', upgrade_level: 0, src_level: 0,
+      awakening_level: 0, durability_state: '良好', is_equipped: 0, slot: 'weapon',
+    }));
   }
-  const items = getEnhanceableEquipment(userId) as Array<{ id: number; name: string; rarity: string; src_level: number }>;
+  const items = getEnhanceableEquipment(userId) as Array<{
+    id: number; name: string; rarity: string; upgrade_level: number; src_level: number;
+    durability_state: string; is_equipped: number; awakening_level: number; slot: string;
+  }>;
   const filtered = mode === 'src'
     ? items.filter((i) => i.rarity === 'Src' || i.src_level > 0)
-    : items;
-  return filtered;
+    : mode === 'repair'
+      ? items.filter((i) => i.durability_state !== '良好')
+      : items;
+  return filtered.map((i) => mapInventoryRowToEquipmentSelect(i));
+}
+
+export function getUpgradeSelectMenuOptions(userId: string, mode: string) {
+  return getUpgradeSelectOptions(userId, mode).slice(0, 25).map((r) => toOwnedEquipmentSelectOption(r));
 }
 
 export function getSrcUniqueOptions(userId: string) {

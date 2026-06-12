@@ -13,7 +13,7 @@ import {
 } from '../systems/townActionSystem';
 import {
   executeFacilityAction,
-  getUpgradeSelectOptions,
+  getUpgradeSelectMenuOptions,
   getSrcUniqueOptions,
   formatEquipSummary,
   getFacility,
@@ -61,7 +61,7 @@ async function runExploreAction(interaction: ButtonInteraction, userId: string, 
 }
 
 async function handlePrepBack(interaction: ButtonInteraction, userId: string, base: string): Promise<void> {
-  const { PREP_SLOTS, getPrepSlotOptions, formatCurrentEquipment } = await import('../systems/prepSystem');
+  const { PREP_SLOTS, buildPrepEquipSelectOptions, formatCurrentEquipment } = await import('../systems/prepSystem');
   const { townHubEmbed } = await import('../utils/townUi');
   const { selectMenu } = await import('../utils/embeds');
   const slotLabels: Record<string, string> = {
@@ -85,20 +85,15 @@ async function handlePrepBack(interaction: ButtonInteraction, userId: string, ba
   }
 
   if (base.startsWith('prep:back:slot:')) {
-    const slot = base.slice('prep:back:slot:'.length);
-    const opts = getPrepSlotOptions(userId, slot as import('../types').EquipmentSlot);
-    const pickOpts = opts.filter((o) => !o.disabled).slice(0, 25);
+    const slot = base.slice('prep:back:slot:'.length) as import('../types').EquipmentSlot;
+    const pickOpts = buildPrepEquipSelectOptions(userId, slot);
     await sendJourneyLog(interaction, {
       embeds: [townHubEmbed('装備変更', `**${slotLabels[slot] ?? slot}** の装備候補`)],
-      components: pickOpts.length ? [
-        selectMenu('prep:equip', '装備を選ぶ', pickOpts.map((o) => ({
-          label: o.label, value: String(o.inventoryId), description: o.description,
-        }))),
-        selectMenu('detail:inv', '詳細を見る', pickOpts.map((o) => ({
-          label: o.label, value: String(o.inventoryId), description: o.description,
-        }))),
+      components: [
+        selectMenu('prep:equip', '装備を選ぶ', pickOpts),
+        selectMenu('detail:inv', '詳細を見る', pickOpts.filter((o) => !o.value.startsWith('none'))),
         ...nextActionButtons('equip'),
-      ] : nextActionButtons('equip'),
+      ],
     });
   }
 }
@@ -402,8 +397,8 @@ async function handleFacilityResult(
       break;
     }
     case 'upgrade_select': {
-      const items = getUpgradeSelectOptions(userId, result.extra ?? 'enhance');
-      if (!items.length) {
+      const menuOpts = getUpgradeSelectMenuOptions(userId, result.extra ?? 'enhance');
+      if (!menuOpts.length) {
         await sendJourneyLog(interaction, {
           embeds: [townHubEmbed(getFacilityName(facId), '対象となる装備がない。')],
           components: nextActionButtons('facility', { facilityId: facId }),
@@ -413,9 +408,7 @@ async function handleFacilityResult(
       await sendPanelAfterAction(interaction, userId, {
         embeds: [townHubEmbed(facilityName, result.message)],
         components: [
-          selectMenu(`upgrade:${result.extra}`, '装備を選ぶ', items.map((i) => ({
-            label: i.name, value: String(i.id), description: i.rarity,
-          }))),
+          selectMenu(`upgrade:${result.extra}`, '装備を選ぶ', menuOpts),
           detailOpenButton('upgrade'),
         ],
       });
@@ -433,7 +426,9 @@ async function handleFacilityResult(
       await sendPanelAfterAction(interaction, userId, {
         embeds: [townHubEmbed(facilityName, result.message)],
         components: [selectMenu('upgrade:manifest', '武器を選ぶ', items.map((i) => ({
-          label: i.name, value: String(i.id),
+          label: i.name.slice(0, 100),
+          value: String(i.id),
+          description: `SR / #${i.id}`.slice(0, 100),
         })))],
       });
       break;

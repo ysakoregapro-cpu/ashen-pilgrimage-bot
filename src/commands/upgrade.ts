@@ -9,6 +9,10 @@ import { awakenEquipment, getAwakeningInfo, getAwakeningCandidates } from '../sy
 import { kaiUniqueTransform, kaiSrcTransform, getKaiUniqueInfo, getKaiSrcInfo } from '../systems/kaiForgeSystem';
 import { recalculatePlayerStats } from '../systems/playerSystem';
 import { detailOpenButton } from '../systems/itemDetailSystem';
+import {
+  mapInventoryRowToEquipmentSelect,
+  toOwnedEquipmentSelectOption,
+} from '../systems/equipmentLabelSystem';
 import { baseEmbed, errorEmbed, successEmbed, selectMenu } from '../utils/embeds';
 import { safeDefer, safeEdit } from '../utils/interaction';
 
@@ -34,14 +38,22 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  const items = getEnhanceableEquipment(userId) as Array<{ id: number; name: string; rarity: string; upgrade_level: number; src_level: number; is_equipped: number }>;
+  const items = getEnhanceableEquipment(userId) as Array<{
+    id: number; name: string; rarity: string; upgrade_level: number; src_level: number;
+    durability_state: string; is_equipped: number; awakening_level: number; slot: string;
+  }>;
   const filter = sub === 'manifest'
     ? items.filter((i) => i.rarity === 'SR')
     : sub === 'awaken'
-      ? getAwakeningCandidates(userId).map((i) => ({ ...i, upgrade_level: i.upgrade_level, src_level: 0, is_equipped: 0 }))
-      : sub === 'src'
-        ? items.filter((i) => i.rarity === 'Src' || i.src_level > 0)
-        : items;
+      ? getAwakeningCandidates(userId).map((i) => ({
+        id: i.id, name: i.name, rarity: i.rarity, upgrade_level: i.upgrade_level,
+        src_level: 0, durability_state: '良好', is_equipped: 0, awakening_level: i.awakening_level, slot: i.slot,
+      }))
+      : sub === 'repair'
+        ? items.filter((i) => i.durability_state !== '良好')
+        : sub === 'src'
+          ? items.filter((i) => i.rarity === 'Src' || i.src_level > 0)
+          : items;
 
   if (!filter.length) {
     await safeEdit(interaction, { embeds: [errorEmbed('対象装備がありません。')] });
@@ -55,10 +67,9 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   await safeEdit(interaction, {
     embeds: [baseEmbed('装備選択', `${sub} する装備を選んでください`)],
     components: [
-      selectMenu(actionMap[sub]!, '装備を選択', filter.slice(0, 25).map((i) => ({
-        label: i.name, value: String(i.id),
-        description: `${i.rarity}${i.src_level ? ` Src+${i.src_level}` : i.upgrade_level ? ` +${i.upgrade_level}` : ''}`,
-      }))),
+      selectMenu(actionMap[sub]!, '装備を選択', filter.slice(0, 25).map((i) =>
+        toOwnedEquipmentSelectOption(mapInventoryRowToEquipmentSelect(i)),
+      )),
       detailOpenButton('upgrade'),
     ],
   });

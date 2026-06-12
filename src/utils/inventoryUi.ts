@@ -9,6 +9,11 @@ import { baseEmbed, selectMenu } from './embeds';
 import type { UiPayload } from './townUi';
 import { inventorySummaryEmbed } from './townUi';
 import { nextActionButtons } from './nextActionButtons';
+import {
+  formatOwnedEquipmentDescription,
+  formatOwnedEquipmentLabel,
+  mapInventoryRowToEquipmentSelect,
+} from '../systems/equipmentLabelSystem';
 
 export const INVENTORY_PAGE_SIZE = 25;
 
@@ -22,7 +27,10 @@ export type InventoryListItem = {
   quantity: number;
   upgrade_level: number;
   src_level: number;
+  awakening_level: number;
+  durability_state: string;
   is_equipped: number;
+  slot?: string | null;
 };
 
 const CATEGORY_LABELS: Record<InventoryCategory, string> = {
@@ -32,7 +40,7 @@ const CATEGORY_LABELS: Record<InventoryCategory, string> = {
   material: '素材',
 };
 
-type InventoryRow = InventoryListItem & { is_pending_reward: number };
+type InventoryRow = InventoryListItem & { is_pending_reward: number; slot?: string | null };
 
 function filterByCategory(rows: InventoryRow[], category: InventoryCategory): InventoryRow[] {
   if (category === 'all') return rows;
@@ -58,8 +66,9 @@ export function getInventoryListItems(
 
   let rows = getDb().prepare(`
     SELECT pi.id, i.name, i.rarity, i.category, pi.quantity, pi.upgrade_level, pi.src_level,
-      pi.is_equipped, pi.is_pending_reward
+      pi.awakening_level, pi.durability_state, pi.is_equipped, pi.is_pending_reward, e.slot
     FROM player_inventory pi JOIN items i ON pi.item_id = i.id
+    LEFT JOIN equipment e ON pi.item_id = e.item_id
     WHERE pi.user_id = ?
     ORDER BY i.category, i.rarity DESC, i.name
   `).all(userId) as InventoryRow[];
@@ -76,8 +85,24 @@ export function getInventoryListItems(
   return { items, total, page: safePage, pageSize, totalPages };
 }
 
-function itemSelectDescription(i: InventoryListItem): string {
+function itemSelectDescription(i: InventoryListItem & { slot?: string | null }): string {
+  if (i.category === 'equipment') {
+    return formatOwnedEquipmentDescription(mapInventoryRowToEquipmentSelect({
+      ...i,
+      slot: i.slot ?? undefined,
+    }));
+  }
   return `[${i.rarity}] ${i.category}${i.quantity > 1 ? ` x${i.quantity}` : ''}${i.is_equipped ? ' 装備中' : ''}`.slice(0, 100);
+}
+
+function itemSelectLabel(i: InventoryListItem & { slot?: string | null }): string {
+  if (i.category === 'equipment') {
+    return formatOwnedEquipmentLabel(mapInventoryRowToEquipmentSelect({
+      ...i,
+      slot: i.slot ?? undefined,
+    }));
+  }
+  return i.name.slice(0, 100);
 }
 
 function buildCategoryFilterRow(totalAll: number, activeCategory: InventoryCategory): ActionRowBuilder<ButtonBuilder> | null {
@@ -140,7 +165,7 @@ function buildInventoryComponents(
 
   if (items.length) {
     components.push(selectMenu(selectId, selectPlaceholder, items.map((i) => ({
-      label: i.name.slice(0, 100),
+      label: itemSelectLabel(i),
       value: String(i.id),
       description: itemSelectDescription(i),
     }))));

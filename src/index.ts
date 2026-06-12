@@ -321,6 +321,17 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
 
 
   if (prefix === 'equip') {
+    const slot = action as import('./types').EquipmentSlot;
+    const { isEquipNoneValue } = await import('./systems/equipmentLabelSystem');
+    if (isEquipNoneValue(value)) {
+      const { handleUnequip } = await import('./commands/equip');
+      const msg = handleUnequip(userId, slot);
+      await sendSelectResultLog(interaction, {
+        embeds: [successEmbed(msg)],
+        components: nextActionButtons('equip_done', { slot }),
+      });
+      return;
+    }
 
     const invId = Number(value);
     const { buildEquipmentDetailView } = await import('./systems/itemDetailSystem');
@@ -665,24 +676,36 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
   }
 
   if (prefix === 'prep' && action === 'slot') {
-    const { getPrepSlotOptions } = await import('./systems/prepSystem');
-    const opts = getPrepSlotOptions(userId, value as import('./types').EquipmentSlot);
-    const pickOpts = opts.filter((o) => !o.disabled).slice(0, 25);
+    const { buildPrepEquipSelectOptions } = await import('./systems/prepSystem');
+    const slot = value as import('./types').EquipmentSlot;
+    const pickOpts = buildPrepEquipSelectOptions(userId, slot);
     await sendSelectResultLog(interaction, {
       embeds: [townHubEmbed('装備変更', `**${value}** の装備候補`)],
-      components: pickOpts.length ? [
-        selectMenu('prep:equip', '装備を選ぶ', pickOpts.map((o) => ({
-          label: o.label, value: String(o.inventoryId), description: o.description,
-        }))),
-        selectMenu('detail:inv', '詳細を見る', pickOpts.map((o) => ({
-          label: o.label, value: String(o.inventoryId), description: o.description,
-        }))),
-      ] : nextActionButtons('equip'),
+      components: [
+        selectMenu('prep:equip', '装備を選ぶ', pickOpts),
+        selectMenu('detail:inv', '詳細を見る', pickOpts.filter((o) => !o.value.startsWith('none'))),
+      ],
     });
     return;
   }
 
   if (prefix === 'prep' && action === 'equip') {
+    const { isEquipNoneValue, parseEquipNoneSlot } = await import('./systems/equipmentLabelSystem');
+    if (isEquipNoneValue(value)) {
+      const slot = parseEquipNoneSlot(value);
+      if (!slot) {
+        await sendSelectResultLog(interaction, { embeds: [errorEmbed('装備スロットが不明です。')], components: nextActionButtons('equip') });
+        return;
+      }
+      const { unequipWithDiff } = await import('./systems/prepSystem');
+      const r = unequipWithDiff(userId, slot);
+      await sendSelectResultLog(interaction, {
+        embeds: [successEmbed(r.message)],
+        components: nextActionButtons('equip_done', { slot }),
+      });
+      return;
+    }
+
     const invId = Number(value);
     const { buildEquipmentDetailView } = await import('./systems/itemDetailSystem');
     const payload = buildEquipmentDetailView(userId, invId, { compare: true, context: 'equip' });

@@ -1,5 +1,10 @@
 import { getDb } from '../db/database';
-import { equipItem, getEquipped, getEquippableItems } from './equipmentSystem';
+import { equipItem, getEquipped, getEquippableItems, unequipSlot } from './equipmentSystem';
+import {
+  buildEquipChangeSelectOptions,
+  mapInventoryRowToEquipmentSelect,
+  type OwnedEquipmentSelectRow,
+} from './equipmentLabelSystem';
 import { recalculatePlayerStats, requirePlayer } from './playerSystem';
 import { SLOT_LABELS, type EquipmentSlot } from '../types';
 
@@ -81,24 +86,54 @@ function getStatSnapshot(userId: string) {
   return { attack: p.attack, magic: p.magic, defense: p.defense, spirit: p.spirit, speed: p.speed };
 }
 
+export function unequipWithDiff(userId: string, slot: EquipmentSlot): { ok: boolean; message: string } {
+  const before = getStatSnapshot(userId);
+  const oldEq = getEquipped(userId).find((e) => (e as { slot: string }).slot === slot) as {
+    name: string | null; upgrade_level: number; src_level?: number;
+  } | undefined;
+
+  const msg = unequipSlot(userId, slot);
+  const after = getStatSnapshot(userId);
+  const lines = [`**${SLOT_LABELS[slot] ?? slot}**の装備を外しました。`, ''];
+  if (oldEq?.name) {
+    const upg = (oldEq as { src_level?: number }).src_level && (oldEq as { src_level: number }).src_level > 0
+      ? ` Src+${(oldEq as { src_level: number }).src_level}`
+      : oldEq.upgrade_level > 0 ? ` +${oldEq.upgrade_level}` : '';
+    lines.push('**外した装備:**', `${oldEq.name}${upg}`, '');
+  } else {
+    lines.push(msg, '');
+  }
+  lines.push('**変化:**');
+  for (const key of ['attack', 'magic', 'defense', 'spirit', 'speed'] as const) {
+    const diff = after[key] - before[key];
+    if (diff !== 0) lines.push(`${statLabel(key)} ${diff > 0 ? '+' : ''}${diff}`);
+  }
+  if (lines[lines.length - 1] === '**変化:**') lines.push('（能力変化なし）');
+  return { ok: true, message: lines.join('\n') };
+}
+
 export function getPrepSlotOptions(userId: string, slot: EquipmentSlot) {
-  const items = getEquippableItems(userId, slot) as Array<{
-    id: number; name: string; rarity: string; upgrade_level: number;
-    attack_bonus?: number; defense_bonus?: number; magic_bonus?: number;
-  }>;
+  const items = getEquippableItems(userId, slot) as Array<OwnedEquipmentSelectRow & { rarity: string }>;
   const player = requirePlayer(userId);
   return items.map((i) => {
     const reqLv = defaultRequiredLevel(i.rarity);
     const canEquip = player.level >= reqLv;
-    const stats: string[] = [];
-    if ((i as { attack_bonus?: number }).attack_bonus) stats.push(`攻+${(i as { attack_bonus: number }).attack_bonus}`);
+    const row = mapInventoryRowToEquipmentSelect({ ...i, slot });
     return {
       inventoryId: i.id,
-      label: `${i.name}${i.upgrade_level ? ` +${i.upgrade_level}` : ''}`,
-      description: canEquip ? `[${i.rarity}] ${stats.join(' ')}` : `Lv${reqLv}必要`,
+      label: row.name,
+      description: canEquip ? `[${i.rarity}]` : `Lv${reqLv}必要`,
       disabled: !canEquip,
+      row,
     };
   });
+}
+
+export function buildPrepEquipSelectOptions(userId: string, slot: EquipmentSlot) {
+  const rows = getPrepSlotOptions(userId, slot)
+    .filter((o) => !o.disabled)
+    .map((o) => o.row);
+  return buildEquipChangeSelectOptions(slot, rows);
 }
 
 export function formatCurrentEquipment(userId: string): string {

@@ -214,8 +214,9 @@ export function listMaterials(userId: string): string {
 
 export function getEnhanceableEquipment(userId: string) {
   return getDb().prepare(`
-    SELECT pi.id, i.name, i.rarity, pi.upgrade_level, pi.src_level, pi.durability_state, pi.is_equipped
+    SELECT pi.id, i.name, i.rarity, pi.upgrade_level, pi.src_level, pi.durability_state, pi.is_equipped,
+      pi.awakening_level, e.slot
     FROM player_inventory pi JOIN items i ON pi.item_id = i.id JOIN equipment e ON pi.item_id = e.item_id
-    WHERE pi.user_id = ? ORDER BY pi.is_equipped DESC, i.rarity DESC
+    WHERE pi.user_id = ? AND pi.is_pending_reward = 0 ORDER BY pi.is_equipped DESC, i.rarity DESC
   `).all(userId);
 }

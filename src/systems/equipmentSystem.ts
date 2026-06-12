@@ -59,12 +59,15 @@ export function equipItem(userId: string, inventoryId: number): string {
 }
 
 export function unequipSlot(userId: string, slot: EquipmentSlot): string {
-  const row = getDb().prepare('SELECT inventory_id FROM player_equipment WHERE user_id = ? AND slot = ?').get(userId, slot) as { inventory_id: number } | undefined;
-  if (!row?.inventory_id) return '何も装備していません。';
-  getDb().prepare('UPDATE player_inventory SET is_equipped = 0, updated_at = ? WHERE id = ?').run(nowIso(), row.inventory_id);
-  getDb().prepare('DELETE FROM player_equipment WHERE user_id = ? AND slot = ?').run(userId, slot);
+  const db = getDb();
+  const row = db.prepare('SELECT inventory_id FROM player_equipment WHERE user_id = ? AND slot = ?').get(userId, slot) as { inventory_id: number } | undefined;
+  if (!row?.inventory_id) {
+    return `${SLOT_LABELS[slot] ?? slot}は装備していません。`;
+  }
+  db.prepare('UPDATE player_inventory SET is_equipped = 0, updated_at = ? WHERE id = ?').run(nowIso(), row.inventory_id);
+  db.prepare('DELETE FROM player_equipment WHERE user_id = ? AND slot = ?').run(userId, slot);
   recalculatePlayerStats(userId);
-  return `${SLOT_LABELS[slot] ?? slot}を外しました。`;
+  return `${SLOT_LABELS[slot] ?? slot}の装備を外しました。`;
 }
 
 export function formatEquipmentDisplay(userId: string): string {
