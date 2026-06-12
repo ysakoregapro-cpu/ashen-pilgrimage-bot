@@ -208,7 +208,8 @@ export function getEnemyByInstanceId(state: EnemyStateJson, instanceId: string):
   return state.enemies.find((e) => e.instance_id === instanceId);
 }
 
-export function formatEnemyDisplayName(enemy: EnemyInstance): string {
+export function formatEnemyDisplayName(enemy: EnemyInstance, partySize = 1): string {
+  if (partySize <= 1) return enemy.name;
   return `${enemy.label}: ${enemy.name}`;
 }
 

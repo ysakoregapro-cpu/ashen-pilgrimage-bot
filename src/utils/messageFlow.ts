@@ -13,6 +13,7 @@ import {
 } from 'discord.js';
 import { errorEmbed } from './embeds';
 import { errorRecoveryPayload } from './nextActionButtons';
+import { sanitizeComponents } from './componentSafety';
 import type { UiPayload } from './townUi';
 
 const NO_CHANNEL_MESSAGE = 'ここではログを表示できません。\n町の操作パネルがあるチャンネルで試してください。';
@@ -76,7 +77,7 @@ export function stampPanelPayload(userId: string, payload: UiPayload): UiPayload
   const session = refreshPanelSession(userId);
   return {
     embeds: payload.embeds,
-    components: stampComponents(payload.components, session),
+    components: stampComponents(sanitizeComponents(payload.components, 'panel'), session),
   };
 }
 
@@ -197,14 +198,19 @@ export async function sendJourneyLog(
     return;
   }
 
+  const safe = {
+    embeds: payload.embeds,
+    components: sanitizeComponents(payload.components, 'journey-log'),
+  };
+
   if (interaction.deferred || interaction.replied) {
-    await channel.send({ embeds: payload.embeds, components: payload.components });
+    await channel.send(safe);
     return;
   }
 
   if (interaction.isButton() || interaction.isStringSelectMenu()) {
     await interaction.deferUpdate();
-    await channel.send({ embeds: payload.embeds, components: payload.components });
+    await channel.send(safe);
   }
 }
 
@@ -219,7 +225,10 @@ export async function sendJourneyLogAfterSelect(
     return;
   }
   await interaction.deferUpdate();
-  await channel.send({ embeds: payload.embeds, components: payload.components });
+  await channel.send({
+    embeds: payload.embeds,
+    components: sanitizeComponents(payload.components, 'journey-log-select'),
+  });
 }
 
 export async function sendJourneyLogFromButton(

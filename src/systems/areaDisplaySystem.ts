@@ -79,7 +79,7 @@ export function formatAreaDetail(userId: string, areaId: string): string {
     `推奨Lv: ${area.recommended_min_level}〜${area.recommended_max_level} | 危険度: ${danger}`,
     `おすすめ属性: ${recommendedEl}`,
     `主な敵: ${monNames.join('、') || '—'}`,
-    'この地域で見つかる品: 装備・素材・消耗品（町共通プール）',
+    '見つかるもの：装備品・素材・旅の備え',
     `入手傾向: ${obtainTrend}`,
     `報酬傾向: ${lootTrend}`,
     '注意: 同一町内の探索エリアは報酬プールを共有します',

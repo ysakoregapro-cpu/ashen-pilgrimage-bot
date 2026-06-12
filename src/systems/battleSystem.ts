@@ -520,7 +520,7 @@ function executePlayerAction(
       ? getEnemyByInstanceId(es, targetInstanceId)
       : getAliveEnemies(es)[0];
     if (!target) return { pHp, pMp, eHp, eBreak, state };
-    const r = applyPhysicalAttack(userId, player, target, monster, state, diff, isBoss);
+    const r = applyPhysicalAttack(userId, player, target, monster, state, diff, isBoss, es.partySize);
     target.hp = r.targetHp;
     target.break = r.targetBreak;
     if (target.hp <= 0) target.is_alive = false;
@@ -712,14 +712,14 @@ function applySkill(
         if (enemyState) {
           target.hp -= dmg;
           target.break += (skill.break_power ?? 0) * diff.breakRate + state.breakBonus;
-          target.break = checkBreakOnEnemy(state, monRow ?? monster, target.break, target);
+          target.break = checkBreakOnEnemy(state, monRow ?? monster, target.break, target, enemyState.partySize);
           if (target.hp <= 0) target.is_alive = false;
         } else {
           eHp -= dmg;
           eBreak += (skill.break_power ?? 0) * diff.breakRate + state.breakBonus;
         }
         const logType: BattleLogType = skill.skill_type === 'divine' ? 'player_divine' : skill.skill_type === 'magic' ? 'player_skill' : 'player_attack';
-        const name = enemyState ? formatEnemyDisplayName(target) : monster.name;
+        const name = enemyState ? formatEnemyDisplayName(target, enemyState.partySize) : monster.name;
         pushLog(state, logType, `${skill.name}${hits > 1 ? `（${i + 1}）` : ''}。\n　${name}に **${dmg}** ダメージ。`);
       } else pushLog(state, 'player_skill', `${skill.name}。\n　外れた。`);
     }
@@ -766,6 +766,7 @@ function applyPhysicalAttack(
   state: BattleState,
   diff: ReturnType<typeof getDifficultyModifiers>,
   isBoss: boolean,
+  partySize = 1,
 ): { targetHp: number; targetBreak: number } {
   const statusMods = getDefensiveModifiers(state, isBoss);
   const scale = target.combatScale;
@@ -781,19 +782,19 @@ function applyPhysicalAttack(
     dmg = applyPlayerBreakDamage(state, dmg);
     hp -= dmg;
     br += dmg * 0.3 * diff.breakRate + state.breakBonus;
-    pushLog(state, 'player_attack', `あなたの攻撃。\n　${formatEnemyDisplayName(target)}に **${dmg}** ダメージ${result.crit ? '（会心）' : ''}。`);
-    br = checkBreakOnEnemy(state, monRow ?? monster, br, target);
+    pushLog(state, 'player_attack', `あなたの攻撃。\n　${formatEnemyDisplayName(target, partySize)}に **${dmg}** ダメージ${result.crit ? '（会心）' : ''}。`);
+    br = checkBreakOnEnemy(state, monRow ?? monster, br, target, partySize);
   } else pushLog(state, 'player_attack', 'あなたの攻撃。\n　外れた。');
   return { targetHp: hp, targetBreak: br };
 }
 
-function checkBreakOnEnemy(state: BattleState, monster: MonsterRow, eBreak: number, enemy?: EnemyInstance): number {
+function checkBreakOnEnemy(state: BattleState, monster: MonsterRow, eBreak: number, enemy?: EnemyInstance, partySize = 1): number {
   if (eBreak >= monster.break_max) {
     state.enemyBroken = true;
     state.breakRemainingHits = randomInt(1, 2);
     state.enemyNextAtkReducePct = 0.2;
     state.enemyNextAtkReduceActive = true;
-    const name = enemy ? formatEnemyDisplayName(enemy) : monster.name;
+    const name = enemy ? formatEnemyDisplayName(enemy, partySize) : monster.name;
     pushLog(state, 'break', `🟡 ブレイク！${name}の体勢が崩れた！`);
     return 0;
   }
@@ -818,7 +819,7 @@ function executeEnemiesTurn(
     if (primary) {
       primary.break += 15 + state.breakBonus;
       const mon = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(primary.monster_id) as MonsterRow;
-      primary.break = checkBreakOnEnemy(state, mon, primary.break, primary);
+      primary.break = checkBreakOnEnemy(state, mon, primary.break, primary, enemyState.partySize);
     }
     state.trapActive = false;
     pushLog(state, 'break', '罠が炸裂した。\n　体勢を崩しやすくなった。');
@@ -830,7 +831,7 @@ function executeEnemiesTurn(
   for (let i = 0; i < alive.length; i++) {
     const enemy = alive[i]!;
     const monster = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(enemy.monster_id) as MonsterRow;
-    const r = executeSingleEnemyTurn(monster, enemy, player, state, diff, tutorial, hp, isBoss, heavyFlags[i] ?? false);
+    const r = executeSingleEnemyTurn(monster, enemy, player, state, diff, tutorial, hp, isBoss, heavyFlags[i] ?? false, enemyState.partySize);
     hp = r.pHp;
     state = r.state;
     if (hp <= 0) break;
@@ -848,9 +849,10 @@ function executeSingleEnemyTurn(
   pHp: number,
   isBoss: boolean,
   forceHeavy: boolean,
+  partySize = 1,
 ): { pHp: number; state: BattleState } {
   if (isEnemyActionBlocked(state, isBoss)) {
-    pushLog(state, 'status', `${formatEnemyDisplayName(enemy)}は動けない！`);
+    pushLog(state, 'status', `${formatEnemyDisplayName(enemy, partySize)}は動けない！`);
     state.enemyBind = Math.max(0, state.enemyBind - 1);
     onEnemyControlBlocked(state);
     return { pHp, state };
@@ -862,7 +864,7 @@ function executeSingleEnemyTurn(
   const atk = Math.floor(scale.attack * statusMods.enemyAtkMult);
   const heavy = forceHeavy || !!(ai.heavy_chance && roll(ai.heavy_chance)) || scale.threatTier === 'elite';
   if (!roll(diff.enemyHitRate)) {
-    pushLog(state, 'enemy_attack', `${formatEnemyDisplayName(enemy)}の攻撃。\n　外れた。`);
+    pushLog(state, 'enemy_attack', `${formatEnemyDisplayName(enemy, partySize)}の攻撃。\n　外れた。`);
     return { pHp, state };
   }
 
@@ -885,7 +887,7 @@ function executeSingleEnemyTurn(
   const mit = applyPlayerElementResist(dmg, monster.element, resists);
   dmg = mit.damage;
   pHp -= dmg;
-  pushLog(state, 'enemy_attack', `${formatEnemyDisplayName(enemy)}の攻撃${heavy ? '（強）' : ''}。\n　あなたに **${dmg}** ダメージ。`);
+  pushLog(state, 'enemy_attack', `${formatEnemyDisplayName(enemy, partySize)}の攻撃${heavy ? '（強）' : ''}。\n　あなたに **${dmg}** ダメージ。`);
   if (mit.logText) pushLog(state, 'status', mit.logText);
   if (ai.poison_chance && roll(ai.poison_chance + diff.statusAccBonus)) {
     applyStatusEffect(state, 'player', 'poison', 3, false);
@@ -1094,7 +1096,7 @@ function resolveVictory(
   incrementWeeklyProgress(userId, 'explore_count');
 
   const lines: string[] = [];
-  const battleTail = state.log.filter((l) => !l.includes('勝利')).slice(-4);
+  const battleTail = state.log.filter((l) => !l.includes('勝利') && !/打ち倒した|すべて倒した/.test(l)).slice(-4);
   if (battleTail.length) {
     lines.push('**戦闘の終わり**', ...battleTail, '');
   }
@@ -1192,6 +1194,8 @@ export function buildBattleReply(battleId: string, userId: string) {
         playerHp.hp, display.player.max_hp, playerHp.mp, display.player.max_mp,
         es.enemies.filter((e) => e.is_alive),
         display.state.log,
+        undefined,
+        es.partySize,
       )],
       components: battleButtons(battleId, display.session.can_flee === 1),
     };
@@ -1226,21 +1230,23 @@ export function buildTargetSelectReply(
       alive,
       d.state.log,
       note,
+      es.partySize,
     )],
     components: [
-      targetSelectRow(battleId, alive),
+      targetSelectRow(battleId, alive, es.partySize),
       ...battleButtons(battleId, d.session.can_flee === 1).slice(0, 1),
     ],
   };
 }
 
-function targetSelectRow(battleId: string, enemies: EnemyInstance[]) {
+function targetSelectRow(battleId: string, enemies: EnemyInstance[], partySize = 1) {
   const row = new ActionRowBuilder<ButtonBuilder>();
   for (const e of enemies.slice(0, 3)) {
+    const label = (partySize > 1 ? `${e.label}: ` : '') + e.name;
     row.addComponents(
       new ButtonBuilder()
         .setCustomId(`battle:${battleId}:target:${e.instance_id}`)
-        .setLabel(`${e.label}: ${e.name}`.slice(0, 80))
+        .setLabel(label.slice(0, 80))
         .setStyle(ButtonStyle.Danger),
     );
   }

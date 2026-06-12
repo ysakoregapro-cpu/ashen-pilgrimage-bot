@@ -10,12 +10,6 @@ import type { UiPayload } from './townUi';
 import { inventorySummaryEmbed } from './townUi';
 import { nextActionButtons } from './nextActionButtons';
 
-function detailOpenButton(context: string): ActionRowBuilder<ButtonBuilder> {
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`detail:open:${context}`).setLabel('品の詳細').setStyle(ButtonStyle.Secondary),
-  );
-}
-
 export const INVENTORY_PAGE_SIZE = 25;
 
 export type InventoryCategory = 'all' | 'equipment' | 'consumable' | 'material';
@@ -204,7 +198,7 @@ export function buildInventoryView(userId: string, page = 0, category: Inventory
       category,
       'detail:inv',
       '詳細を見る品',
-      [detailOpenButton('inventory'), ...nextActionButtons('inventory')],
+      nextActionButtons('inventory'),
     ),
   };
 }
