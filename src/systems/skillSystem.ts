@@ -22,6 +22,7 @@ export interface SkillRow {
   effect_type: string | null;
   status_effect: string | null;
   hits: number;
+  target_type?: string;
   effect_json: string | null;
 }
 

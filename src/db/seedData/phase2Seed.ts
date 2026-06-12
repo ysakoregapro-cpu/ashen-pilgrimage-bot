@@ -5,6 +5,9 @@ import { STORY_BOSS_MONSTERS } from './storyData';
 import { ensureExistingPlayerProgressionBackfill } from './existingPlayerProgressionBackfill';
 import { MONSTER_SEED_DATA } from './monsters';
 import { ensureMonstersIsBossColumn } from '../monsterSchema';
+import { getMonsterThreatTier } from '../../systems/combatMath';
+import { buildEffectiveRewardPool } from '../../systems/townLootSystem';
+import { TOWN_POOL_MARKER } from './townLootPools';
 
 const STORY_BOSS_MONSTER_IDS = new Set(Object.values(STORY_BOSS_MONSTERS));
 
@@ -53,9 +56,9 @@ const ACCESSORIES: Array<{
 ];
 
 const CONSUMABLE_EXTRAS = [
-  { id: 'cons_heal_medium', name: '中回復薬', rarity: 'R', desc: 'HPを150回復。', price: 100, buy: 120, effect: { type: 'heal_hp', value: 150 } },
-  { id: 'cons_heal_large', name: '大回復薬', rarity: 'SR', desc: 'HPを250回復。', price: 200, buy: 220, effect: { type: 'heal_hp', value: 250 } },
-  { id: 'cons_status_cure', name: '万能解毒薬', rarity: 'R', desc: '状態異常を治す。', price: 80, buy: 100, effect: { type: 'cure_poison' } },
+  { id: 'cons_heal_medium', name: '中回復薬', rarity: 'R', desc: 'HPを150回復。', price: 50, buy: 65, effect: { type: 'heal_hp', value: 150 } },
+  { id: 'cons_heal_large', name: '大回復薬', rarity: 'SR', desc: 'HPを250回復。', price: 100, buy: 120, effect: { type: 'heal_hp', value: 250 } },
+  { id: 'cons_status_cure', name: '万能解毒薬', rarity: 'R', desc: '状態異常を治す。', price: 40, buy: 55, effect: { type: 'cure_poison' } },
 ];
 
 const BOSS_STATS: Record<string, { hp: number; atk: number; mag?: number; def: number; lv: number }> = {
@@ -83,6 +86,7 @@ const MONSTER_BALANCE_OVERRIDES: Record<string, {
   mon_rust_miner: { hp: 265, attack: 22, defense: 16 },
   mon_crystal_spider: { hp: 310, attack: 20, defense: 12 },
   mon_furnace_defense: { hp: 450, attack: 24, defense: 38 },
+  mon_tide_ghost: { hp: 130, attack: 22, magic: 26, defense: 10 },
 };
 
 const EARLY_AREA_TAGS = new Set(['starfield', 'port']);
@@ -138,6 +142,68 @@ function applyBossStats(db: Database.Database): void {
   }
 }
 
+const MONSTER_TIER_SHARE: Record<string, number> = {
+  normal: 70,
+  tough: 20,
+  rare: 8,
+  elite: 2,
+  boss: 2,
+};
+
+function ensureMonsterPoolWeights(db: Database.Database): void {
+  const areas = db.prepare('SELECT id, monster_pool_json FROM exploration_areas').all() as Array<{
+    id: string; monster_pool_json: string;
+  }>;
+  const upd = db.prepare('UPDATE exploration_areas SET monster_pool_json = ? WHERE id = ?');
+  for (const area of areas) {
+    const pool = JSON.parse(area.monster_pool_json) as Array<{ monster_id: string; weight?: number }>;
+    if (!pool.length) continue;
+
+    const entries = pool.map((entry) => ({
+      monster_id: entry.monster_id,
+      tier: getMonsterThreatTier(entry.monster_id),
+    }));
+    const tiersPresent = new Set(entries.map((e) => e.tier));
+    let pseudoNormalTier: string | null = null;
+    if (!tiersPresent.has('normal')) {
+      if (tiersPresent.has('tough')) pseudoNormalTier = 'tough';
+      else if (tiersPresent.has('elite') && tiersPresent.has('rare')) pseudoNormalTier = 'elite';
+      else if (tiersPresent.has('rare') && !tiersPresent.has('elite') && !tiersPresent.has('boss')) pseudoNormalTier = 'rare';
+    }
+
+    const tierCounts = new Map<string, number>();
+    for (const e of entries) {
+      tierCounts.set(e.tier, (tierCounts.get(e.tier) ?? 0) + 1);
+    }
+
+    const weighted = entries.map((entry) => {
+      const count = tierCounts.get(entry.tier) ?? 1;
+      let share = MONSTER_TIER_SHARE[entry.tier] ?? MONSTER_TIER_SHARE.normal!;
+      if (pseudoNormalTier && entry.tier === pseudoNormalTier) {
+        share += MONSTER_TIER_SHARE.normal!;
+      }
+      return { monster_id: entry.monster_id, weight: share / count };
+    });
+
+    const total = weighted.reduce((s, e) => s + e.weight, 0) || 1;
+    upd.run(JSON.stringify(weighted.map((e) => ({
+      monster_id: e.monster_id,
+      weight: Math.max(1, Math.round((e.weight / total) * 100)),
+    }))), area.id);
+  }
+}
+
+function ensureTownLootMigration(db: Database.Database): void {
+  const areas = db.prepare('SELECT id, town_id FROM exploration_areas').all() as Array<{
+    id: string; town_id: string;
+  }>;
+  const upd = db.prepare('UPDATE exploration_areas SET reward_pool_json = ? WHERE id = ?');
+  for (const area of areas) {
+    const pool = buildEffectiveRewardPool(area.town_id, area.id);
+    upd.run(JSON.stringify(pool.length ? pool : [{ item_id: TOWN_POOL_MARKER, weight: 1 }]), area.id);
+  }
+}
+
 export function ensurePhase2Seed(db: Database.Database): void {
   const ts = nowIso();
   ensureMonstersIsBossColumn(db);
@@ -182,9 +248,12 @@ export function ensurePhase2Seed(db: Database.Database): void {
     insItem.run(c.id, c.name, c.rarity, c.desc, '各町の店', '戦闘回復', c.price, JSON.stringify(c.effect),
       c.price * 3, c.buy, Math.floor(c.price * 0.3), ts);
   }
-  db.prepare(`UPDATE items SET base_value=150, shop_buy_price=55, shop_sell_price=15 WHERE id='cons_heal_potion'`).run();
-  db.prepare(`UPDATE items SET base_value=75, shop_buy_price=45, shop_sell_price=12 WHERE id='cons_antidote'`).run();
-  db.prepare(`UPDATE items SET base_value=100, shop_buy_price=80, shop_sell_price=25 WHERE id='cons_smoke_bomb'`).run();
+  db.prepare(`UPDATE items SET base_value=90, shop_buy_price=40, shop_sell_price=9 WHERE id='cons_heal_potion'`).run();
+  db.prepare(`UPDATE items SET base_value=45, shop_buy_price=35, shop_sell_price=8 WHERE id='cons_antidote'`).run();
+  db.prepare(`UPDATE items SET base_value=50, shop_buy_price=40, shop_sell_price=12 WHERE id='cons_smoke_bomb'`).run();
+  db.prepare(`UPDATE items SET sell_price=40, base_value=120, shop_buy_price=120, shop_sell_price=12 WHERE id='cons_lamp_bottle'`).run();
+  db.prepare(`UPDATE items SET sell_price=250, base_value=750, shop_buy_price=650, shop_sell_price=75 WHERE id='cons_pilgrim_charm'`).run();
+  db.prepare(`UPDATE items SET sell_price=75, base_value=225, shop_buy_price=95, shop_sell_price=22 WHERE id='cons_rescue_signal'`).run();
   db.prepare(`UPDATE items SET base_value=35, shop_buy_price=35, shop_sell_price=10 WHERE id='upg_rough_stone'`).run();
   db.prepare(`UPDATE items SET base_value=90, shop_buy_price=80, shop_sell_price=25 WHERE id='upg_stone'`).run();
 
@@ -245,6 +314,7 @@ export function ensurePhase2Seed(db: Database.Database): void {
   applyIdempotentAreaBalance(db);
   applyMonsterBalanceOverrides(db);
   applyBossStats(db);
+  ensureMonsterPoolWeights(db);
 
   // Remove mid-game Src upgrade mats from exploration rewards
   const SRC_MIDS = ['src_echo_core', 'src_primordial', 'src_primordial_full', 'src_upg_shard'];
@@ -254,29 +324,6 @@ export function ensurePhase2Seed(db: Database.Database): void {
     const pool = JSON.parse(a.reward_pool_json) as Array<{ item_id: string; weight: number }>;
     const filtered = pool.filter((p) => !SRC_MIDS.includes(p.item_id));
     if (filtered.length !== pool.length) updReward.run(JSON.stringify(filtered), a.id);
-  }
-
-  // Job starter weapons — low-rate early area/treasure drops
-  const STARTER_AREA_BOOST: Record<string, Array<{ item_id: string; weight: number }>> = {
-    area_old_training: [
-      { item_id: 'wpn_traveler_sword', weight: 3 },
-      { item_id: 'wpn_leather_gauntlet', weight: 2 },
-      { item_id: 'wpn_training_hammer', weight: 2 },
-    ],
-    area_night_hill: [{ item_id: 'wpn_rust_dagger', weight: 3 }],
-    area_broken_shrine: [{ item_id: 'wpn_prayer_rod', weight: 3 }],
-    area_lighthouse_rocks: [{ item_id: 'wpn_old_bow', weight: 3 }],
-    area_old_mine: [{ item_id: 'wpn_mini_cannon', weight: 2 }],
-    area_mist_beast_path: [{ item_id: 'wpn_mist_staff', weight: 2 }],
-  };
-  for (const [areaId, extras] of Object.entries(STARTER_AREA_BOOST)) {
-    const row = db.prepare('SELECT reward_pool_json FROM exploration_areas WHERE id = ?').get(areaId) as { reward_pool_json: string } | undefined;
-    if (!row) continue;
-    const pool = JSON.parse(row.reward_pool_json) as Array<{ item_id: string; weight: number }>;
-    for (const ex of extras) {
-      if (!pool.some((p) => p.item_id === ex.item_id)) pool.push(ex);
-    }
-    updReward.run(JSON.stringify(pool), areaId);
   }
 
   db.prepare(`UPDATE items SET usage_text = '高級装備・特殊強化' WHERE id = 'mat_moon_ink'`).run();
@@ -299,6 +346,7 @@ export function ensurePhase2Seed(db: Database.Database): void {
   insWpnEq.run('wpn_unique_old_hammer', 'hammer', 20, 0, 1, 'src_silver');
 
   ensureForgeProgressionSeed(db, ts);
+  ensureTownLootMigration(db);
   ensureExistingPlayerProgressionBackfill(db);
 }
 

@@ -12,7 +12,10 @@ import {
   type Message as DiscordMessage,
 } from 'discord.js';
 import { errorEmbed } from './embeds';
+import { errorRecoveryPayload } from './nextActionButtons';
 import type { UiPayload } from './townUi';
+
+const NO_CHANNEL_MESSAGE = 'ここではログを表示できません。\n町の操作パネルがあるチャンネルで試してください。';
 
 const STALE_MESSAGE =
   'この操作は古くなっています。もう一度開き直してください。';
@@ -169,6 +172,16 @@ export async function sendChannelLog(channel: ChannelWithSend, payload: UiPayloa
   await channel.send(payload);
 }
 
+export async function replyEphemeralNoChannel(interaction: MessageComponentInteraction): Promise<void> {
+  const recovery = errorRecoveryPayload(NO_CHANNEL_MESSAGE);
+  const body = { embeds: recovery.embeds, components: recovery.components, ephemeral: true as const };
+  if (interaction.deferred || interaction.replied) {
+    await interaction.followUp(body).catch(() => {});
+    return;
+  }
+  await interaction.reply(body).catch(() => {});
+}
+
 export async function sendJourneyLog(
   interaction: MessageComponentInteraction,
   payload: UiPayload,
@@ -179,7 +192,10 @@ export async function sendJourneyLog(
   }
 
   const channel = getSendableChannel(interaction.channel);
-  if (!channel) return;
+  if (!channel) {
+    await replyEphemeralNoChannel(interaction);
+    return;
+  }
 
   if (interaction.deferred || interaction.replied) {
     await channel.send({ embeds: payload.embeds, components: payload.components });
@@ -198,7 +214,10 @@ export async function sendJourneyLogAfterSelect(
 ): Promise<void> {
   await disableOldComponents(interaction.message);
   const channel = getSendableChannel(interaction.channel);
-  if (!channel) return;
+  if (!channel) {
+    await replyEphemeralNoChannel(interaction);
+    return;
+  }
   await interaction.deferUpdate();
   await channel.send({ embeds: payload.embeds, components: payload.components });
 }

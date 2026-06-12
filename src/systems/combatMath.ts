@@ -5,7 +5,7 @@ export type ThreatTier = 'normal' | 'tough' | 'rare' | 'elite' | 'boss';
 /** Random exploration encounters — story boss IDs are elites unless story-triggered */
 export const ELITE_MONSTER_IDS = new Set([
   'mon_silver_golem', 'mon_black_iron_guard', 'mon_crystal_spider',
-  'mon_rust_miner', 'mon_cave_in_bug', 'mon_furnace_keeper',
+  'mon_cave_in_bug', 'mon_furnace_keeper',
   'mon_throne_guard', 'mon_furnace_defense', 'mon_old_king_shadow',
 ]);
 
@@ -16,7 +16,7 @@ export const RARE_MONSTER_IDS = new Set([
 
 export const TOUGH_MONSTER_IDS = new Set([
   'mon_salt_crab', 'mon_ore_eater', 'mon_ship_soldier', 'mon_rust_miner',
-  'mon_mine_bat', 'mon_sea_thief', 'mon_drift_undead',
+  'mon_sea_thief', 'mon_drift_undead',
 ]);
 
 const AREA_MULT: Record<string, { atk: number; hp: number; mag: number; def: number }> = {

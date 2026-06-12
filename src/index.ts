@@ -75,6 +75,7 @@ import {
   disableOldComponents,
   getSendableChannel,
   stampPanelPayload,
+  replyEphemeralNoChannel,
 } from './utils/messageFlow';
 import {
   triggerFirstVictory,
@@ -85,6 +86,20 @@ import {
   type StoryEventPayload,
 } from './systems/storySystem';
 
+import { runCoopMaintenance } from './systems/coop/coopMaintenance';
+import {
+  handleCoopRecruitButton,
+  handleCoopBattleButton,
+  handleCoopTargetButton,
+  handleCoopSkillSelect,
+  handleCoopItemSelect,
+  handleLegacyRaidDepart,
+  handleLegacyRescueDepart,
+  postCoopRecruitToGuild,
+} from './systems/coop/coopHandlers';
+import { submitCoopAction } from './systems/coop/coopBattleSystem';
+import { buildCoopBattleButtons } from './systems/coop/coopUi';
+
 
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -94,6 +109,14 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.once(Events.ClientReady, (c) => {
 
   getDb();
+
+  const maint = runCoopMaintenance();
+
+  if (maint.expiredRecruits || maint.staleBattles) {
+
+    console.log(`Coop maintenance: expired=${maint.expiredRecruits} stale=${maint.staleBattles}`);
+
+  }
 
   console.log(`灰星巡礼録 起動完了: ${c.user.tag}`);
 
@@ -188,11 +211,14 @@ async function sendSelectResultLog(
   payload: UiPayload,
 ): Promise<void> {
   await disableOldComponents(interaction.message);
+  const channel = getSendableChannel(interaction.channel);
+  if (!channel) {
+    await replyEphemeralNoChannel(interaction);
+    return;
+  }
   if (!interaction.deferred && !interaction.replied) {
     await interaction.deferUpdate();
   }
-  const channel = getSendableChannel(interaction.channel);
-  if (!channel) return;
   await channel.send({ embeds: payload.embeds, components: payload.components });
 }
 
@@ -207,6 +233,15 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
   const userId = interaction.user.id;
 
   const value = interaction.values[0]!;
+
+  if (prefix === 'coop' && action === 'skill') {
+    await handleCoopSkillSelect(interaction, extra!);
+    return;
+  }
+  if (prefix === 'coop' && action === 'item') {
+    await handleCoopItemSelect(interaction, extra!);
+    return;
+  }
 
   const { session } = parseSessionCustomId(interaction.customId);
 
@@ -815,17 +850,23 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
     const action = parts[2]!;
 
     if (action === 'rescue') {
-
-      await interaction.reply({
-
-        embeds: [successEmbed('救難の便りは「救難を求める」から出せます。\n/rescue request でも同じです。')],
-
-        ephemeral: true,
-
+      const guild = interaction.guild;
+      if (!guild) {
+        await interaction.reply({ embeds: [errorEmbed('サーバー内でのみ救難要請できます。')], ephemeral: true });
+        return;
+      }
+      const battle = getDb().prepare(`
+        SELECT id FROM battle_sessions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1
+      `).get(userId) as { id: string } | undefined;
+      const posted = await postCoopRecruitToGuild(guild, userId, 'rescue', {
+        battle_session_id: battle?.id,
+        rescue_type: battle ? 'battle' : 'explore',
       });
-
+      await interaction.reply({
+        embeds: [posted.ok ? successEmbed(posted.message) : errorEmbed(posted.message)],
+        ephemeral: true,
+      });
       return;
-
     }
 
     if (action === 'skill_menu') {
@@ -878,6 +919,37 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
 
 
 
+  if (parts[0] === 'coop') {
+    const op = parts[1]!;
+    if (['join', 'leave', 'start', 'cancel'].includes(op)) {
+      await handleCoopRecruitButton(interaction, op, parts[2]!);
+      return;
+    }
+    if (op === 'act') {
+      const handled = await handleCoopBattleButton(interaction, parts);
+      if (handled) return;
+    }
+    if (op === 'target') {
+      await handleCoopTargetButton(interaction, parts);
+      return;
+    }
+    if (op === 'recruit') {
+      const guild = interaction.guild;
+      if (!guild) {
+        await interaction.reply({ embeds: [errorEmbed('サーバー内でのみ募集できます。')], ephemeral: true });
+        return;
+      }
+      const mode = (parts[2] === 'raid' ? 'raid' : 'rescue') as 'raid' | 'rescue';
+      const posted = await postCoopRecruitToGuild(guild, userId, mode);
+      await interaction.reply({
+        embeds: [posted.ok ? successEmbed(posted.message) : errorEmbed(posted.message)],
+        ephemeral: true,
+      });
+      return;
+    }
+    return;
+  }
+
   if (parts[0] === 'rescue') {
 
     const rescueId = parts[2]!;
@@ -893,18 +965,18 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
     }
 
     if (parts[1] === 'depart') {
-
-      const { startRescueBattle } = await import('./systems/rescueBattleSystem');
-      const battle = startRescueBattle(rescueId);
-      await interaction.reply({ embeds: [successEmbed(battle.message)] });
-
+      await handleLegacyRescueDepart(interaction, rescueId, userId);
       return;
-
     }
 
     if (parts[1] === 'act') {
       const battleId = parts[2]!;
       const act = parts[3]!;
+      if (act === 'attack' || act === 'defend') {
+        const result = submitCoopAction(battleId, userId, act);
+        await interaction.reply({ embeds: [successEmbed(result.message)], ephemeral: true });
+        return;
+      }
       const { setRescueAction } = await import('./systems/rescueBattleSystem');
       const msg = setRescueAction(battleId, userId, act);
       await interaction.reply({ embeds: [successEmbed(msg)], ephemeral: true });
@@ -932,29 +1004,22 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
     }
 
     if (parts[1] === 'depart') {
-
-      const result = startRaid(raidId, userId);
-
-      const { formatRaidBattleStatus } = await import('./systems/raidBattleSystem');
-      const body = result.battleId ? formatRaidBattleStatus(result.battleId) : result.message;
-      const components = result.battleId ? [
-        new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder().setCustomId(`raid:act:${result.battleId}:attack`).setLabel('攻撃').setStyle(ButtonStyle.Primary),
-          new ButtonBuilder().setCustomId(`raid:act:${result.battleId}:defend`).setLabel('防御').setStyle(ButtonStyle.Secondary),
-        ),
-      ] : [];
-      await interaction.reply({
-        embeds: [successEmbed(`${result.message}\n\n${body}`)],
-        components,
-      });
-
+      await handleLegacyRaidDepart(interaction, raidId, userId, startRaid);
       return;
-
     }
 
     if (parts[1] === 'act') {
       const battleId = parts[2]!;
       const act = parts[3]!;
+      if (act === 'attack' || act === 'defend') {
+        const result = submitCoopAction(battleId, userId, act);
+        await interaction.reply({
+          embeds: [successEmbed(result.message)],
+          components: buildCoopBattleButtons(battleId, userId),
+          ephemeral: true,
+        });
+        return;
+      }
       const { setRaidAction } = await import('./systems/raidBattleSystem');
       const msg = setRaidAction(battleId, userId, act);
       await interaction.reply({ embeds: [successEmbed(msg)], ephemeral: true });

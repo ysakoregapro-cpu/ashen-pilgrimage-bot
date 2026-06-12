@@ -1,11 +1,13 @@
-import { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, type ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { getPlayer } from '../systems/playerSystem';
 import { createRescueRequest, joinRescue, startPreemptiveRescue, completeRescue, setRescueMessage } from '../systems/rescueSystem';
 import { getActiveBattle } from '../systems/battleSystem';
 import { getOrCreatePublicChannel } from '../utils/channels';
 import { getEnvOptional, isAdmin } from '../utils/permissions';
-import { baseEmbed, errorEmbed, successEmbed } from '../utils/embeds';
+import { errorEmbed, successEmbed } from '../utils/embeds';
 import { safeDefer, safeEdit } from '../utils/interaction';
+import { buildCoopRecruitEmbed, buildCoopRecruitButtons } from '../systems/coop/coopUi';
+import { getDb } from '../db/database';
 
 export const data = new SlashCommandBuilder()
   .setName('rescue')
@@ -26,32 +28,33 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const rescueChannel = await getOrCreatePublicChannel(guild, channelName);
 
   if (sub === 'request') {
-    const battle = getActiveBattle(userId) as { id: string } | undefined;
-    const rescueId = createRescueRequest(guild.id, userId, battle ? 'battle' : 'explore', { battleId: battle?.id });
+    const battle = getActiveBattle(userId) as { id: string; monster_id?: string } | undefined;
+    let monsterId: string | undefined;
+    if (battle?.id) {
+      const sess = getDb().prepare('SELECT monster_id FROM battle_sessions WHERE id = ?').get(battle.id) as { monster_id: string } | undefined;
+      monsterId = sess?.monster_id;
+    }
+    const rescueId = createRescueRequest(guild.id, userId, battle ? 'battle' : 'explore', {
+      battleId: battle?.id,
+      monsterId,
+    });
 
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`rescue:join:${rescueId}`).setLabel('救難に参加').setStyle(ButtonStyle.Success),
-    );
     const msg = await rescueChannel.send({
-      embeds: [baseEmbed('🆘 救難要請', `<@${userId}> が救難を要請しています！`).setColor(0xff6644)],
-      components: [row],
+      embeds: [buildCoopRecruitEmbed(rescueId)],
+      components: buildCoopRecruitButtons(rescueId, userId),
     });
     setRescueMessage(rescueId, msg.id, rescueChannel.id);
-    await safeEdit(interaction, { embeds: [successEmbed(`救難要請を <#${rescueChannel.id}> に投稿しました。`)] });
+    await safeEdit(interaction, { embeds: [successEmbed(`救難要請を <#${rescueChannel.id}> に投稿しました。\nID: \`${rescueId}\``)] });
     return;
   }
 
   if (sub === 'preemptive') {
     const area = interaction.options.getString('area') ?? '高難易度探索';
-    const rescueId = createRescueRequest(guild.id, userId, 'preemptive', { isPreemptive: true, areaId: area });
+    const rescueId = createRescueRequest(guild.id, userId, 'preemptive', { isPreemptive: true, areaId: area, areaLabel: area });
 
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`rescue:join:${rescueId}`).setLabel('参加').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId(`rescue:depart:${rescueId}`).setLabel('出発').setStyle(ButtonStyle.Success),
-    );
     const msg = await rescueChannel.send({
-      embeds: [baseEmbed('📢 事前救難募集', `<@${userId}> が「${area}」の事前救難を募集`).setColor(0x6688cc)],
-      components: [row],
+      embeds: [buildCoopRecruitEmbed(rescueId)],
+      components: buildCoopRecruitButtons(rescueId, userId),
     });
     setRescueMessage(rescueId, msg.id, rescueChannel.id);
     await safeEdit(interaction, { embeds: [successEmbed(`事前救難募集を <#${rescueChannel.id}> に投稿しました。`)] });
@@ -70,3 +73,17 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 }
 
 export { joinRescue, startPreemptiveRescue };
+
+/** 敗北/戦闘中から救難募集を作成 */
+export async function postRescueRecruit(
+  guildId: string,
+  userId: string,
+  opts?: { battleId?: string; channelId?: string },
+): Promise<{ recruitId: string; channelId: string } | { error: string }> {
+  if (!getPlayer(userId)) return { error: '未登録です。' };
+  const battle = opts?.battleId
+    ? getDb().prepare('SELECT id, monster_id FROM battle_sessions WHERE id = ?').get(opts.battleId) as { id: string; monster_id: string } | undefined
+    : getActiveBattle(userId) as { id: string } | undefined;
+  const rescueId = createRescueRequest(guildId, userId, battle ? 'battle' : 'explore', { battleId: battle?.id });
+  return { recruitId: rescueId, channelId: opts?.channelId ?? '' };
+}

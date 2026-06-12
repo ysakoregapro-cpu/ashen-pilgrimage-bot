@@ -1,3 +1,12 @@
+export type SkillTargetType =
+  | 'self'
+  | 'single_enemy'
+  | 'all_enemies'
+  | 'ally'
+  | 'all_allies'
+  | 'cover'
+  | 'taunt';
+
 export type BattleSkillDef = {
   id: string;
   name: string;
@@ -16,7 +25,30 @@ export type BattleSkillDef = {
   effect_type?: string;
   status_effect?: string;
   hits?: number;
+  target_type?: SkillTargetType;
 };
+
+/** Infer battle target when not explicitly set on the skill def */
+export function resolveSkillTargetType(s: BattleSkillDef): SkillTargetType {
+  if (s.target_type) return s.target_type;
+  if (s.effect_type === 'taunt') return 'taunt';
+  if (s.id === 'bs_cover') return 'cover';
+  if (s.effect_type === 'cure_poison') return 'all_allies';
+  if (s.skill_type === 'recovery' && s.power > 0) {
+    if (s.id === 'bs_field_repair') return 'self';
+    return 'ally';
+  }
+  if (['guard', 'support'].includes(s.skill_type) && s.power <= 0) return 'self';
+  if (s.hits && s.hits >= 3 && ['magic', 'machine', 'physical'].includes(s.skill_type)) {
+    if (['bs_stardust_storm', 'bs_control_volley', 'bs_ash_fist_rampage', 'bs_twilight_combo'].includes(s.id)) {
+      return 'all_enemies';
+    }
+  }
+  if (['physical', 'magic', 'technique', 'break', 'debuff', 'divine', 'machine', 'special'].includes(s.skill_type)) {
+    return 'single_enemy';
+  }
+  return 'self';
+}
 
 export type JobUnlock = { level: number; skillId: string; unlockText?: string };
 
@@ -160,10 +192,10 @@ export const ALL_JOB_SKILLS: BattleSkillDef[] = [
   // --- 重騎士 ---
   { id: 'bs_shield_bash', name: '盾撃', job: '重騎士', desc: '盾で叩きつける。', mp: 4, power: 0.9, skill_type: 'physical', scaling_stat: 'defense' },
   { id: 'bs_shield_guard', name: '盾構え', job: '重騎士', desc: '盾で身を守る。', mp: 4, power: 0, skill_type: 'guard', scaling_stat: 'defense', effect_type: 'guard', priority: 20 },
-  { id: 'bs_taunt', name: '挑発', job: '重騎士', desc: '敵の狙いを引く。', mp: 3, power: 0, skill_type: 'support', scaling_stat: 'defense', effect_type: 'taunt' },
+  { id: 'bs_taunt', name: '挑発', job: '重騎士', desc: '敵の狙いを引く。', mp: 3, power: 0, skill_type: 'support', scaling_stat: 'defense', effect_type: 'taunt', target_type: 'taunt' },
   { id: 'bs_fortress', name: '城塞防御', job: '重騎士', desc: '大きく身を固める。', mp: 6, power: 0, skill_type: 'guard', scaling_stat: 'defense', effect_type: 'guard_strong', priority: 20 },
   { id: 'bs_silver_break', name: '白銀崩し', job: '重騎士', desc: '重い一撃で崩す。', mp: 7, power: 0.75, skill_type: 'break', scaling_stat: 'defense', break_power: 32 },
-  { id: 'bs_cover', name: 'かばう', job: '重騎士', desc: '身を挺して守る。', mp: 5, power: 0, skill_type: 'guard', scaling_stat: 'defense', effect_type: 'def_buff' },
+  { id: 'bs_cover', name: 'かばう', job: '重騎士', desc: '身を挺して守る。', mp: 5, power: 0, skill_type: 'guard', scaling_stat: 'defense', effect_type: 'def_buff', target_type: 'cover' },
   { id: 'bs_counter_shield', name: '反撃の盾', job: '重騎士', desc: '盾で反撃の隙を作る。', mp: 6, power: 0.85, skill_type: 'physical', scaling_stat: 'defense', break_power: 18 },
   { id: 'bs_immovable_oath', name: '不動の誓い', job: '重騎士', desc: '揺るがぬ守り。', mp: 8, power: 0, skill_type: 'guard', scaling_stat: 'defense', effect_type: 'guard_strong' },
   { id: 'bs_ancient_guard', name: '古王の守り', job: '重騎士', desc: '古の加護。', mp: 9, power: 0, skill_type: 'support', scaling_stat: 'defense', effect_type: 'def_buff' },
@@ -171,10 +203,10 @@ export const ALL_JOB_SKILLS: BattleSkillDef[] = [
   { id: 'bs_silver_fortress_ultimate', name: '白銀城塞奥義', job: '重騎士', desc: '重騎士の奥義。', mp: 18, power: 1.4, skill_type: 'special', scaling_stat: 'defense', break_power: 45 },
 
   // --- 狩人 ---
-  { id: 'bs_aim_shot', name: '狙い撃ち', job: '狩人', desc: '精密な一射。', mp: 4, power: 1.05, skill_type: 'technique', scaling_stat: 'attack', hit_bonus: 0.08 },
-  { id: 'bs_bind_arrow', name: '足止め矢', job: '狩人', desc: '敵の足を止める。', mp: 5, power: 0.75, skill_type: 'debuff', scaling_stat: 'attack', effect_type: 'slow' },
+  { id: 'bs_aim_shot', name: '狙い撃ち', job: '狩人', desc: '精密な一射。', mp: 4, power: 1.38, skill_type: 'technique', scaling_stat: 'attack', hit_bonus: 0.08, target_type: 'single_enemy' },
+  { id: 'bs_bind_arrow', name: '足止め矢', job: '狩人', desc: '敵の足を止める。', mp: 5, power: 0.8, skill_type: 'debuff', scaling_stat: 'attack', effect_type: 'slow', target_type: 'single_enemy' },
   { id: 'bs_trap', name: '罠設置', job: '狩人', desc: '罠を仕掛ける。', mp: 6, power: 0, skill_type: 'break', scaling_stat: 'speed', effect_type: 'trap' },
-  { id: 'bs_weak_shot', name: '弱点射撃', job: '狩人', desc: '急所を狙う。', mp: 7, power: 1.15, skill_type: 'technique', scaling_stat: 'attack', crit_bonus: 0.15, break_power: 12 },
+  { id: 'bs_weak_shot', name: '弱点射撃', job: '狩人', desc: '急所を狙う。', mp: 7, power: 1.35, skill_type: 'technique', scaling_stat: 'attack', crit_bonus: 0.15, break_power: 12, target_type: 'single_enemy' },
   { id: 'bs_mist_clear', name: '霧払い', job: '狩人', desc: '霧を払い見通す。', mp: 5, power: 0, skill_type: 'support', scaling_stat: 'attack', effect_type: 'scan' },
   { id: 'bs_part_shot', name: '部位狙い', job: '狩人', desc: '部位を狙う一射。', mp: 8, power: 1.1, skill_type: 'technique', scaling_stat: 'attack', break_power: 20, hit_bonus: 0.05 },
   { id: 'bs_tracker_eye', name: '追跡者の目', job: '狩人', desc: '獲物を見逃さない。', mp: 6, power: 0, skill_type: 'support', scaling_stat: 'speed', effect_type: 'scan' },
@@ -185,7 +217,7 @@ export const ALL_JOB_SKILLS: BattleSkillDef[] = [
 
   // --- 魔術師 ---
   { id: 'bs_ash_fire', name: '灰火', job: '魔術師', desc: '灰の炎。', mp: 6, power: 1.0, skill_type: 'magic', scaling_stat: 'magic', element: 'ash' },
-  { id: 'bs_ice_needle', name: '氷針', job: '魔術師', desc: '氷の針。', mp: 8, power: 1.05, skill_type: 'magic', scaling_stat: 'magic', element: 'ice', effect_type: 'slow' },
+  { id: 'bs_ice_needle', name: '氷針', job: '魔術師', desc: '氷の針。', mp: 8, power: 0.85, skill_type: 'magic', scaling_stat: 'magic', element: 'ice', effect_type: 'slow', target_type: 'single_enemy' },
   { id: 'bs_star_bullet', name: '星弾', job: '魔術師', desc: '星の弾。', mp: 10, power: 1.35, skill_type: 'magic', scaling_stat: 'magic', element: 'star', hit_bonus: -0.05 },
   { id: 'bs_magic_focus', name: '魔力集中', job: '魔術師', desc: '魔力を研ぎ澄ます。', mp: 5, power: 0, skill_type: 'support', scaling_stat: 'magic', effect_type: 'mag_buff' },
   { id: 'bs_deep_thunder', name: '深層雷', job: '魔術師', desc: '深層の雷。', mp: 9, power: 1.15, skill_type: 'magic', scaling_stat: 'magic', element: 'thunder' },
@@ -195,32 +227,32 @@ export const ALL_JOB_SKILLS: BattleSkillDef[] = [
   { id: 'bs_magic_cycle', name: '魔力循環', job: '魔術師', desc: '魔力を巡らせる。', mp: 7, power: 0, skill_type: 'support', scaling_stat: 'magic', effect_type: 'mag_buff' },
   { id: 'bs_ash_crown_fire', name: '灰冠の火', job: '魔術師', desc: '灰冠の炎。', mp: 13, power: 1.4, skill_type: 'magic', scaling_stat: 'magic', element: 'ash' },
   { id: 'bs_deep_great_thunder', name: '深層大雷', job: '魔術師', desc: '大いなる雷。', mp: 14, power: 1.45, skill_type: 'magic', scaling_stat: 'magic', break_power: 18 },
-  { id: 'bs_stardust_storm', name: '星屑の嵐', job: '魔術師', desc: '星屑の嵐。', mp: 15, power: 0.5, skill_type: 'magic', scaling_stat: 'magic', hits: 3 },
+  { id: 'bs_stardust_storm', name: '星屑の嵐', job: '魔術師', desc: '星屑の嵐。', mp: 15, power: 0.5, skill_type: 'magic', scaling_stat: 'magic', hits: 3, target_type: 'all_enemies' },
   { id: 'bs_star_ultimate', name: '星術奥義', job: '魔術師', desc: '魔術師の奥義。', mp: 20, power: 1.75, skill_type: 'special', scaling_stat: 'magic', break_power: 30 },
 
   // --- 祈祷師 ---
   { id: 'bs_lamp_prayer', name: '灯火の祈り', job: '祈祷師', desc: '灯火の加護。', mp: 8, power: 0.55, skill_type: 'divine', scaling_stat: 'spirit' },
-  { id: 'bs_minor_heal', name: '小癒', job: '祈祷師', desc: 'HPを癒す。', mp: 6, power: 0.35, skill_type: 'recovery', scaling_stat: 'spirit' },
-  { id: 'bs_guard_prayer', name: '守りの祈祷', job: '祈祷師', desc: '身を守る。', mp: 7, power: 0, skill_type: 'support', scaling_stat: 'spirit', effect_type: 'def_buff' },
-  { id: 'bs_purify', name: '浄化', job: '祈祷師', desc: '毒を祓う。', mp: 5, power: 0, skill_type: 'support', scaling_stat: 'spirit', effect_type: 'cure_poison' },
+  { id: 'bs_minor_heal', name: '小癒', job: '祈祷師', desc: 'HPを癒す。', mp: 6, power: 0.35, skill_type: 'recovery', scaling_stat: 'spirit', target_type: 'ally' },
+  { id: 'bs_guard_prayer', name: '守りの祈祷', job: '祈祷師', desc: '身を守る。', mp: 7, power: 0, skill_type: 'support', scaling_stat: 'spirit', effect_type: 'def_buff', target_type: 'self' },
+  { id: 'bs_purify', name: '浄化', job: '祈祷師', desc: '毒を祓う。', mp: 5, power: 0, skill_type: 'support', scaling_stat: 'spirit', effect_type: 'cure_poison', target_type: 'all_allies' },
   { id: 'bs_quiet_ode', name: '静かな祝詞', job: '祈祷師', desc: '静かな加護。', mp: 6, power: 0.25, skill_type: 'recovery', scaling_stat: 'spirit' },
   { id: 'bs_spirit_focus', name: '精神集中', job: '祈祷師', desc: '精神を研ぎ澄ます。', mp: 5, power: 0, skill_type: 'support', scaling_stat: 'spirit', effect_type: 'def_buff' },
   { id: 'bs_lamp_wall', name: '灯火の壁', job: '祈祷師', desc: '灯火の障壁。', mp: 8, power: 0, skill_type: 'guard', scaling_stat: 'spirit', effect_type: 'guard' },
-  { id: 'bs_healing_lamp', name: '癒しの灯', job: '祈祷師', desc: '深い癒し。', mp: 10, power: 0.5, skill_type: 'recovery', scaling_stat: 'spirit' },
-  { id: 'bs_revive_prayer', name: '蘇生の祈り', job: '祈祷師', desc: '灯火で立ち上がる。', mp: 12, power: 0.2, skill_type: 'recovery', scaling_stat: 'spirit' },
+  { id: 'bs_healing_lamp', name: '癒しの灯', job: '祈祷師', desc: '深い癒し。', mp: 10, power: 0.5, skill_type: 'recovery', scaling_stat: 'spirit', target_type: 'ally' },
+  { id: 'bs_revive_prayer', name: '蘇生の祈り', job: '祈祷師', desc: '灯火で立ち上がる。', mp: 12, power: 0.2, skill_type: 'recovery', scaling_stat: 'spirit', target_type: 'ally' },
   { id: 'bs_binding_light', name: '繋ぎの光', job: '祈祷師', desc: '光で繋ぐ。', mp: 11, power: 0.7, skill_type: 'divine', scaling_stat: 'spirit' },
-  { id: 'bs_silent_tune', name: '静寂の調律', job: '祈祷師', desc: '心を整える。', mp: 9, power: 0, skill_type: 'support', scaling_stat: 'spirit', effect_type: 'cure_poison' },
+  { id: 'bs_silent_tune', name: '静寂の調律', job: '祈祷師', desc: '心を整える。', mp: 9, power: 0, skill_type: 'support', scaling_stat: 'spirit', effect_type: 'cure_poison', target_type: 'all_allies' },
   { id: 'bs_great_lamp', name: '大灯火', job: '祈祷師', desc: '大いなる灯火。', mp: 14, power: 0.65, skill_type: 'recovery', scaling_stat: 'spirit' },
   { id: 'bs_pilgrim_prayer_ultimate', name: '巡礼祈祷奥義', job: '祈祷師', desc: '祈祷師の奥義。', mp: 18, power: 1.0, skill_type: 'special', scaling_stat: 'spirit', break_power: 20 },
 
   // --- 斥候 ---
   { id: 'bs_shadow_strike', name: '影打ち', job: '斥候', desc: '影の一撃。', mp: 4, power: 1.0, skill_type: 'technique', scaling_stat: 'speed' },
-  { id: 'bs_poison_blade', name: '毒刃', job: '斥候', desc: '毒を塗る。', mp: 6, power: 0.85, skill_type: 'debuff', scaling_stat: 'attack', status_effect: 'poison' },
+  { id: 'bs_poison_blade', name: '毒刃', job: '斥候', desc: '毒を塗る。', mp: 6, power: 0.85, skill_type: 'debuff', scaling_stat: 'attack', status_effect: 'poison', target_type: 'single_enemy' },
   { id: 'bs_dark_walk', name: '闇歩き', job: '斥候', desc: '影に紛れる。', mp: 5, power: 0, skill_type: 'support', scaling_stat: 'speed', effect_type: 'flee_buff' },
   { id: 'bs_backstab', name: '背面刺し', job: '斥候', desc: '背後から突く。', mp: 8, power: 1.2, skill_type: 'technique', scaling_stat: 'speed', crit_bonus: 0.2, hit_bonus: -0.05 },
   { id: 'bs_weakness_sight', name: '弱点看破', job: '斥候', desc: '弱点を見抜く。', mp: 5, power: 0, skill_type: 'support', scaling_stat: 'speed', effect_type: 'scan' },
   { id: 'bs_plunder', name: '奪取', job: '斥候', desc: '隙を突いて奪う。', mp: 7, power: 0.9, skill_type: 'technique', scaling_stat: 'speed', break_power: 15 },
-  { id: 'bs_shadow_stitch', name: '影縫い', job: '斥候', desc: '影を縫いとめる。', mp: 8, power: 1.05, skill_type: 'debuff', scaling_stat: 'speed', effect_type: 'slow' },
+  { id: 'bs_shadow_stitch', name: '影縫い', job: '斥候', desc: '影を縫いとめる。', mp: 8, power: 0.9, skill_type: 'debuff', scaling_stat: 'speed', effect_type: 'slow', target_type: 'single_enemy' },
   { id: 'bs_black_fox_shadow', name: '黒狐絶影', job: '斥候', desc: '黒狐の一太刀。', mp: 10, power: 1.25, skill_type: 'technique', scaling_stat: 'speed', crit_bonus: 0.15 },
   { id: 'bs_afterimage', name: '残影', job: '斥候', desc: '残像を残す。', mp: 6, power: 0, skill_type: 'support', scaling_stat: 'speed', effect_type: 'flee_buff' },
   { id: 'bs_blind_spot', name: '死角潜り', job: '斥候', desc: '死角に潜る。', mp: 9, power: 1.15, skill_type: 'technique', scaling_stat: 'speed', crit_bonus: 0.18 },
@@ -229,14 +261,14 @@ export const ALL_JOB_SKILLS: BattleSkillDef[] = [
   // --- 機工師 ---
   { id: 'bs_mini_cannon', name: '小型砲撃', job: '機工師', desc: '小型砲を撃つ。', mp: 5, power: 0.95, skill_type: 'machine', scaling_stat: 'attack', secondary_scaling_stat: 'magic' },
   { id: 'bs_weak_scan', name: '弱点スキャン', job: '機工師', desc: '弱点を解析。', mp: 4, power: 0, skill_type: 'support', scaling_stat: 'magic', effect_type: 'scan' },
-  { id: 'bs_field_repair', name: '応急修理', job: '機工師', desc: '自身を修理。', mp: 7, power: 0.25, skill_type: 'recovery', scaling_stat: 'spirit' },
+  { id: 'bs_field_repair', name: '応急修理', job: '機工師', desc: '自身を修理。', mp: 7, power: 0.25, skill_type: 'recovery', scaling_stat: 'spirit', target_type: 'self' },
   { id: 'bs_deep_pierce', name: '深層穿ち', job: '機工師', desc: '深く穿つ。', mp: 8, power: 1.15, skill_type: 'break', scaling_stat: 'magic', break_power: 30 },
   { id: 'bs_turret_set', name: '砲台設置', job: '機工師', desc: '砲台を設置。', mp: 8, power: 0, skill_type: 'break', scaling_stat: 'magic', effect_type: 'trap' },
   { id: 'bs_core_bullet', name: '炉心弾', job: '機工師', desc: '炉心の弾。', mp: 10, power: 1.2, skill_type: 'machine', scaling_stat: 'magic', break_power: 15 },
-  { id: 'bs_arc_jam', name: 'アーク干渉', job: '機工師', desc: '干渉波を放つ。', mp: 9, power: 1.0, skill_type: 'debuff', scaling_stat: 'magic', effect_type: 'slow' },
+  { id: 'bs_arc_jam', name: 'アーク干渉', job: '機工師', desc: '干渉波を放つ。', mp: 9, power: 0.85, skill_type: 'debuff', scaling_stat: 'magic', effect_type: 'slow', target_type: 'single_enemy' },
   { id: 'bs_multi_aim', name: '多重照準', job: '機工師', desc: '複数照準。', mp: 8, power: 0, skill_type: 'support', scaling_stat: 'magic', effect_type: 'scan' },
   { id: 'bs_deep_analysis', name: '深層解析', job: '機工師', desc: '深層を解析。', mp: 7, power: 0, skill_type: 'support', scaling_stat: 'magic', effect_type: 'scan', break_power: 10 },
-  { id: 'bs_control_volley', name: '制御弾幕', job: '機工師', desc: '制御された弾幕。', mp: 12, power: 0.45, skill_type: 'machine', scaling_stat: 'magic', hits: 3 },
+  { id: 'bs_control_volley', name: '制御弾幕', job: '機工師', desc: '制御された弾幕。', mp: 12, power: 0.45, skill_type: 'machine', scaling_stat: 'magic', hits: 3, target_type: 'all_enemies' },
   { id: 'bs_creation_cannon_ultimate', name: '創造砲奥義', job: '機工師', desc: '機工師の奥義。', mp: 18, power: 1.7, skill_type: 'special', scaling_stat: 'magic', secondary_scaling_stat: 'attack', break_power: 35 },
 
   // --- 格闘士 ---
@@ -246,7 +278,7 @@ export const ALL_JOB_SKILLS: BattleSkillDef[] = [
   { id: 'bs_armor_break', name: '破甲拳', job: '格闘士', desc: '装甲を砕く。', mp: 7, power: 1.0, skill_type: 'break', scaling_stat: 'attack', break_power: 22 },
   { id: 'bs_ukemi', name: '受け身', job: '格闘士', desc: '受け身で身を守る。', mp: 4, power: 0, skill_type: 'guard', scaling_stat: 'speed', effect_type: 'guard' },
   { id: 'bs_dragon_bone_crush', name: '竜骨砕き', job: '格闘士', desc: '竜骨を砕く。', mp: 9, power: 1.15, skill_type: 'break', scaling_stat: 'attack', break_power: 28 },
-  { id: 'bs_ash_fist_rampage', name: '灰拳乱舞', job: '格闘士', desc: '灰の乱舞。', mp: 10, power: 0.5, skill_type: 'physical', scaling_stat: 'attack', hits: 4 },
+  { id: 'bs_ash_fist_rampage', name: '灰拳乱舞', job: '格闘士', desc: '灰の乱舞。', mp: 10, power: 0.5, skill_type: 'physical', scaling_stat: 'attack', hits: 4, target_type: 'all_enemies' },
   { id: 'bs_blood_stance', name: '血潮の構え', job: '格闘士', desc: '血潮を燃やす。', mp: 7, power: 0, skill_type: 'support', scaling_stat: 'attack', effect_type: 'atk_buff' },
   { id: 'bs_taboo_combo', name: '破戒連撃', job: '格闘士', desc: '破戒の連撃。', mp: 11, power: 0.6, skill_type: 'physical', scaling_stat: 'attack', hits: 3, break_power: 12 },
   { id: 'bs_iron_body', name: '剛体', job: '格闘士', desc: '体を鋼にする。', mp: 8, power: 0, skill_type: 'guard', scaling_stat: 'defense', effect_type: 'guard_strong' },

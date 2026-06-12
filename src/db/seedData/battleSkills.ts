@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 import { nowIso } from '../../types';
-import { ALL_JOB_SKILLS, JOB_SKILL_UNLOCKS, type BattleSkillDef } from './jobSkillData';
+import { ALL_JOB_SKILLS, JOB_SKILL_UNLOCKS, resolveSkillTargetType, type BattleSkillDef } from './jobSkillData';
 
 export type { BattleSkillDef } from './jobSkillData';
 
@@ -16,13 +16,13 @@ export function seedBattleSkills(db: Database.Database): void {
   const ins = db.prepare(`
     INSERT INTO skills (
       id, name, job_id, description, mp_cost, power, skill_type, element, break_power, effect_json,
-      scaling_stat, secondary_scaling_stat, hit_bonus, crit_bonus, priority, effect_type, status_effect, hits, usable_in_battle
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      scaling_stat, secondary_scaling_stat, hit_bonus, crit_bonus, priority, effect_type, status_effect, hits, target_type, usable_in_battle
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     ON CONFLICT(id) DO UPDATE SET
       name=excluded.name, description=excluded.description, mp_cost=excluded.mp_cost, power=excluded.power,
       skill_type=excluded.skill_type, scaling_stat=excluded.scaling_stat, secondary_scaling_stat=excluded.secondary_scaling_stat,
       hit_bonus=excluded.hit_bonus, crit_bonus=excluded.crit_bonus, break_power=excluded.break_power,
-      effect_type=excluded.effect_type, status_effect=excluded.status_effect, hits=excluded.hits
+      effect_type=excluded.effect_type, status_effect=excluded.status_effect, hits=excluded.hits, target_type=excluded.target_type
   `);
 
   for (const s of ALL_JOB_SKILLS) {
@@ -31,6 +31,7 @@ export function seedBattleSkills(db: Database.Database): void {
       s.break_power ?? 0, JSON.stringify({ effect_type: s.effect_type ?? null }),
       s.scaling_stat, s.secondary_scaling_stat ?? null, s.hit_bonus ?? 0, s.crit_bonus ?? 0,
       s.priority ?? 0, s.effect_type ?? null, s.status_effect ?? null, s.hits ?? 1,
+      resolveSkillTargetType(s),
     );
   }
 

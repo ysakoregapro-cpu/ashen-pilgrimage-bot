@@ -8,7 +8,7 @@ import { formatRematchBossList, getRematchableBosses } from './bossRematchSystem
 import { getUniqueWeapons } from './srcWeaponSystem';
 import { getJobs } from './jobSystem';
 import { formatEquipmentDisplay } from './equipmentSystem';
-import { getInventoryByCategory } from './inventorySystem';
+import { buildInventorySummaryText } from '../utils/inventoryUi';
 import { restAtInn, shrineHeal, formatRestPreview, isFullyRested } from './innSystem';
 import { formatShopCatalogForPlayer, getShopCatalog, getSellableInventory } from './shopSystem';
 import { getActiveListings, getMyListings, formatListingList } from './marketSystem';
@@ -101,14 +101,11 @@ export function getFacilityActions(facility: FacilityRow): FacAction[] {
         { id: 'heal_preview', label: '回復する' },
         talk,
         { id: 'explain', label: '救護について聞く' },
-        { id: 'rescue_pre', label: '事前救難を出す' },
         home,
       ];
     case 'rescue_board':
       return [
         { id: 'rescue_info', label: '救難の便りを見る' },
-        { id: 'rescue_pre', label: '事前救難を出す' },
-        { id: 'raid_info', label: '共闘探索の募集' },
         talk,
         { id: 'explain', label: '共闘について聞く' },
         home,
@@ -191,7 +188,7 @@ function getExplainLabel(type: string): string {
 }
 
 export function executeFacilityAction(userId: string, facilityId: string, actionId: string): {
-  type: 'text' | 'upgrade_select' | 'job_select' | 'travel' | 'profile' | 'inventory' | 'equip' | 'src_select' | 'rescue_hint' | 'raid_hint'
+  type: 'text' | 'upgrade_select' | 'job_select' | 'travel' | 'profile' | 'inventory' | 'equip' | 'src_select' | 'rescue_hint' | 'raid_hint' | 'coop_recruit'
     | 'shop_browse' | 'shop_buy' | 'shop_sell' | 'market_browse' | 'market_sell' | 'market_my' | 'prep_equip' | 'prep_menu' | 'inn_preview' | 'boss_rematch_select';
   message: string;
   extra?: string;
@@ -305,11 +302,17 @@ export function executeFacilityAction(userId: string, facilityId: string, action
     }
     return { type: 'upgrade_select', message: 'ヴァルハラで得た素材を使い、Src武器を+10まで鍛えます。', extra: 'src' };
   }
-  if (actionId === 'rescue_pre' || actionId === 'rescue_info') {
-    return { type: 'rescue_hint', message: '救難の便りは、救難掲示の場所へ届く。\n探索中に困ったら「救難を求める」から便りを出せ。\n高難度の探索前には、ここから事前救難を出すのも手だ。' };
+  if (actionId === 'rescue_pre') {
+    return { type: 'coop_recruit', message: '事前救難募集を掲示板へ出します。', extra: 'rescue:preemptive' };
   }
-  if (actionId === 'raid_recruit' || actionId === 'raid_info') {
-    return { type: 'raid_hint', message: '空中要塞ヴァルハラへの共闘探索は、掲示板から募集できる。\n最大四人。人数が増えれば、防衛も厚くなる。' };
+  if (actionId === 'rescue_info') {
+    return { type: 'coop_recruit', message: '救難要請を掲示板へ出します。', extra: 'rescue:explore' };
+  }
+  if (actionId === 'raid_recruit') {
+    return { type: 'coop_recruit', message: 'ヴァルハラレイド募集を掲示板へ出します。', extra: 'raid' };
+  }
+  if (actionId === 'raid_info') {
+    return { type: 'raid_hint', message: '空中要塞ヴァルハラへの共闘探索は、端末から募集できます。\n最大四人。人数が増えれば、防衛も厚くなる。' };
   }
   if (actionId === 'codex') {
     return { type: 'text', message: '古い記録には、まだ読めない頁が多い。\n探索を重ねれば、図鑑の空白も少しずつ埋まっていくだろう。' };
@@ -351,9 +354,7 @@ export function getJobSelectOptions(userId: string) {
 }
 
 export function formatInventorySummary(userId: string): string {
-  const items = getInventoryByCategory(userId, 'all') as Array<{ name: string; quantity: number; rarity: string }>;
-  if (!items.length) return '所持品はまだない。';
-  return items.slice(0, 15).map((i) => `${i.name} x${i.quantity}`).join('\n');
+  return buildInventorySummaryText(userId);
 }
 
 export function formatEquipSummary(userId: string): string {

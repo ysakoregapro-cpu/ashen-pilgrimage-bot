@@ -84,6 +84,72 @@ export function runMigrations(db: Database.Database): void {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS player_status_effects (
+      user_id TEXT NOT NULL,
+      effect_key TEXT NOT NULL,
+      stacks INTEGER DEFAULT 1,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (user_id, effect_key)
+    );
+    CREATE TABLE IF NOT EXISTS coop_recruits (
+      id TEXT PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      leader_id TEXT NOT NULL,
+      mode TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'recruiting',
+      min_players INTEGER NOT NULL DEFAULT 2,
+      max_players INTEGER NOT NULL DEFAULT 4,
+      context_json TEXT NOT NULL DEFAULT '{}',
+      channel_id TEXT,
+      message_id TEXT,
+      expires_at TEXT NOT NULL,
+      started_battle_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS coop_members (
+      recruit_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'helper',
+      status TEXT NOT NULL DEFAULT 'joined',
+      joined_at TEXT NOT NULL,
+      left_at TEXT,
+      PRIMARY KEY (recruit_id, user_id)
+    );
+    CREATE TABLE IF NOT EXISTS coop_battle_sessions (
+      id TEXT PRIMARY KEY,
+      recruit_id TEXT NOT NULL UNIQUE,
+      mode TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      enemy_json TEXT NOT NULL,
+      participant_states_json TEXT NOT NULL,
+      turn_count INTEGER DEFAULT 0,
+      status_json TEXT DEFAULT '{}',
+      resolving_lock TEXT,
+      turn_deadline_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS coop_battle_actions (
+      battle_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      turn_count INTEGER NOT NULL,
+      action_type TEXT NOT NULL,
+      skill_id TEXT,
+      item_id TEXT,
+      target_json TEXT,
+      submitted_at TEXT NOT NULL,
+      PRIMARY KEY (battle_id, user_id, turn_count)
+    );
+    CREATE TABLE IF NOT EXISTS coop_rewards (
+      battle_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      reward_json TEXT NOT NULL,
+      granted_at TEXT NOT NULL,
+      PRIMARY KEY (battle_id, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_coop_recruits_status ON coop_recruits(status);
+    CREATE INDEX IF NOT EXISTS idx_coop_battle_status ON coop_battle_sessions(status);
   `);
 
   addColumn(db, 'skills', 'scaling_stat', "TEXT DEFAULT 'attack'");

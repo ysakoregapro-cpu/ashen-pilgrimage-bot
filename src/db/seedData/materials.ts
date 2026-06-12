@@ -82,9 +82,9 @@ const MATERIALS: Mat[] = [
   { id: 'src_machina_core', name: 'マキナ残響核', cat: 'src_upgrade_material', rarity: 'Src', desc: 'Src+10用。', source: 'マキナ区画', usage: 'Src+10', price: 2000, trade: 1 },
   { id: 'src_primordial_full', name: '原初刻印', cat: 'src_upgrade_material', rarity: 'Src', desc: 'Src+10用。', source: '砂時計の都', usage: 'Src+10', price: 2500, trade: 1 },
   { id: 'src_star_mark_full', name: '完全な星印', cat: 'src_upgrade_material', rarity: 'Src', desc: 'Src+10用。', source: '星落ち・週次', usage: 'Src+10', price: 2500, trade: 1 },
-  { id: 'cons_lamp_bottle', name: '灯火の小瓶', cat: 'consumable', rarity: 'R', desc: '戦闘中HP30%で1回復活。', source: '薄明の港・ショップ', usage: '戦闘復活', price: 200 },
-  { id: 'cons_pilgrim_charm', name: '巡礼者の護符', cat: 'consumable', rarity: 'SR', desc: '敗北時の所持金ロスト防止。', source: '祈りの丘', usage: '敗北保護', price: 500 },
-  { id: 'cons_rescue_signal', name: '救難信号片', cat: 'consumable', rarity: 'R', desc: '救難要請を即時投稿。', source: '薄明の港', usage: '救難', price: 150 },
+  { id: 'cons_lamp_bottle', name: '灯火の小瓶', cat: 'consumable', rarity: 'R', desc: '戦闘中HP30%で1回復活。', source: '薄明の港・ショップ', usage: '戦闘復活', price: 40 },
+  { id: 'cons_pilgrim_charm', name: '巡礼者の護符', cat: 'consumable', rarity: 'SR', desc: '敗北時の所持金ロスト防止。', source: '祈りの丘', usage: '敗北保護', price: 250 },
+  { id: 'cons_rescue_signal', name: '救難信号片', cat: 'consumable', rarity: 'R', desc: '救難要請を即時投稿。', source: '薄明の港', usage: '救難', price: 75 },
 ];
 
 export function seedMaterials(db: Database.Database, ts: string): void {

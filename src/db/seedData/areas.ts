@@ -17,7 +17,7 @@ export const AREAS: AreaDef[] = [
   { id: 'area_traveler_grave', town: 'old_road_village', name: '旅人の墓標', desc: '旅人の墓が並ぶ。', min: 10, max: 15, monsters: ['mon_night_shadow', 'mon_bandit'], rewards: ['mat_beast_hide', 'mat_cracked_bone'] },
   // 薄明
   { id: 'area_twilight_coast', town: 'twilight_port', name: '薄明の海岸', desc: '薄明の光が差す海岸。', min: 5, max: 12, monsters: ['mon_wet_gull', 'mon_salt_crab'], rewards: ['mat_twilight_shell', 'wpn_twilight_bow'] },
-  { id: 'area_lighthouse_rocks', town: 'twilight_port', name: '灯台下の岩場', desc: '灯台の下の岩場。', min: 8, max: 14, monsters: ['mon_lighthouse_jelly', 'mon_salt_crab'], rewards: ['mat_twilight_shell', 'cons_lamp_bottle'] },
+  { id: 'area_lighthouse_rocks', town: 'twilight_port', name: '灯台下の岩場', desc: '灯台の下の岩場。', min: 8, max: 14, monsters: ['mon_lighthouse_jelly', 'mon_salt_crab'], rewards: ['mat_twilight_shell', 'upg_rough_stone'] },
   { id: 'area_sunken_deck', town: 'twilight_port', name: '沈没船の甲板', desc: '沈没船の甲板。', min: 12, max: 18, monsters: ['mon_ship_soldier', 'mon_drift_undead'], rewards: ['wpn_rain_bow', 'mat_iron_scrap'] },
   { id: 'area_tide_cave', town: 'twilight_port', name: '潮騒の洞窟', desc: '潮の音が響く洞窟。', min: 14, max: 20, monsters: ['mon_tide_ghost', 'mon_sea_thief'], rewards: ['arm_set_twilight_head', 'mat_twilight_shell'] },
   { id: 'area_fog_warehouse', town: 'twilight_port', name: '海霧の倉庫街', desc: '霧に包まれた倉庫。', min: 16, max: 22, monsters: ['mon_sea_thief', 'mon_drift_undead'], rewards: ['arm_set_twilight_body', 'cons_rescue_signal'] },
@@ -37,7 +37,7 @@ export const AREAS: AreaDef[] = [
   { id: 'area_rain_alley', town: 'rain_ruins', name: '雨音の路地', desc: '雨音が響く路地。', min: 8, max: 14, monsters: ['mon_grass_imp', 'mon_poison_vine_slime'], rewards: ['arm_set_rain_head', 'wpn_rain_bow'] },
   { id: 'area_flooded_house', town: 'rain_ruins', name: '水没した家屋', desc: '水没した廃屋。', min: 10, max: 16, monsters: ['mon_drift_undead', 'mon_poison_vine_slime'], rewards: ['arm_set_rain_body', 'mat_cloth_scrap'] },
   { id: 'area_rust_well', town: 'rain_ruins', name: '朽ちた井戸', desc: '朽ちた井戸。', min: 12, max: 18, monsters: ['mon_lost_mushroom', 'mon_tide_ghost'], rewards: ['mat_dry_herb', 'upg_rough_stone'] },
-  { id: 'area_leaky_chapel', town: 'rain_ruins', name: '雨漏りの礼拝堂', desc: '雨漏りの礼拝堂。', min: 14, max: 20, monsters: ['mon_drift_undead', 'mon_night_shadow'], rewards: ['arm_set_rain_arms', 'cons_lamp_bottle'] },
+  { id: 'area_leaky_chapel', town: 'rain_ruins', name: '雨漏りの礼拝堂', desc: '雨漏りの礼拝堂。', min: 14, max: 20, monsters: ['mon_drift_undead', 'mon_night_shadow'], rewards: ['arm_set_rain_arms', 'mat_dry_herb'] },
   { id: 'area_muddy_field', town: 'rain_ruins', name: '泥濘の畑', desc: '泥に沈んだ畑。', min: 16, max: 22, monsters: ['mon_poison_vine_slime', 'mon_forest_wolf'], rewards: ['arm_set_rain_legs', 'mat_starfield_grass'] },
   // 月下図書館
   { id: 'area_forbidden_section', town: 'moon_library', name: '月下図書館・禁書区画', desc: '禁書が眠る区画。', min: 20, max: 30, monsters: ['mon_runaway_book', 'mon_bookworm_swarm'], rewards: ['mat_moon_ink', 'wpn_moon_rod'] },

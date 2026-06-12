@@ -8,6 +8,7 @@ import {
 import { baseEmbed, selectMenu } from './embeds';
 import type { Player } from '../types';
 import { getActiveSetEffectLines } from '../systems/playerSystem';
+import { formatPlayerStatusLine } from '../systems/playerStatusSystem';
 import { GUIDE_SECTIONS } from '../systems/dialogueSystem';
 import { buildExploreAreaOptions } from '../systems/areaDisplaySystem';
 import { nextActionButtons } from './nextActionButtons';
@@ -39,6 +40,10 @@ export function playerRecordEmbed(player: Player, userId?: string): EmbedBuilder
       },
     );
   if (userId) {
+    const statusLine = formatPlayerStatusLine(userId);
+    if (statusLine) {
+      embed.addFields({ name: '状態', value: statusLine, inline: false });
+    }
     const sets = getActiveSetEffectLines(userId);
     if (sets.length) {
       embed.addFields({ name: '発動中シリーズ効果', value: sets.join('\n').slice(0, 1024) });

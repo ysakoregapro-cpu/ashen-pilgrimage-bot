@@ -16,7 +16,6 @@ import {
   getUpgradeSelectOptions,
   getSrcUniqueOptions,
   getJobSelectOptions,
-  formatInventorySummary,
   formatEquipSummary,
   getFacility,
 } from '../systems/facilitySystem';
@@ -24,7 +23,6 @@ import { getPlayer, recalculatePlayerStats } from '../systems/playerSystem';
 import { selectMenu, errorEmbed, successEmbed } from '../utils/embeds';
 import {
   playerRecordEmbed,
-  inventorySummaryEmbed,
   equipSummaryEmbed,
   townHubEmbed,
   parseFacilityActionId,
@@ -42,7 +40,9 @@ import {
   disableOldComponents,
   stampPanelPayload,
   getSendableChannel,
+  replyEphemeralNoChannel,
 } from '../utils/messageFlow';
+import { buildInventoryView, type InventoryCategory } from '../utils/inventoryUi';
 
 export { buildPostExplore, buildPostVictory, buildPostDefeat, buildPostFled, buildSkillLearnedPost, arriveAndShowHub, buildTownHub, buildGuideHome } from '../systems/townActionSystem';
 
@@ -131,7 +131,10 @@ async function sendPanelSelectMessage(
 ): Promise<void> {
   await disableOldComponents(interaction.message);
   const channel = getSendableChannel(interaction.channel);
-  if (!channel) return;
+  if (!channel) {
+    await replyEphemeralNoChannel(interaction);
+    return;
+  }
   await interaction.deferUpdate();
   await channel.send(stampPanelPayload(userId, payload));
 }
@@ -322,6 +325,21 @@ export async function handleUxButton(interaction: ButtonInteraction): Promise<bo
     return true;
   }
 
+  if (base.startsWith('inventory:page:')) {
+    const parts = base.split(':');
+    if (parts[2] === 'noop') return true;
+    const page = Math.max(0, Number(parts[2] ?? 0));
+    const category = (parts[3] ?? 'all') as InventoryCategory;
+    await sendJourneyLog(interaction, buildInventoryView(userId, page, category));
+    return true;
+  }
+
+  if (base.startsWith('inventory:cat:')) {
+    const category = (base.split(':')[2] ?? 'all') as InventoryCategory;
+    await sendJourneyLog(interaction, buildInventoryView(userId, 0, category));
+    return true;
+  }
+
   if (base.startsWith('flow:')) {
     await handleFlowButton(interaction, base.slice(5));
     return true;
@@ -359,10 +377,7 @@ async function handleFacilityResult(
       break;
     }
     case 'inventory': {
-      await sendJourneyLog(interaction, {
-        embeds: [inventorySummaryEmbed(formatInventorySummary(userId))],
-        components: [detailOpenButton('inventory'), ...nextActionButtons('inventory')],
-      });
+      await sendJourneyLog(interaction, buildInventoryView(userId, 0));
       break;
     }
     case 'shop_browse':
@@ -441,6 +456,42 @@ async function handleFacilityResult(
         components: nextActionButtons('facility', { facilityId: facId }),
       });
       break;
+    case 'coop_recruit': {
+      const guild = interaction.guild;
+      if (!guild) {
+        await interaction.reply({ embeds: [errorEmbed('サーバー内でのみ募集できます。')], ephemeral: true });
+        break;
+      }
+      const { postCoopRecruitToGuild } = await import('../systems/coop/coopHandlers');
+      const extra = result.extra ?? 'rescue:explore';
+      if (extra === 'raid') {
+        const { canEnterValhalla } = await import('../systems/progressionGates');
+        const gate = canEnterValhalla(userId);
+        if (!gate.ok) {
+          await sendJourneyLog(interaction, {
+            embeds: [townHubEmbed(getFacilityName(facId), gate.reason ?? '条件未達')],
+            components: nextActionButtons('facility', { facilityId: facId }),
+          });
+          break;
+        }
+        const posted = await postCoopRecruitToGuild(guild, userId, 'raid');
+        await sendJourneyLog(interaction, {
+          embeds: [townHubEmbed(getFacilityName(facId), posted.ok ? posted.message : posted.message)],
+          components: nextActionButtons('facility', { facilityId: facId }),
+        });
+        break;
+      }
+      const rescueType = extra.includes('preemptive') ? 'preemptive' : 'explore';
+      const posted = await postCoopRecruitToGuild(guild, userId, 'rescue', {
+        rescue_type: rescueType,
+        area_label: rescueType === 'preemptive' ? '高難度探索' : undefined,
+      });
+      await sendJourneyLog(interaction, {
+        embeds: [townHubEmbed(getFacilityName(facId), posted.ok ? posted.message : posted.message)],
+        components: nextActionButtons('facility', { facilityId: facId }),
+      });
+      break;
+    }
     case 'boss_rematch_select': {
       const { getRematchableBosses } = await import('../systems/bossRematchSystem');
       const bosses = getRematchableBosses(userId);
@@ -475,7 +526,10 @@ async function sendPanelAfterAction(
 ): Promise<void> {
   await disableOldComponents(interaction.message);
   const channel = getSendableChannel(interaction.channel);
-  if (!channel) return;
+  if (!channel) {
+    await replyEphemeralNoChannel(interaction);
+    return;
+  }
   await interaction.deferUpdate();
   await channel.send(stampPanelPayload(userId, payload));
 }
@@ -606,10 +660,7 @@ async function handleFlowButton(interaction: ButtonInteraction, flow: string): P
     return;
   }
   if (flow === 'inventory') {
-    await sendJourneyLog(interaction, {
-      embeds: [inventorySummaryEmbed(formatInventorySummary(userId))],
-      components: [detailOpenButton('inventory'), ...nextActionButtons('inventory')],
-    });
+    await sendJourneyLog(interaction, buildInventoryView(userId, 0));
     return;
   }
   if (flow === 'equip') {
@@ -628,9 +679,45 @@ async function handleFlowButton(interaction: ButtonInteraction, flow: string): P
     return;
   }
   if (flow === 'rescue') {
+    const guild = interaction.guild;
+    if (!guild) {
+      await sendJourneyLog(interaction, {
+        embeds: [townHubEmbed('救難', 'サーバー内でのみ救難要請を出せます。')],
+        components: nextActionButtons('defeat'),
+      });
+      return;
+    }
+    const { postCoopRecruitToGuild } = await import('../systems/coop/coopHandlers');
+    const posted = await postCoopRecruitToGuild(guild, userId, 'rescue', { rescue_type: 'explore' });
     await sendJourneyLog(interaction, {
-      embeds: [townHubEmbed('救難', '救難の便りを出すには、/rescue request を使うか、港の掲示板で事前に仲間を集めてください。')],
+      embeds: [townHubEmbed('救難', posted.ok ? posted.message : posted.message)],
       components: nextActionButtons('defeat'),
+    });
+    return;
+  }
+  if (flow === 'raid') {
+    const guild = interaction.guild;
+    if (!guild) {
+      await sendJourneyLog(interaction, {
+        embeds: [townHubEmbed('レイド', 'サーバー内でのみレイド募集を出せます。')],
+        components: nextActionButtons('facility'),
+      });
+      return;
+    }
+    const { canEnterValhalla } = await import('../systems/progressionGates');
+    const gate = canEnterValhalla(userId);
+    if (!gate.ok) {
+      await sendJourneyLog(interaction, {
+        embeds: [townHubEmbed('レイド', gate.reason ?? '条件未達')],
+        components: nextActionButtons('facility'),
+      });
+      return;
+    }
+    const { postCoopRecruitToGuild } = await import('../systems/coop/coopHandlers');
+    const posted = await postCoopRecruitToGuild(guild, userId, 'raid');
+    await sendJourneyLog(interaction, {
+      embeds: [townHubEmbed('レイド', posted.ok ? posted.message : posted.message)],
+      components: nextActionButtons('facility'),
     });
   }
 }

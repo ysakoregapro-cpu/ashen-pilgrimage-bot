@@ -6,6 +6,7 @@ import { formatElementHint } from './progressionSystem';
 import { classifyAreaThreats, formatAreaThreatLabels, getMonsterRow } from './monsterBossSystem';
 import { ELITE_MONSTER_IDS, TOUGH_MONSTER_IDS } from './combatMath';
 import { formatMonsterAffinityHints } from './elementSystem';
+import { getAreaRank } from './townLootSystem';
 
 export function getAreaTier(areaId: string): 'early' | 'mid' | 'late' | 'valhalla' {
   const area = getDb().prepare('SELECT town_id, recommended_max_level FROM exploration_areas WHERE id = ?').get(areaId) as {
@@ -32,14 +33,14 @@ export function getDangerStars(playerLevel: number, minLv: number, maxLv: number
 export function formatAreaDetail(userId: string, areaId: string): string {
   const area = getDb().prepare('SELECT * FROM exploration_areas WHERE id = ?').get(areaId) as {
     name: string; recommended_min_level: number; recommended_max_level: number;
-    monster_pool_json: string; reward_pool_json: string; town_id: string;
+    monster_pool_json: string; town_id: string;
   } | undefined;
   if (!area) return '探索先が見つかりません。';
 
   const player = requirePlayer(userId);
   const tier = getAreaTier(areaId);
   const monsters = JSON.parse(area.monster_pool_json) as Array<{ monster_id: string; weight: number }>;
-  const rewards = JSON.parse(area.reward_pool_json) as Array<{ item_id: string }>;
+  const areaRank = getAreaRank(areaId);
 
   const db = getDb();
   const monNames: string[] = [];
@@ -55,24 +56,18 @@ export function formatAreaDetail(userId: string, areaId: string): string {
     }
   }
 
-  const matNames: string[] = [];
-  const equipHints: string[] = [];
-  let rareHint = false;
-  for (const r of rewards.slice(0, 8)) {
-    const item = getDb().prepare('SELECT name, category, rarity FROM items WHERE id = ?').get(r.item_id) as {
-      name: string; category: string; rarity: string;
-    } | undefined;
-    if (!item) continue;
-    if (item.category === 'equipment') equipHints.push(item.name);
-    else if (item.rarity === 'UR' || item.rarity === 'Src' || item.category === 'src_core') rareHint = true;
-    else if (['material', 'common_material', 'area_material', 'upgrade_stone'].includes(item.category)) {
-      if (!matNames.includes(item.name)) matNames.push(item.name);
-    }
-  }
-
   const threats = classifyAreaThreats(monsters);
   const threatLabels = formatAreaThreatLabels(threats);
   const danger = getDangerStars(player.level, area.recommended_min_level, area.recommended_max_level, threats.storyBoss || threats.midBoss, tier);
+  const lootTrend = areaRank <= 3
+    ? '低〜中級の装備・素材が中心'
+    : areaRank >= 5
+      ? '高級装備・希少素材の比重が高い'
+      : '中級装備・地域素材が混在';
+  const obtainTrend = areaRank <= 3
+    ? '序盤向けの入手が多い'
+    : 'エリア進行に合わせ上位報酬が増える';
+
   const monsterEntries = monsters.map((m) => {
     const tagRow = db.prepare('SELECT area_tag FROM monsters WHERE id = ?').get(m.monster_id) as { area_tag: string } | undefined;
     return { monsterId: m.monster_id, areaTag: tagRow?.area_tag ?? 'starfield' };
@@ -84,9 +79,11 @@ export function formatAreaDetail(userId: string, areaId: string): string {
     `推奨Lv: ${area.recommended_min_level}〜${area.recommended_max_level} | 危険度: ${danger}`,
     `おすすめ属性: ${recommendedEl}`,
     `主な敵: ${monNames.join('、') || '—'}`,
-    `主な素材: ${matNames.slice(0, 4).join('、') || '—'}`,
+    'この地域で見つかる品: 装備・素材・消耗品（町共通プール）',
+    `入手傾向: ${obtainTrend}`,
+    `報酬傾向: ${lootTrend}`,
+    '注意: 同一町内の探索エリアは報酬プールを共有します',
   ];
-  if (equipHints.length) lines.push(`主な装備: ${equipHints.slice(0, 3).join('、')}`);
   if (threatLabels.length) lines.push(`出現: ${threatLabels.join(' / ')}`);
   else lines.push('出現: 通常敵のみ');
   const eliteNames = monsters
@@ -101,7 +98,6 @@ export function formatAreaDetail(userId: string, areaId: string): string {
   if (toughNames.length) lines.push(`手強い敵: ${[...new Set(toughNames)].join('、')}`);
   if (threats.storyBoss) lines.push('ボス: 初回撃破で大きな経験値');
   if (monWeakHints.length) lines.push(`敵ごとの弱点: ${monWeakHints.join(' / ')}`);
-  if (rareHint) lines.push('希少素材の気配: あり');
   if (player.level < area.recommended_min_level) lines.push('⚠ 推奨Lvより低い — 苦戦しやすい');
   return lines.join('\n');
 }

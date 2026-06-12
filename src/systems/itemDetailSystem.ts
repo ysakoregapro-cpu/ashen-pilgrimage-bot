@@ -8,8 +8,9 @@ import {
   canPerformItemAction, getInventoryProtectRow, type ItemAction,
 } from './itemProtectionSystem';
 import { getInventorySellPrice, resolveShopBuyPrice, resolveShopSellPrice, getItemPricing } from './itemValueSystem';
-import { getEnhanceRequirement, getMaxUpgradeLevel, formatEnhancePreview, getPrimaryStatKey, formatEnhanceDiff } from './enhanceSystem';
-import { getEquipped } from './equipmentSystem';
+import { getEnhanceRequirement, getMaxUpgradeLevel, formatEnhancePreview, getPrimaryStatKey, formatEnhanceDiff, calcUpgradeStatBonuses } from './enhanceSystem';
+import { getAwakeningStatFlatBonus } from './awakeningSystem';
+import { buildInventoryPickView } from '../utils/inventoryUi';
 import { getUnlockedTowns } from './playerSystem';
 import { hasStoryFlag } from './storySystem';
 import { JOB_SKILL_UNLOCKS } from '../db/seedData/jobSkillData';
@@ -221,51 +222,112 @@ function formatPermFlags(userId: string, inventoryId: number | null, itemId: str
 }
 
 export function getEquipmentComparison(userId: string, inventoryId: number): string {
+  type EquipRow = {
+    id: number; user_id: string; name: string; upgrade_level: number; src_level: number;
+    durability_state: DurabilityState; awakening_level: number; slot: string;
+    weapon_type: string | null; element: string | null; rarity: string;
+    attack_bonus: number; magic_bonus: number; defense_bonus: number; spirit_bonus: number;
+    speed_bonus: number; hp_bonus: number;
+  };
+
   const target = getDb().prepare(`
-    SELECT pi.*, i.name, i.rarity, e.slot, e.weapon_type, e.element,
+    SELECT pi.id, pi.user_id, pi.upgrade_level, pi.src_level, pi.durability_state, pi.awakening_level,
+      i.name, i.rarity, e.slot, e.weapon_type, e.element,
       e.attack_bonus, e.magic_bonus, e.defense_bonus, e.spirit_bonus, e.speed_bonus, e.hp_bonus
     FROM player_inventory pi
     JOIN items i ON pi.item_id = i.id
     JOIN equipment e ON pi.item_id = e.item_id
     WHERE pi.id = ?
-  `).get(inventoryId) as {
-    user_id: string;
-    name: string; upgrade_level: number; slot: string; weapon_type: string | null; element: string | null;
-    attack_bonus: number; magic_bonus: number; defense_bonus: number; spirit_bonus: number;
-    rarity: string;
-  } | undefined;
+  `).get(inventoryId) as EquipRow | undefined;
   if (!target) return '';
 
-  const equipped = getEquipped(userId).find((e) => (e as { slot: string }).slot === target.slot) as {
-    name: string | null; upgrade_level: number; inventory_id?: number;
-    attack_bonus?: number; magic_bonus?: number; defense_bonus?: number; spirit_bonus?: number;
-    element?: string | null;
-  } | undefined;
+  const equippedRow = getDb().prepare(`
+    SELECT pi.id, pi.upgrade_level, pi.src_level, pi.durability_state, pi.awakening_level,
+      i.name, i.rarity, e.slot, e.weapon_type, e.element,
+      e.attack_bonus, e.magic_bonus, e.defense_bonus, e.spirit_bonus, e.speed_bonus, e.hp_bonus
+    FROM player_equipment pe
+    JOIN player_inventory pi ON pe.inventory_id = pi.id
+    JOIN items i ON pi.item_id = i.id
+    JOIN equipment e ON pi.item_id = e.item_id
+    WHERE pe.user_id = ? AND pe.slot = ?
+  `).get(userId, target.slot) as EquipRow | undefined;
 
-  if (!equipped?.name) {
-    return `**${SLOT_LABELS[target.slot as keyof typeof SLOT_LABELS] ?? target.slot}** は未装備。\nこの装備を付けると新たに性能が加わります。`;
+  if (equippedRow?.id === inventoryId) {
+    return '**現在装備中** — 変化なし';
   }
+
+  const effectiveStats = (row: EquipRow) => {
+    const durPenalty = DURABILITY_PENALTY[row.durability_state] ?? 1;
+    const stats = calcUpgradeStatBonuses(
+      {
+        attack_bonus: row.attack_bonus, magic_bonus: row.magic_bonus,
+        defense_bonus: row.defense_bonus, spirit_bonus: row.spirit_bonus,
+        speed_bonus: row.speed_bonus, hp_bonus: row.hp_bonus,
+        slot: row.slot, weapon_type: row.weapon_type,
+      },
+      row.upgrade_level,
+      row.src_level,
+      durPenalty,
+      row.rarity,
+    );
+    const primary = getPrimaryStatKey({
+      attack_bonus: row.attack_bonus, magic_bonus: row.magic_bonus,
+      defense_bonus: row.defense_bonus, spirit_bonus: row.spirit_bonus,
+      speed_bonus: row.speed_bonus, hp_bonus: row.hp_bonus,
+      weapon_type: row.weapon_type, slot: row.slot,
+    });
+    const awBonus = getAwakeningStatFlatBonus(row.awakening_level ?? 0, primary);
+    if (awBonus > 0) {
+      stats[primary] += awBonus;
+      stats.hp += awBonus;
+    }
+    return stats;
+  };
+
+  if (!equippedRow?.name) {
+    const stats = effectiveStats(target);
+    const lines = [
+      `**${SLOT_LABELS[target.slot as keyof typeof SLOT_LABELS] ?? target.slot}** は未装備。`,
+      `確認中: ${target.name}${target.upgrade_level ? ` +${target.upgrade_level}` : ''}${target.src_level ? ` Src+${target.src_level}` : ''}`,
+      '',
+      '**この装備の実効ボーナス:**',
+    ];
+    for (const [label, key] of [['攻撃', 'attack'], ['魔力', 'magic'], ['防御', 'defense'], ['精神', 'spirit'], ['速度', 'speed'], ['HP', 'hp']] as const) {
+      const val = stats[key];
+      if (val) lines.push(`${label} +${val}`);
+    }
+    return lines.join('\n');
+  }
+
+  const targetStats = effectiveStats(target);
+  const equippedStats = effectiveStats(equippedRow);
 
   const lines = [
-    `現在装備: ${equipped.name}${equipped.upgrade_level ? ` +${equipped.upgrade_level}` : ''}`,
-    `確認中: ${target.name}${target.upgrade_level ? ` +${target.upgrade_level}` : ''}`,
+    `現在装備: ${equippedRow.name}${equippedRow.upgrade_level ? ` +${equippedRow.upgrade_level}` : ''}${equippedRow.src_level ? ` Src+${equippedRow.src_level}` : ''}`,
+    `確認中: ${target.name}${target.upgrade_level ? ` +${target.upgrade_level}` : ''}${target.src_level ? ` Src+${target.src_level}` : ''}`,
     '',
-    '**差分（基礎ボーナス）:**',
+    '**差分（実効ボーナス）:**',
   ];
   const diffs: Array<[string, number, number]> = [
-    ['攻撃', target.attack_bonus, equipped.attack_bonus ?? 0],
-    ['魔力', target.magic_bonus, equipped.magic_bonus ?? 0],
-    ['防御', target.defense_bonus, equipped.defense_bonus ?? 0],
-    ['精神', target.spirit_bonus, equipped.spirit_bonus ?? 0],
+    ['攻撃', targetStats.attack, equippedStats.attack],
+    ['魔力', targetStats.magic, equippedStats.magic],
+    ['防御', targetStats.defense, equippedStats.defense],
+    ['精神', targetStats.spirit, equippedStats.spirit],
+    ['速度', targetStats.speed, equippedStats.speed],
+    ['HP', targetStats.hp, equippedStats.hp],
   ];
+  let anyDiff = false;
   for (const [label, nv, ov] of diffs) {
     const d = nv - ov;
-    if (d !== 0) lines.push(`${label} ${d > 0 ? '+' : ''}${d}`);
+    if (d !== 0) {
+      lines.push(`${label} ${d > 0 ? '+' : ''}${d}`);
+      anyDiff = true;
+    }
   }
+  if (!anyDiff) lines.push('変化なし');
   const tEl = normalizeElement(target.element);
-  const eEl = normalizeElement(equipped.element ?? null);
+  const eEl = normalizeElement(equippedRow.element ?? null);
   if (tEl !== eEl) lines.push(`属性: ${ELEMENT_LABELS[eEl]} → ${ELEMENT_LABELS[tEl]}`);
-  lines.push('', '装備変更でステータスが変わります。身支度所から変更できます。');
   return lines.join('\n');
 }
 
@@ -573,12 +635,12 @@ export function buildItemDetailView(userId: string, opts: {
 
   if (opts.inventoryId != null) {
     const invRow = getDb().prepare(`
-      SELECT i.category, e.slot FROM player_inventory pi
+      SELECT i.category, e.slot, pi.is_equipped FROM player_inventory pi
       JOIN items i ON pi.item_id = i.id
       LEFT JOIN equipment e ON pi.item_id = e.item_id
       WHERE pi.id = ?
-    `).get(opts.inventoryId) as { category: string; slot: string | null } | undefined;
-    if (invRow?.category === 'equipment' && !opts.compare) {
+    `).get(opts.inventoryId) as { category: string; slot: string | null; is_equipped: number } | undefined;
+    if (invRow?.category === 'equipment' && !opts.compare && !invRow.is_equipped) {
       components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId(`detail:compare:${opts.inventoryId}`).setLabel('装備比較').setStyle(ButtonStyle.Primary),
       ));
@@ -606,30 +668,8 @@ export function buildItemDetailView(userId: string, opts: {
   return { embeds: [embed], components };
 }
 
-export function buildInventoryDetailPickView(userId: string): UiPayload {
-  const items = getDb().prepare(`
-    SELECT pi.id, i.name, i.rarity, i.category, pi.quantity, pi.upgrade_level, pi.is_equipped
-    FROM player_inventory pi JOIN items i ON pi.item_id = i.id
-    WHERE pi.user_id = ? AND pi.is_pending_reward = 0
-    ORDER BY i.category, i.rarity DESC, i.name
-    LIMIT 25
-  `).all(userId) as Array<{ id: number; name: string; rarity: string; category: string; quantity: number; upgrade_level: number; is_equipped: number }>;
-
-  if (!items.length) {
-    return { embeds: [baseEmbed('所持品', '詳細を見る品がありません。')], components: nextActionButtons('inventory') };
-  }
-
-  return {
-    embeds: [baseEmbed('所持品の詳細', '品を選ぶと性能・入手・用途を確認できます。')],
-    components: [
-      selectMenu('detail:inv', '詳細を見る品', items.map((i) => ({
-        label: i.name.slice(0, 100),
-        value: String(i.id),
-        description: `[${i.rarity}] ${i.category}${i.quantity > 1 ? ` x${i.quantity}` : ''}${i.is_equipped ? ' 装備中' : ''}`.slice(0, 100),
-      }))),
-      ...nextActionButtons('inventory'),
-    ],
-  };
+export function buildInventoryDetailPickView(userId: string, page = 0): UiPayload {
+  return buildInventoryPickView(userId, page);
 }
 
 export function buildSkillDetailPickView(userId: string): UiPayload {
