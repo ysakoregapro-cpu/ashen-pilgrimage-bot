@@ -29,18 +29,22 @@ function main() {
 
   const issues: string[] = [];
   const jobTs = fs.readFileSync(path.join(process.cwd(), 'src/commands/job.ts'), 'utf8');
+  const jobUiTs = fs.readFileSync(path.join(process.cwd(), 'src/systems/jobUiSystem.ts'), 'utf8');
 
-  if (jobTs.includes("getJobs('advanced')")) {
-    issues.push('/job sub still references getJobs(advanced)');
+  if (jobTs.includes("getJobs('advanced')") || jobUiTs.includes("getJobs('advanced')")) {
+    issues.push('job UI still references getJobs(advanced)');
   }
-  if (!jobTs.includes('getSelectableSubJobs')) {
-    issues.push('/job sub does not use getSelectableSubJobs()');
+  if (!jobUiTs.includes('getSelectableSubJobs')) {
+    issues.push('job UI does not use getSelectableSubJobs()');
   }
-  if (!jobTs.includes('PHASE2_SUB_JOBS')) {
-    issues.push('/job sub does not filter PHASE2_SUB_JOBS');
+  if (!jobUiTs.includes('PHASE2_SUB_JOBS')) {
+    issues.push('job UI does not filter PHASE2_SUB_JOBS');
   }
-  if (!jobTs.includes('formatLegacyJobWarning') && !jobTs.includes('isLegacyJob')) {
-    issues.push('/job sub missing legacy sub warning');
+  if (!jobUiTs.includes('formatLegacyJobWarning') && !jobUiTs.includes('isLegacyJob')) {
+    issues.push('job UI missing legacy sub warning');
+  }
+  if (!jobUiTs.includes('safeSelectMenu')) {
+    issues.push('job UI missing safeSelectMenu for empty options');
   }
 
   for (const legacy of LEGACY_ADVANCED_JOBS) {
@@ -85,8 +89,8 @@ function main() {
     '',
     `Generated: ${new Date().toISOString()}`,
     '',
-    `- /job sub uses getSelectableSubJobs: ${jobTs.includes('getSelectableSubJobs') ? 'OK' : 'FAIL'}`,
-    `- Old advanced excluded from source: ${!jobTs.includes("getJobs('advanced')") ? 'OK' : 'FAIL'}`,
+    `- /job sub uses jobUiSystem: ${jobUiTs.includes('buildSubJobSelectView') ? 'OK' : 'FAIL'}`,
+    `- safeSelectMenu guard: ${jobUiTs.includes('safeSelectMenu') ? 'OK' : 'FAIL'}`,
     `- PHASE2 sub count: ${PHASE2_SUB_JOBS.length}`,
     `- Legacy sub preserved then changed: ${playerBefore?.sub_job === '剣豪' && playerAfter?.sub_job === '刃走り' ? 'OK' : 'FAIL'}`,
     '',

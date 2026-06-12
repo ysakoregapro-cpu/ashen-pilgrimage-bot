@@ -151,16 +151,30 @@ export function selectMenu(
   placeholder: string,
   options: { label: string; value: string; description?: string }[],
 ): ActionRowBuilder<StringSelectMenuBuilder> {
+  const sliced = options.slice(0, 25);
+  if (sliced.length === 0) {
+    throw new Error(`selectMenu "${customId}" requires 1–25 options (got 0)`);
+  }
   return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(customId)
       .setPlaceholder(placeholder)
       .addOptions(
-        options.slice(0, 25).map((o) => ({
+        sliced.map((o) => ({
           label: o.label.slice(0, 100),
           value: o.value.slice(0, 100),
           description: o.description?.slice(0, 100),
         })),
       ),
   );
+}
+
+/** Returns null when options is empty — Discord requires 1–25 options per select menu. */
+export function safeSelectMenu(
+  customId: string,
+  placeholder: string,
+  options: { label: string; value: string; description?: string }[],
+): ActionRowBuilder<StringSelectMenuBuilder> | null {
+  if (!options.length) return null;
+  return selectMenu(customId, placeholder, options);
 }

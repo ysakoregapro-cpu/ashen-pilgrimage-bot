@@ -15,7 +15,6 @@ import {
   executeFacilityAction,
   getUpgradeSelectOptions,
   getSrcUniqueOptions,
-  getJobSelectOptions,
   formatEquipSummary,
   getFacility,
 } from '../systems/facilitySystem';
@@ -440,13 +439,8 @@ async function handleFacilityResult(
       break;
     }
     case 'job_select': {
-      const jobs = getJobSelectOptions(userId);
-      const player = getPlayer(userId)!;
-      const isSub = player.main_job !== '未選択';
-      await sendPanelAfterAction(interaction, userId, {
-        embeds: [townHubEmbed(facilityName, result.message)],
-        components: [selectMenu(isSub ? 'onboarding:job:sub' : 'onboarding:job:main', '職能を選ぶ', jobs.map((j) => ({ label: j, value: j })))],
-      });
+      const { buildJobMenuView } = await import('../systems/jobUiSystem');
+      await sendPanelAfterAction(interaction, userId, buildJobMenuView(userId, { facilityId: facId }));
       break;
     }
     case 'rescue_hint':

@@ -16,6 +16,7 @@ const REQUIRED_FILES = [
   'scripts/advanced-trial-flow-check.ts',
   'scripts/enemy-balance-design-audit.ts',
   'scripts/job-sub-ui-check.ts',
+  'scripts/job-ui-entry-check.ts',
 ];
 
 const CODE_CHECKS: Array<{ label: string; file: string; pattern: RegExp }> = [
@@ -25,7 +26,9 @@ const CODE_CHECKS: Array<{ label: string; file: string; pattern: RegExp }> = [
   { label: 'acquisition hint', file: 'src/systems/itemDetailSystem.ts', pattern: /getItemAcquisitionHint/ },
   { label: 'Src echo x3', file: 'src/db/seedData/forgeMaster.ts', pattern: /SRC_FORGE_ECHO_QTY = 3/ },
   { label: 'arms drop weight', file: 'src/systems/equipmentDropSystem.ts', pattern: /arms:\s*\d+/ },
-  { label: 'phase2 sub UI', file: 'src/commands/job.ts', pattern: /getSelectableSubJobs/ },
+  { label: 'phase2 sub UI', file: 'src/systems/jobUiSystem.ts', pattern: /getSelectableSubJobs/ },
+  { label: 'job UI entry', file: 'src/interactions/uxHandler.ts', pattern: /buildJobMenuView/ },
+  { label: 'safe select menu', file: 'src/systems/jobUiSystem.ts', pattern: /safeSelectMenu/ },
   { label: 'Uni material drops', file: 'src/db/seedData/jobProgressionMaster.ts', pattern: /PHASE2_UNI_MATERIAL_DROPS/ },
 ];
 
