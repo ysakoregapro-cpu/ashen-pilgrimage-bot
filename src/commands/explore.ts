@@ -32,7 +32,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
         return;
       }
     }
-    await channel.send(buildPostExplore(result.message));
+    await channel.send(buildPostExplore(result.message, areaId));
     return;
   }
 

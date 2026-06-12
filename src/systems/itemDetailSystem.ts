@@ -2,7 +2,7 @@ import { getDb } from '../db/database';
 import { baseEmbed, durabilityLabel } from '../utils/embeds';
 import { formatFieldTitle } from '../utils/formatters';
 import type { UiPayload } from '../utils/townUi';
-import { nextActionButtons } from '../utils/nextActionButtons';
+import { nextActionButtons, type NextActionExtra } from '../utils/nextActionButtons';
 import { selectMenu } from '../utils/embeds';
 import {
   canPerformItemAction, getInventoryProtectRow, type ItemAction,
@@ -541,6 +541,8 @@ export function buildItemDetailView(userId: string, opts: {
   shopBuyPrice?: number;
   warnings?: string[];
   compare?: boolean;
+  slot?: string;
+  facilityId?: string;
 }): UiPayload {
   let body = '';
   if (opts.skillId) {
@@ -567,19 +569,39 @@ export function buildItemDetailView(userId: string, opts: {
 
   const embed = baseEmbed('品の詳細', body);
   const components: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
+  let slot = opts.slot;
 
   if (opts.inventoryId != null) {
     const invRow = getDb().prepare(`
-      SELECT i.category FROM player_inventory pi JOIN items i ON pi.item_id = i.id WHERE pi.id = ?
-    `).get(opts.inventoryId) as { category: string } | undefined;
+      SELECT i.category, e.slot FROM player_inventory pi
+      JOIN items i ON pi.item_id = i.id
+      LEFT JOIN equipment e ON pi.item_id = e.item_id
+      WHERE pi.id = ?
+    `).get(opts.inventoryId) as { category: string; slot: string | null } | undefined;
     if (invRow?.category === 'equipment' && !opts.compare) {
       components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId(`detail:compare:${opts.inventoryId}`).setLabel('装備比較').setStyle(ButtonStyle.Primary),
       ));
     }
+    if (!slot && invRow?.slot) slot = invRow.slot;
   }
 
-  components.push(...nextActionButtons(opts.context === 'inventory' ? 'inventory' : opts.context === 'equip' ? 'equip' : 'generic'));
+  const detailCtx = opts.context ?? 'inventory';
+  const detailContextMap: Record<DetailContext, NextActionExtra['detailContext']> = {
+    inventory: 'inventory',
+    general: 'inventory',
+    equip: 'equip',
+    shop_buy: 'shop_buy',
+    shop_sell: 'shop_sell',
+    market: 'inventory',
+    upgrade: 'inventory',
+    skill: 'skill',
+  };
+  components.push(...nextActionButtons('item_detail', {
+    slot,
+    facilityId: opts.facilityId,
+    detailContext: detailContextMap[detailCtx] ?? 'inventory',
+  }));
 
   return { embeds: [embed], components };
 }
@@ -634,9 +656,16 @@ export function buildSkillDetailPickView(userId: string): UiPayload {
 export function buildEquipmentDetailView(
   userId: string,
   inventoryId: number,
-  opts?: { compare?: boolean; context?: DetailContext; warnings?: string[] },
+  opts?: { compare?: boolean; context?: DetailContext; warnings?: string[]; slot?: string; facilityId?: string },
 ): UiPayload {
-  return buildItemDetailView(userId, { inventoryId, compare: opts?.compare, context: opts?.context, warnings: opts?.warnings });
+  return buildItemDetailView(userId, {
+    inventoryId,
+    compare: opts?.compare,
+    context: opts?.context,
+    warnings: opts?.warnings,
+    slot: opts?.slot,
+    facilityId: opts?.facilityId,
+  });
 }
 
 export function buildSkillDetailView(userId: string, skillId: string): UiPayload {

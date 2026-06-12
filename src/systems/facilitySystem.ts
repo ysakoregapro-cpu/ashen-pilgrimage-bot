@@ -34,6 +34,16 @@ export function getFacilitiesForTown(townId: string): FacilityRow[] {
   return getDb().prepare('SELECT * FROM facilities WHERE town_id = ? ORDER BY name').all(townId) as FacilityRow[];
 }
 
+/** 現在の町で type が一致する施設 id（post-action 戻り先用） */
+export function findFacilityInTown(userId: string, facilityType: string): string | undefined {
+  const town = getCurrentTown(userId) as { id: string } | undefined;
+  if (!town) return undefined;
+  const row = getDb().prepare(`
+    SELECT id FROM facilities WHERE town_id = ? AND type = ? ORDER BY name LIMIT 1
+  `).get(town.id, facilityType) as { id: string } | undefined;
+  return row?.id;
+}
+
 export function getFacilityHostName(facility: FacilityRow): string {
   if (!facility.npc_id) return '待ち人';
   const npc = getNpc(facility.npc_id);

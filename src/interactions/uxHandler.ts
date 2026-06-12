@@ -21,7 +21,7 @@ import {
   getFacility,
 } from '../systems/facilitySystem';
 import { getPlayer, recalculatePlayerStats } from '../systems/playerSystem';
-import { selectMenu, errorEmbed } from '../utils/embeds';
+import { selectMenu, errorEmbed, successEmbed } from '../utils/embeds';
 import {
   playerRecordEmbed,
   inventorySummaryEmbed,
@@ -30,7 +30,7 @@ import {
   parseFacilityActionId,
   type UiPayload,
 } from '../utils/townUi';
-import { nextActionButtons } from '../utils/nextActionButtons';
+import { nextActionButtons, type UpgradeActionKind } from '../utils/nextActionButtons';
 import { detailOpenButton } from '../systems/itemDetailSystem';
 import {
   parseSessionCustomId,
@@ -45,6 +45,64 @@ import {
 } from '../utils/messageFlow';
 
 export { buildPostExplore, buildPostVictory, buildPostDefeat, buildPostFled, buildSkillLearnedPost, arriveAndShowHub, buildTownHub, buildGuideHome } from '../systems/townActionSystem';
+
+async function runExploreAction(interaction: ButtonInteraction, userId: string, areaId: string): Promise<void> {
+  const { handleExploreSelect } = await import('../commands/explore');
+  const { buildPostExplore } = await import('../systems/townActionSystem');
+  const { buildBattleReply } = await import('../systems/battleSystem');
+  const result = await handleExploreSelect(userId, areaId);
+  if (result.type === 'battle' && result.battleId) {
+    const reply = buildBattleReply(result.battleId, userId);
+    if (reply) {
+      await sendJourneyLog(interaction, reply);
+      return;
+    }
+  }
+  await sendJourneyLog(interaction, buildPostExplore(result.message, areaId));
+}
+
+async function handlePrepBack(interaction: ButtonInteraction, userId: string, base: string): Promise<void> {
+  const { PREP_SLOTS, getPrepSlotOptions, formatCurrentEquipment } = await import('../systems/prepSystem');
+  const { townHubEmbed } = await import('../utils/townUi');
+  const { selectMenu } = await import('../utils/embeds');
+  const slotLabels: Record<string, string> = {
+    weapon: '武器', head: '頭', body: '胴', arms: '腕', legs: '脚', feet: '靴',
+    accessory1: 'アクセ1', accessory2: 'アクセ2', sub: '補助',
+  };
+
+  if (base === 'prep:back:slots') {
+    await sendJourneyLog(interaction, {
+      embeds: [townHubEmbed('身支度', formatCurrentEquipment(userId))],
+      components: [
+        selectMenu('prep:slot', '部位を選ぶ', PREP_SLOTS.map((s) => ({
+          label: slotLabels[s] ?? s,
+          value: s,
+        }))),
+        detailOpenButton('equip'),
+        ...nextActionButtons('equip'),
+      ],
+    });
+    return;
+  }
+
+  if (base.startsWith('prep:back:slot:')) {
+    const slot = base.slice('prep:back:slot:'.length);
+    const opts = getPrepSlotOptions(userId, slot as import('../types').EquipmentSlot);
+    const pickOpts = opts.filter((o) => !o.disabled).slice(0, 25);
+    await sendJourneyLog(interaction, {
+      embeds: [townHubEmbed('装備変更', `**${slotLabels[slot] ?? slot}** の装備候補`)],
+      components: pickOpts.length ? [
+        selectMenu('prep:equip', '装備を選ぶ', pickOpts.map((o) => ({
+          label: o.label, value: String(o.inventoryId), description: o.description,
+        }))),
+        selectMenu('detail:inv', '詳細を見る', pickOpts.map((o) => ({
+          label: o.label, value: String(o.inventoryId), description: o.description,
+        }))),
+        ...nextActionButtons('equip'),
+      ] : nextActionButtons('equip'),
+    });
+  }
+}
 
 function requirePanelSession(interaction: ButtonInteraction, userId: string): boolean {
   const { session } = parseSessionCustomId(interaction.customId);
@@ -83,6 +141,80 @@ export async function handleUxButton(interaction: ButtonInteraction): Promise<bo
   const userId = interaction.user.id;
   if (!getPlayer(userId)) {
     await interaction.reply({ embeds: [errorEmbed('未登録です。/start で旅を始めてください。')], ephemeral: true });
+    return true;
+  }
+
+  if (base.startsWith('shop:repeat_buy:')) {
+    const parts = base.split(':');
+    const itemId = parts[2]!;
+    const qty = Math.max(1, Number(parts[3] ?? 1));
+    const { buyShopItem } = await import('../systems/shopSystem');
+    const { getCurrentTown } = await import('../systems/townSystem');
+    const { findFacilityInTown } = await import('../systems/facilitySystem');
+    const town = getCurrentTown(userId) as { id: string } | undefined;
+    const r = buyShopItem(userId, itemId, town?.id ?? 'start_starfield', qty);
+    const shopFac = findFacilityInTown(userId, 'item_shop');
+    await sendJourneyLog(interaction, {
+      embeds: [r.ok ? successEmbed(r.message) : errorEmbed(r.message)],
+      components: nextActionButtons('shop_buy_done', { facilityId: shopFac, itemId, qty }),
+    });
+    return true;
+  }
+
+  if (base.startsWith('upgrade:repeat:')) {
+    const parts = base.split(':');
+    const action = parts[2] as UpgradeActionKind;
+    const invId = Number(parts[3]);
+    const { handleUpgradeAction } = await import('../commands/upgrade');
+    const { findFacilityInTown } = await import('../systems/facilitySystem');
+    const result = handleUpgradeAction(userId, action, invId);
+    const repairFac = findFacilityInTown(userId, 'repair_shop') ?? findFacilityInTown(userId, 'blacksmith');
+    await sendJourneyLog(interaction, {
+      ...result,
+      components: nextActionButtons('upgrade_done', {
+        facilityId: repairFac,
+        inventoryId: invId,
+        upgradeAction: action,
+      }),
+    });
+    return true;
+  }
+
+  if (base.startsWith('rematch:repeat:')) {
+    const monsterId = base.slice('rematch:repeat:'.length);
+    const { startBossRematch } = await import('../systems/bossRematchSystem');
+    const { buildBattleReply } = await import('../systems/battleSystem');
+    const { findFacilityInTown } = await import('../systems/facilitySystem');
+    const guildFac = findFacilityInTown(userId, 'guild_board');
+    const r = startBossRematch(userId, monsterId);
+    if (!r.ok || !r.battleId) {
+      await sendJourneyLog(interaction, {
+        embeds: [errorEmbed(r.message)],
+        components: nextActionButtons('boss_rematch_done', { facilityId: guildFac, monsterId }),
+      });
+      return true;
+    }
+    const reply = buildBattleReply(r.battleId, userId);
+    if (reply) {
+      await sendJourneyLog(interaction, reply);
+    } else {
+      await sendJourneyLog(interaction, {
+        embeds: [errorEmbed('戦闘の開始に失敗しました。')],
+        components: nextActionButtons('boss_rematch_done', { facilityId: guildFac, monsterId }),
+      });
+    }
+    return true;
+  }
+
+  if (base.startsWith('explore:repeat:')) {
+    const areaId = base.slice('explore:repeat:'.length);
+    if (!areaId) return false;
+    await runExploreAction(interaction, userId, areaId);
+    return true;
+  }
+
+  if (base.startsWith('prep:back:')) {
+    await handlePrepBack(interaction, userId, base);
     return true;
   }
 
@@ -470,18 +602,7 @@ async function handleFlowButton(interaction: ButtonInteraction, flow: string): P
   const userId = interaction.user.id;
   if (flow.startsWith('explore:')) {
     const areaId = flow.slice('explore:'.length);
-    const { handleExploreSelect } = await import('../commands/explore');
-    const { buildPostExplore } = await import('../systems/townActionSystem');
-    const { buildBattleReply } = await import('../systems/battleSystem');
-    const result = await handleExploreSelect(userId, areaId);
-    if (result.type === 'battle' && result.battleId) {
-      const reply = buildBattleReply(result.battleId, userId);
-      if (reply) {
-        await sendJourneyLog(interaction, reply);
-        return;
-      }
-    }
-    await sendJourneyLog(interaction, buildPostExplore(result.message));
+    await runExploreAction(interaction, userId, areaId);
     return;
   }
   if (flow === 'inventory') {

@@ -28,7 +28,7 @@ import { loadCommands } from './commands/index';
 import { getEnv } from './utils/permissions';
 
 import { errorEmbed, successEmbed, baseEmbed } from './utils/embeds';
-import { nextActionButtons, errorRecoveryPayload } from './utils/nextActionButtons';
+import { nextActionButtons, errorRecoveryPayload, type UpgradeActionKind } from './utils/nextActionButtons';
 import type { UiPayload } from './utils/townUi';
 import { townHubEmbed } from './utils/townUi';
 import { selectMenu } from './utils/embeds';
@@ -187,14 +187,13 @@ async function sendSelectResultLog(
   interaction: StringSelectMenuInteraction,
   payload: UiPayload,
 ): Promise<void> {
-
   await disableOldComponents(interaction.message);
-
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferUpdate();
+  }
   const channel = getSendableChannel(interaction.channel);
   if (!channel) return;
-  await interaction.deferUpdate();
-  await channel.send(payload);
-
+  await channel.send({ embeds: payload.embeds, components: payload.components });
 }
 
 
@@ -392,8 +391,16 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
     }
 
     const result = handleUpgradeAction(userId, action!, Number(value));
-
-    await sendSelectResultLog(interaction, { ...result, components: nextActionButtons('upgrade') });
+    const { findFacilityInTown } = await import('./systems/facilitySystem');
+    const repairFac = findFacilityInTown(userId, 'repair_shop') ?? findFacilityInTown(userId, 'blacksmith');
+    await sendSelectResultLog(interaction, {
+      ...result,
+      components: nextActionButtons('upgrade_done', {
+        facilityId: repairFac,
+        inventoryId: Number(value),
+        upgradeAction: action as UpgradeActionKind,
+      }),
+    });
 
     return;
 
@@ -535,7 +542,16 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
   if (prefix === 'detail') {
     if (action === 'inv') {
       const invId = Number(value);
-      const { buildItemDetailView, getActionWarnings } = await import('./systems/itemDetailSystem');
+      if (!Number.isFinite(invId) || invId <= 0) {
+        await sendSelectResultLog(interaction, { embeds: [errorEmbed('品を選び直してください。')], components: nextActionButtons('inventory') });
+        return;
+      }
+      const { buildItemDetailView, getActionWarnings, assertInventoryOwned } = await import('./systems/itemDetailSystem');
+      const owned = assertInventoryOwned(userId, invId);
+      if (!owned.ok) {
+        await sendSelectResultLog(interaction, { embeds: [errorEmbed(owned.reason ?? '品が見つかりません。')], components: nextActionButtons('inventory') });
+        return;
+      }
       await sendSelectResultLog(interaction, buildItemDetailView(userId, {
         inventoryId: invId,
         context: 'inventory',
@@ -598,8 +614,13 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
 
   if (prefix === 'market' && action === 'cancel') {
     const { cancelListing } = await import('./systems/marketSystem');
+    const { findFacilityInTown } = await import('./systems/facilitySystem');
     const r = cancelListing(userId, value);
-    await sendSelectResultLog(interaction, { embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    const marketFac = findFacilityInTown(userId, 'market');
+    await sendSelectResultLog(interaction, {
+      embeds: [successEmbed(r.message)],
+      components: nextActionButtons('market_done', { facilityId: marketFac }),
+    });
     return;
   }
 
@@ -684,17 +705,25 @@ async function handleBattleResult(
 
     if (result.status === 'victory') {
 
-      await channel.send(buildPostVictory(result.message));
-
-      const session = getDb().prepare('SELECT monster_id, status_json FROM battle_sessions WHERE id = ?').get(sessionId) as {
-        monster_id: string; status_json: string;
+      const battleRow = getDb().prepare('SELECT monster_id, area_id, status_json FROM battle_sessions WHERE id = ?').get(sessionId) as {
+        monster_id: string; area_id: string | null; status_json: string;
       } | undefined;
+      const session = battleRow;
       let isRematch = false;
       if (session?.status_json) {
         try {
           isRematch = !!(JSON.parse(session.status_json) as { isRematch?: boolean }).isRematch;
         } catch { /* ignore */ }
       }
+      const { findFacilityInTown } = await import('./systems/facilitySystem');
+      await channel.send(buildPostVictory(result.message, isRematch && session?.monster_id
+        ? {
+            isRematch: true,
+            monsterId: session.monster_id,
+            rematchFacilityId: findFacilityInTown(interaction.user.id, 'guild_board'),
+          }
+        : { areaId: battleRow?.area_id }));
+
       const storyEvents: StoryEventPayload[] = [
         ...triggerFirstVictory(interaction.user.id),
         ...(session && !isRematch ? triggerBossDefeated(interaction.user.id, session.monster_id) : []),
@@ -737,13 +766,15 @@ async function handleBattleResult(
 
     if (result.status === 'fled') {
 
-      await channel.send(buildPostFled(result.message));
+      const battleRow = getDb().prepare('SELECT area_id FROM battle_sessions WHERE id = ?').get(sessionId) as { area_id: string | null } | undefined;
+      await channel.send(buildPostFled(result.message, battleRow?.area_id));
 
       return;
 
     }
 
-    await channel.send(buildPostExplore(result.message));
+    const battleRow = getDb().prepare('SELECT area_id FROM battle_sessions WHERE id = ?').get(sessionId) as { area_id: string | null } | undefined;
+    await channel.send(buildPostExplore(result.message, battleRow?.area_id));
 
     return;
 
@@ -956,8 +987,16 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
       await channel.send({ embeds: [errorEmbed(owned.reason ?? '装備できません。')], components: nextActionButtons('equip') });
       return;
     }
+    const slotRow = getDb().prepare(`
+      SELECT e.slot FROM player_inventory pi
+      JOIN equipment e ON pi.item_id = e.item_id
+      WHERE pi.id = ? AND pi.user_id = ?
+    `).get(invId, userId) as { slot: string } | undefined;
     const msg = handleEquip(userId, invId);
-    await channel.send({ embeds: [successEmbed(msg)], components: nextActionButtons('equip') });
+    await channel.send({
+      embeds: [successEmbed(msg)],
+      components: nextActionButtons('equip_done', { slot: slotRow?.slot }),
+    });
     return;
   }
 
@@ -1007,7 +1046,12 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
     if (!channel) return;
     await interaction.deferUpdate();
     const r = buyShopItem(userId, itemId, town?.id ?? 'start_starfield', qty);
-    await channel.send({ embeds: [r.ok ? successEmbed(r.message) : errorEmbed(r.message)], components: nextActionButtons('facility') });
+    const { findFacilityInTown } = await import('./systems/facilitySystem');
+    const shopFac = findFacilityInTown(userId, 'item_shop');
+    await channel.send({
+      embeds: [r.ok ? successEmbed(r.message) : errorEmbed(r.message)],
+      components: nextActionButtons('shop_buy_done', { facilityId: shopFac, itemId, qty }),
+    });
     return;
   }
 
@@ -1032,7 +1076,12 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
     }
     const { sellInventoryItem } = await import('./systems/shopSystem');
     const r = sellInventoryItem(userId, invId, qty);
-    await channel.send({ embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    const { findFacilityInTown } = await import('./systems/facilitySystem');
+    const shopFac = findFacilityInTown(userId, 'item_shop');
+    await channel.send({
+      embeds: [successEmbed(r.message)],
+      components: nextActionButtons('shop_sell_done', { facilityId: shopFac }),
+    });
     return;
   }
 
@@ -1050,7 +1099,12 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
     }
     const { buyListing } = await import('./systems/marketSystem');
     const r = buyListing(userId, listingId);
-    await channel.send({ embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    const { findFacilityInTown } = await import('./systems/facilitySystem');
+    const marketFac = findFacilityInTown(userId, 'market');
+    await channel.send({
+      embeds: [successEmbed(r.message)],
+      components: nextActionButtons('market_done', { facilityId: marketFac }),
+    });
     return;
   }
 
@@ -1072,7 +1126,12 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
     const row = getDb().prepare('SELECT item_id FROM player_inventory WHERE id = ? AND user_id = ?').get(invId, userId) as { item_id: string } | undefined;
     const hint = getMarketPriceHint(row?.item_id ?? '');
     const r = createListing(userId, invId, hint.base);
-    await channel.send({ embeds: [successEmbed(r.message)], components: nextActionButtons('facility') });
+    const { findFacilityInTown } = await import('./systems/facilitySystem');
+    const marketFac = findFacilityInTown(userId, 'market');
+    await channel.send({
+      embeds: [successEmbed(r.message)],
+      components: nextActionButtons('market_done', { facilityId: marketFac }),
+    });
     return;
   }
 
@@ -1090,7 +1149,12 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
       return;
     }
     const result = handleUpgradeAction(userId, 'dismantle', invId);
-    await channel.send({ ...result, components: nextActionButtons('upgrade') });
+    const { findFacilityInTown } = await import('./systems/facilitySystem');
+    const repairFac = findFacilityInTown(userId, 'repair_shop') ?? findFacilityInTown(userId, 'blacksmith');
+    await channel.send({
+      ...result,
+      components: nextActionButtons('upgrade_done', { facilityId: repairFac, upgradeAction: 'dismantle' }),
+    });
     return;
   }
 
@@ -1107,8 +1171,16 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
       return;
     }
     const { equipWithDiff } = await import('./systems/prepSystem');
+    const slotRow = getDb().prepare(`
+      SELECT e.slot FROM player_inventory pi
+      JOIN equipment e ON pi.item_id = e.item_id
+      WHERE pi.id = ? AND pi.user_id = ?
+    `).get(invId, userId) as { slot: string } | undefined;
     const r = equipWithDiff(userId, invId);
-    await channel.send({ embeds: [successEmbed(r.message)], components: nextActionButtons('equip') });
+    await channel.send({
+      embeds: [successEmbed(r.message)],
+      components: nextActionButtons('equip_done', { slot: slotRow?.slot }),
+    });
     return;
   }
 

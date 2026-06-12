@@ -230,17 +230,23 @@ export function buildGuideView(section: string): UiPayload {
   };
 }
 
-export function buildPostExplore(message: string): UiPayload {
+export function buildPostExplore(message: string, areaId?: string | null): UiPayload {
   return {
     embeds: [townHubEmbed('道中の記録', formatExploreResult(message))],
-    components: nextActionButtons('explore_result'),
+    components: nextActionButtons('explore_result', areaId ? { areaId } : undefined),
   };
 }
 
-export function buildPostVictory(message: string): UiPayload {
+export function buildPostVictory(
+  message: string,
+  opts?: { areaId?: string | null; isRematch?: boolean; monsterId?: string; rematchFacilityId?: string },
+): UiPayload {
+  const components = opts?.isRematch && opts.monsterId
+    ? nextActionButtons('boss_rematch_done', { facilityId: opts.rematchFacilityId, monsterId: opts.monsterId })
+    : nextActionButtons('victory', opts?.areaId ? { areaId: opts.areaId } : undefined);
   return {
     embeds: [townHubEmbed('戦いの記録', formatVictoryMessage(message)).setColor(0x44aa66)],
-    components: nextActionButtons('victory'),
+    components,
   };
 }
 
@@ -251,10 +257,10 @@ export function buildPostDefeat(message: string): UiPayload {
   };
 }
 
-export function buildPostFled(message: string): UiPayload {
+export function buildPostFled(message: string, areaId?: string | null): UiPayload {
   return {
     embeds: [townHubEmbed('道中の記録', `🧭 ${message}`)],
-    components: nextActionButtons('explore_result'),
+    components: nextActionButtons('explore_result', areaId ? { areaId } : undefined),
   };
 }
 
