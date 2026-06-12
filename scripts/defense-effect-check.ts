@@ -41,16 +41,16 @@ function main() {
     '',
     `Generated: ${new Date().toISOString()}`,
     '',
-    '## Enemy→Player (HP 45% + stat 55% formula)',
+    '## Enemy→Player (HP 32% + stat 68%, def coeff 0.68)',
     mdTable(['Lv', 'DEF', 'BaseTaken', 'NewTaken', 'Reduction'], rows),
     '',
     '## Player→Enemy (stat-only mitigation)',
     mdTable(['EnemyDEF', 'PlayerDmg(ATK40)'], statRows),
     '',
     '## Findings',
-    '- +30 DEF ≈ 8-12% total taken reduction at mid levels',
-    '- HP-proportional portion ignores DEF → armor legs/feet feel weak',
-    '- Phase2: reduce HP roll weight or increase def coefficient (0.52 → higher)',
+    '- +30 DEF ≈ 10-18% total taken reduction at mid levels (Phase2)',
+    '- HP-proportional portion reduced (32%) → armor DEF more visible',
+    '- Phase2: def coefficient 0.68 (was 0.52)',
   ].join('\n');
 
   writeReport('defense-effect.md', md);

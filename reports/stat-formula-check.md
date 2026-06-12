@@ -1,12 +1,12 @@
 # Stat Formula Check
 
-Generated: 2026-06-12T20:06:49.082Z
+Generated: 2026-06-12T21:30:29.548Z
 
 ## Current formula (recalculatePlayerStats)
 - Base: HP 100+(Lv-1)*15, ATK/MAG 10+(Lv-1)*2, DEF/SPI/SPD 8+(Lv-1)*1
 - MP: baseMaxMpFromLevel + scaledJobMpMod(main) + floor(sub*0.4)
-- Job: **flat additive** from jobs table
-- Sub: 40% of sub job flat mods
+- Job: **multiplier** via jobMultiplierMaster (Phase2 implemented)
+- Sub: multiplier stacked on base
 - Equipment + set % applied after
 
 ### Current — 剣士 (main only)
@@ -39,13 +39,13 @@ Generated: 2026-06-12T20:06:49.082Z
 | 80 | 172 | 168 | 99 | 1305 | 324 |
 | 100 | 212 | 208 | 119 | 1605 | 419 |
 
-## Phase2 simulation (GPT draft mults, equipment excluded)
+## Phase2 implemented (jobMultiplierMaster, equipment excluded)
 Formula: floor(base × main × sub) — 巡礼者/繋ぎ手 example with 魔術師+灰術士
 | Lv | ATK | MAG | DEF | HP | MP |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 8 | 13 | 7 | 86 | 35 |
-| 20 | 38 | 64 | 23 | 332 | 112 |
-| 50 | 87 | 144 | 50 | 721 | 253 |
-| 70 | 119 | 198 | 68 | 980 | 358 |
-| 80 | 135 | 225 | 76 | 1110 | 415 |
-| 100 | 167 | 279 | 94 | 1369 | 534 |
+| 1 | 5 | 17 | 5 | 70 | 43 |
+| 20 | 28 | 83 | 18 | 270 | 138 |
+| 50 | 63 | 187 | 40 | 586 | 312 |
+| 70 | 86 | 257 | 54 | 796 | 441 |
+| 80 | 98 | 292 | 61 | 902 | 510 |
+| 100 | 121 | 361 | 75 | 1112 | 657 |

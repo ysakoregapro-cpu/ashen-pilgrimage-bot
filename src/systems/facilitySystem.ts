@@ -7,6 +7,7 @@ import { getKaiUniqueCandidates, getKaiSrcCandidates } from './kaiForgeSystem';
 import { formatRematchBossList, getRematchableBosses } from './bossRematchSystem';
 import { getUniqueWeapons } from './srcWeaponSystem';
 import { getJobs } from './jobSystem';
+import { getSelectableSubJobs } from './jobProgressionSystem';
 import { formatEquipmentDisplay } from './equipmentSystem';
 import { buildInventorySummaryText } from '../utils/inventoryUi';
 import { restAtInn, shrineHeal, formatRestPreview, isFullyRested } from './innSystem';
@@ -344,13 +345,16 @@ export function getSrcUniqueOptions(userId: string) {
   return getUniqueWeapons(userId) as Array<{ id: number; name: string }>;
 }
 
-export function getJobSelectOptions(userId: string) {
+export function getJobSelectOptions(userId: string): string[] {
   const player = getPlayer(userId);
   if (!player) return [];
   if (player.main_job === '未選択') {
-    return (getJobs('basic') as Array<{ name: string }>).map((j) => j.name);
+    return (getJobs('basic') as Array<{ name: string }>)
+      .filter((j) => !['巡礼者'].includes(j.name) || player.level >= 1)
+      .map((j) => j.name)
+      .filter((name) => ['剣士', '重騎士', '狩人', '魔術師', '祈祷師', '斥候', '機工師', '格闘士', '巡礼者'].includes(name));
   }
-  return (getJobs('advanced') as Array<{ name: string }>).map((j) => j.name);
+  return getSelectableSubJobs(userId).filter((s) => !s.locked).map((s) => s.name);
 }
 
 export function formatInventorySummary(userId: string): string {

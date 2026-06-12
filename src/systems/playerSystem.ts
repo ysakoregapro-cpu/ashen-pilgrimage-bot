@@ -6,7 +6,8 @@ import { equipItem } from './equipmentSystem';
 import { calcUpgradeStatBonuses, getPrimaryStatKey } from './enhanceSystem';
 import { getAwakeningStatFlatBonus } from './awakeningSystem';
 import { levelExpRequired, formatLevelUpMessage, expToNextLevel, type AddExpResult } from './expSystem';
-import { baseMaxMpFromLevel, scaledJobMpMod, safeClampCurrentMp } from './combatMp';
+import { safeClampCurrentMp } from './combatMp';
+import { computeBaseStatsFromLevel, applyJobStatMultipliers } from '../db/seedData/jobMultiplierMaster';
 
 export function getPlayer(userId: string): Player | null {
   return getDb().prepare('SELECT * FROM players WHERE user_id = ?').get(userId) as Player | null;
@@ -46,51 +47,10 @@ export function recalculatePlayerStats(userId: string): Player {
   const db = getDb();
   const player = requirePlayer(userId);
   const oldMaxMp = player.max_mp;
-  const base = {
-    max_hp: 100 + (player.level - 1) * 15,
-    max_mp: baseMaxMpFromLevel(player.level),
-    attack: 10 + (player.level - 1) * 2,
-    magic: 10 + (player.level - 1) * 2,
-    defense: 8 + (player.level - 1) * 1,
-    spirit: 8 + (player.level - 1) * 1,
-    speed: 10 + (player.level - 1) * 1,
-    crit_rate: 0.05,
-    crit_damage: 1.5,
-    accuracy: 0.95,
-    evasion: 0.05,
-  };
+  const base = computeBaseStatsFromLevel(player.level);
 
   if (player.main_job !== '未選択') {
-    const job = db.prepare('SELECT * FROM jobs WHERE name = ?').get(player.main_job) as {
-      hp_mod: number; mp_mod: number; attack_mod: number; magic_mod: number;
-      defense_mod: number; spirit_mod: number; speed_mod: number;
-    } | undefined;
-    if (job) {
-      base.max_hp += job.hp_mod;
-      base.max_mp += scaledJobMpMod(job.mp_mod, player.level);
-      base.attack += job.attack_mod;
-      base.magic += job.magic_mod;
-      base.defense += job.defense_mod;
-      base.spirit += job.spirit_mod;
-      base.speed += job.speed_mod;
-    }
-  }
-
-  if (player.sub_job) {
-    const sub = db.prepare('SELECT * FROM jobs WHERE name = ?').get(player.sub_job) as {
-      hp_mod: number; mp_mod: number; attack_mod: number; magic_mod: number;
-      defense_mod: number; spirit_mod: number; speed_mod: number;
-    } | undefined;
-    if (sub) {
-      const r = 0.4;
-      base.max_hp += Math.floor(sub.hp_mod * r);
-      base.max_mp += Math.floor(scaledJobMpMod(sub.mp_mod, player.level) * r);
-      base.attack += Math.floor(sub.attack_mod * r);
-      base.magic += Math.floor(sub.magic_mod * r);
-      base.defense += Math.floor(sub.defense_mod * r);
-      base.spirit += Math.floor(sub.spirit_mod * r);
-      base.speed += Math.floor(sub.speed_mod * r);
-    }
+    applyJobStatMultipliers(base, player.main_job, player.sub_job);
   }
 
   const equipped = db.prepare(`

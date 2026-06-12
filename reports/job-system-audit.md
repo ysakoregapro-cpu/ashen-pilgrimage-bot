@@ -1,20 +1,20 @@
 # Job System Audit
 
-Generated: 2026-06-12T20:06:47.783Z
+Generated: 2026-06-12T21:30:28.407Z
 
 ## Summary
-- Total jobs: 32
-- Tier counts: {"advanced":16,"basic":8,"hidden":8}
-- player_job_levels rows: 1
+- Total jobs: 50
+- Tier counts: {"advanced":16,"advanced_main":9,"basic":9,"hidden":7,"sub":9}
+- player_job_levels rows: 5
 
 ## Basic Jobs (8)
-剣士, 斥候, 格闘士, 機工師, 狩人, 祈祷師, 重騎士, 魔術師
+剣士, 巡礼者, 斥候, 格闘士, 機工師, 狩人, 祈祷師, 重騎士, 魔術師
 
 ## Advanced Jobs (16)
 剣豪, 司祭, 城塞騎士, 弓聖, 拳闘王, 探索者, 星術師, 暗部, 灰術師, 癒し手, 砲術師, 破戒僧, 聖盾士, 追跡者, 錬機師, 魔剣士
 
 ## Hidden Jobs (8)
-アーク技師, 創造砲士, 執行者, 星剣士, 繋ぎ手, 解析者, 調律師, 黄昏騎士
+アーク技師, 創造砲士, 執行者, 星剣士, 解析者, 調律師, 黄昏騎士
 
 ## player_job_levels columns
 user_id, job_name, job_level, job_exp, is_main, is_sub, unlocked_at, updated_at
@@ -31,7 +31,10 @@ user_id, job_name, job_level, job_exp, is_main, is_sub, unlocked_at, updated_at
 ## Player job distribution (top 10)
 | main_job | sub_job | count |
 | --- | --- | --- |
+| 未選択 | — | 2 |
+| 剣士 | 刃走り | 1 |
 | 魔術師 | — | 1 |
+| 黄昏剣聖 | — | 1 |
 
 ## Phase2 migration candidates (proposal only)
 - `player_sub_job_unlocks(user_id, sub_job_id, unlocked_at)` — Lv20 per-main unlock

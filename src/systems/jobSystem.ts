@@ -5,8 +5,19 @@ import { addItem } from './inventorySystem';
 import { equipItem } from './equipmentSystem';
 import { getStarterWeaponForJob } from '../db/seedData/jobStarterWeapons';
 import { nowIso } from '../types';
+import {
+  changeMainJob as changeMainJobProgression,
+  changeSubJob as changeSubJobProgression,
+  backfillSubJobUnlocks,
+  getSelectableMainJobs,
+  getSelectableSubJobs,
+  formatLegacyJobWarning,
+} from './jobProgressionSystem';
+import { isLegacyJob, isBasicMainJob } from '../db/seedData/jobMultiplierMaster';
 
 export function getJobs(tier?: string) {
+  if (tier === 'sub') return getDb().prepare("SELECT * FROM jobs WHERE tier = 'sub' ORDER BY name").all();
+  if (tier === 'advanced_main') return getDb().prepare("SELECT * FROM jobs WHERE tier = 'advanced_main' ORDER BY name").all();
   if (tier) return getDb().prepare('SELECT * FROM jobs WHERE tier = ? ORDER BY name').all(tier);
   return getDb().prepare('SELECT * FROM jobs ORDER BY tier, name').all();
 }
@@ -17,10 +28,14 @@ export function getJobByName(name: string) {
 
 export function selectMainJob(userId: string, jobName: string): string {
   const player = requirePlayer(userId);
-  if (player.main_job !== '未選択') return `メインジョブは既に「${player.main_job}」です。`;
+  if (player.main_job !== '未選択') {
+    return changeMainJobProgression(userId, jobName);
+  }
   const job = getJobByName(jobName) as { name: string; tier: string } | undefined;
   if (!job) return 'ジョブが見つかりません。';
-  if (job.tier !== 'basic') return '初回は基本ジョブのみ選択できます。';
+  if (!isBasicMainJob(jobName) || isLegacyJob(jobName)) {
+    return '初回は基本ジョブのみ選択できます。';
+  }
   getDb().prepare('UPDATE players SET main_job = ?, updated_at = ? WHERE user_id = ?').run(jobName, nowIso(), userId);
   recalculatePlayerStats(userId);
   grantJobStart(userId, jobName);
@@ -47,15 +62,8 @@ export function selectMainJob(userId: string, jobName: string): string {
 }
 
 export function selectSubJob(userId: string, jobName: string): string {
-  const player = requirePlayer(userId);
-  if (player.level < 20) return 'サブジョブはLv20以上で解放されます。';
-  const job = getJobByName(jobName) as { name: string; tier: string } | undefined;
-  if (!job) return 'ジョブが見つかりません。';
-  if (job.tier === 'hidden') return '隠しジョブは特殊条件が必要です。';
-  getDb().prepare('UPDATE players SET sub_job = ?, updated_at = ? WHERE user_id = ?').run(jobName, nowIso(), userId);
-  grantSubJobStart(userId, jobName);
-  recalculatePlayerStats(userId);
-  return `サブジョブ「${jobName}」を設定しました。`;
+  backfillSubJobUnlocks(userId);
+  return changeSubJobProgression(userId, jobName);
 }
 
 export function getJobSkills(jobName: string) {
@@ -70,3 +78,26 @@ export function getPlayerSkills(userId: string) {
   if (player.sub_job) skills.push(...getJobSkills(player.sub_job));
   return skills;
 }
+
+export function buildJobMenuText(userId: string): string {
+  const player = requirePlayer(userId);
+  backfillSubJobUnlocks(userId);
+  const legacy = formatLegacyJobWarning(userId);
+  const lines = [
+    `メイン: **${player.main_job}**`,
+    `サブ: **${player.sub_job ?? '未設定'}**`,
+  ];
+  if (legacy) lines.push(`⚠ ${legacy}`);
+  lines.push('', '**変更可能なメイン**');
+  for (const j of getSelectableMainJobs(userId)) {
+    if (j.locked) lines.push(`・${j.name} — ${j.locked}`);
+    else lines.push(`・${j.name}${j.kind === 'advanced' ? '（上級）' : ''}`);
+  }
+  lines.push('', '**サブジョブ**');
+  for (const s of getSelectableSubJobs(userId)) {
+    lines.push(s.locked ? `・${s.name} — ${s.locked}` : `・${s.name} ✓`);
+  }
+  return lines.join('\n');
+}
+
+export { getSelectableMainJobs, getSelectableSubJobs, changeMainJobProgression as changeMainJob, changeSubJobProgression as changeSubJob };

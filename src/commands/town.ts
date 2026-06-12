@@ -2,6 +2,7 @@ import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.j
 import { getPlayer, getUnlockedTowns } from '../systems/playerSystem';
 import { getAllTowns } from '../systems/townSystem';
 import { buildTownHub, buildTravelList, arriveAndShowHub } from '../systems/townActionSystem';
+import { UNDEVELOPED_TOWN_IDS } from '../db/seedData/jobProgressionMaster';
 import { baseEmbed, errorEmbed, selectMenu } from '../utils/embeds';
 import { safeDefer, safeEdit } from '../utils/interaction';
 import { stampPanelPayload, getSendableChannel } from '../utils/messageFlow';
@@ -46,7 +47,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   const towns = getAllTowns() as Array<{ id: string; name: string; description: string; required_level: number }>;
   const lines = towns.map((t) => {
     const mark = unlocked.includes(t.id) ? '✅' : '🔒';
-    return `${mark} **${t.name}** (Lv${t.required_level}) — ${t.description.slice(0, 40)}…`;
+    const undeveloped = UNDEVELOPED_TOWN_IDS.has(t.id) ? '［未開拓：現在は探索不可］' : '';
+    return `${mark} **${t.name}** (Lv${t.required_level}) — ${t.description.slice(0, 40)}…${undeveloped ? ' ' + undeveloped : ''}`;
   });
   await safeEdit(interaction, { embeds: [baseEmbed('知られている町', lines.join('\n'))] });
 }

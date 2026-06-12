@@ -5,6 +5,15 @@ import { DURABILITY_ORDER, type DurabilityState } from '../types';
 import { nowIso } from '../types';
 import { randomInt } from '../utils/random';
 
+export function applyTrialDefeat(userId: string): string {
+  const player = requirePlayer(userId);
+  const returnTown = player.last_safe_town_id || player.current_town_id;
+  setPlayerTown(userId, returnTown);
+  getDb().prepare('UPDATE players SET hp = 1, updated_at = ? WHERE user_id = ?').run(nowIso(), userId);
+  const town = getDb().prepare('SELECT name FROM towns WHERE id = ?').get(returnTown) as { name: string } | undefined;
+  return `現身の試練に敗れた…\n${town?.name ?? '安全な町'}へ戻った。（HP1・軽微なペナルティ）\n再挑戦できる。`;
+}
+
 export function applyDefeat(userId: string, isBoss: boolean, _areaId: string | null): string {
   const player = requirePlayer(userId);
   const goldLossPct = isBoss ? 0.05 : 0.03 + Math.random() * 0.02;

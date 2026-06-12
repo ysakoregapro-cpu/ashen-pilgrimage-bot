@@ -36,7 +36,7 @@ function main() {
     const p = playerProfile(lv);
     const mon = pickMonsterForLevel(lv);
     const scaled = scaleMonsterForBattle({
-      id: mon.id, area_tag: mon.tag, hp: mon.hp, attack: mon.atk, magic: mon.mag,
+      id: mon.id, area_tag: mon.tag, level: mon.lv, hp: mon.hp, attack: mon.atk, magic: mon.mag,
       defense: mon.def, spirit: mon.def, speed: mon.spd,
     });
     const diff = getDifficultyModifiers(lv, Math.max(1, lv - 3), lv + 5);
@@ -61,7 +61,7 @@ function main() {
     '',
     `Generated: ${new Date().toISOString()}`,
     '',
-    'Assumptions: avg gear playerProfile, nearest monster by level, normal threat, mid band difficulty',
+    'Assumptions: avg gear playerProfile, nearest monster by level, Phase2 enemyBalanceV2 scaling',
     '',
     mdTable(['Lv', 'PlayerHP', 'PlayerATK', 'EnemyATK', 'EnemyDEF', 'PhysDmg', 'SkillDmg(1.2mag)', 'Taken', 'Taken/HP'], rows),
     '',

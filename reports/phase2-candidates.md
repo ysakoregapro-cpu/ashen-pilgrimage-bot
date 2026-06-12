@@ -64,3 +64,9 @@ Generated: 2026-06-12T20:07:08.039Z
 - reports/battle-damage-curve.md
 - reports/defense-effect.md
 - reports/mp-consumption-order-check.md
+
+## B supplement (equipment audit 2026-06-13)
+- Full weapon/armor acquisition reports in reports/equipment-*
+- Uni 16 mats + boss assignment
+- acquisition_json enrichment for detail UI
+- inv:use consumable from inventory

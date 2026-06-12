@@ -1,0 +1,184 @@
+kind,item_id,name,slot_or_type,rarity,obtainable,source_kinds,locations,unknown
+weapon,wpn_cracked_axe,ひび割れた斧,axe,N,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_old_bow,古い弓,bow,N,YES,starter_job;area_drop;shop;kai_forge;valhalla,ジョブ選択; 星原の外れ（はじまりの星原）; 星屑の草道（はじまりの星原）; 古い訓練場（はじまりの星原）; 古道の荷車跡（古道の宿場村）; 朽ちた旅籠（古道の宿場村）; 盗賊の抜け道（古道の宿場村）; 石積みの橋（古道の宿場村）; 薄明の海岸（薄明の港町）; 灯台下の岩場（薄明の港町）; 沈没船の甲板（薄明の港町）; 白銀坑道（白銀鉱山街）; 旧採掘路（白銀鉱山街）; 結晶の縦穴（白銀鉱山街）; 霧深き獣道（霧深き森の集落）; 毒蔦の小径（霧深き森の集落）; 古樹の根元（霧深き森の集落）; 雨音の路地（雨音の廃村）; 水没した家屋（雨音の廃村）; 朽ちた井戸（雨音の廃村）; 月下図書館・禁書区画（月下図書館）; 紙魚の回廊（月下図書館）; 記録端末室（月下図書館）; 忘却の地下路（忘却の地下市）; 黒市の裏通り（忘却の地下市）; 呪具置き場（忘却の地下市）; 砂時計の廃路（砂時計の都）; 時紋の市場跡（砂時計の都）; 喪失者の広場（砂時計の都）; 灰冠の王都地下（灰冠の王都跡）; 旧統治軍詰所（灰冠の王都跡）; 王都地下牢（灰冠の王都跡）; 竜骨の峡谷（竜骨の峡谷）; 大骨市場跡（竜骨の峡谷）; 竜鳴きの崖（竜骨の峡谷）; 沈黙の回廊（沈黙の修道院）; 懺悔室（沈黙の修道院）; 祈りの間（沈黙の修道院）; 硝子沼（硝子沼の集落）; 割れた水面（硝子沼の集落）; 沼底の参道（硝子沼の集落）; 赤灰の外壁（赤灰の砦）; 焼けた兵舎（赤灰の砦）; 砦地下倉庫（赤灰の砦）; 深層炉入口（深層炉前哨基地）; 炉心監視塔（深層炉前哨基地）; 機工整備場（深層炉前哨基地）; 星落ちの観測台（星落ちの観測所）; 砕けた望遠塔（星落ちの観測所）; 星屑の実験室（星落ちの観測所）; ヴァルハラ外郭（空中要塞ヴァルハラ）; 機械兵格納庫（空中要塞ヴァルハラ）; 空塞昇降路（空中要塞ヴァルハラ）; 霧深き森の集落; 古道の宿場村; 白銀鉱山・カイ; ヴァルハラ,equip jobs not in DB
+weapon,wpn_old_road_knife,古道のナイフ,dagger,N,YES,area_drop;shop,古道の荷車跡（古道の宿場村）; 朽ちた旅籠（古道の宿場村）; 盗賊の抜け道（古道の宿場村）; 石積みの橋（古道の宿場村）; 旅人の墓標（古道の宿場村）; 古道の宿場村,equip jobs not in DB
+weapon,wpn_mini_cannon,小型機工砲,cannon,N,YES,starter_job;area_drop;shop;kai_forge;valhalla,ジョブ選択; 星原の外れ（はじまりの星原）; 星屑の草道（はじまりの星原）; 古い訓練場（はじまりの星原）; 古道の荷車跡（古道の宿場村）; 朽ちた旅籠（古道の宿場村）; 盗賊の抜け道（古道の宿場村）; 薄明の海岸（薄明の港町）; 灯台下の岩場（薄明の港町）; 沈没船の甲板（薄明の港町）; 白銀坑道（白銀鉱山街）; 旧採掘路（白銀鉱山街）; 結晶の縦穴（白銀鉱山街）; 霧深き獣道（霧深き森の集落）; 毒蔦の小径（霧深き森の集落）; 古樹の根元（霧深き森の集落）; 雨音の路地（雨音の廃村）; 水没した家屋（雨音の廃村）; 朽ちた井戸（雨音の廃村）; 月下図書館・禁書区画（月下図書館）; 紙魚の回廊（月下図書館）; 記録端末室（月下図書館）; 忘却の地下路（忘却の地下市）; 黒市の裏通り（忘却の地下市）; 呪具置き場（忘却の地下市）; 砂時計の廃路（砂時計の都）; 時紋の市場跡（砂時計の都）; 喪失者の広場（砂時計の都）; 灰冠の王都地下（灰冠の王都跡）; 旧統治軍詰所（灰冠の王都跡）; 王都地下牢（灰冠の王都跡）; 竜骨の峡谷（竜骨の峡谷）; 大骨市場跡（竜骨の峡谷）; 竜鳴きの崖（竜骨の峡谷）; 沈黙の回廊（沈黙の修道院）; 懺悔室（沈黙の修道院）; 祈りの間（沈黙の修道院）; 硝子沼（硝子沼の集落）; 割れた水面（硝子沼の集落）; 沼底の参道（硝子沼の集落）; 赤灰の外壁（赤灰の砦）; 焼けた兵舎（赤灰の砦）; 砦地下倉庫（赤灰の砦）; 深層炉入口（深層炉前哨基地）; 炉心監視塔（深層炉前哨基地）; 機工整備場（深層炉前哨基地）; 星落ちの観測台（星落ちの観測所）; 砕けた望遠塔（星落ちの観測所）; 星屑の実験室（星落ちの観測所）; ヴァルハラ外郭（空中要塞ヴァルハラ）; 機械兵格納庫（空中要塞ヴァルハラ）; 空塞昇降路（空中要塞ヴァルハラ）; 深層炉前哨基地; 白銀鉱山街; 白銀鉱山・カイ; ヴァルハラ,equip jobs not in DB
+weapon,wpn_traveler_sword,旅人の剣,sword,N,YES,starter_job;area_drop;shop;kai_forge;valhalla,ジョブ選択; 星原の外れ（はじまりの星原）; 星屑の草道（はじまりの星原）; 古い訓練場（はじまりの星原）; 古道の荷車跡（古道の宿場村）; 朽ちた旅籠（古道の宿場村）; 盗賊の抜け道（古道の宿場村）; 薄明の海岸（薄明の港町）; 灯台下の岩場（薄明の港町）; 沈没船の甲板（薄明の港町）; 白銀坑道（白銀鉱山街）; 旧採掘路（白銀鉱山街）; 結晶の縦穴（白銀鉱山街）; 霧深き獣道（霧深き森の集落）; 毒蔦の小径（霧深き森の集落）; 古樹の根元（霧深き森の集落）; 雨音の路地（雨音の廃村）; 水没した家屋（雨音の廃村）; 朽ちた井戸（雨音の廃村）; 月下図書館・禁書区画（月下図書館）; 紙魚の回廊（月下図書館）; 記録端末室（月下図書館）; 忘却の地下路（忘却の地下市）; 黒市の裏通り（忘却の地下市）; 呪具置き場（忘却の地下市）; 砂時計の廃路（砂時計の都）; 時紋の市場跡（砂時計の都）; 喪失者の広場（砂時計の都）; 灰冠の王都地下（灰冠の王都跡）; 旧統治軍詰所（灰冠の王都跡）; 王都地下牢（灰冠の王都跡）; 竜骨の峡谷（竜骨の峡谷）; 大骨市場跡（竜骨の峡谷）; 竜鳴きの崖（竜骨の峡谷）; 沈黙の回廊（沈黙の修道院）; 懺悔室（沈黙の修道院）; 祈りの間（沈黙の修道院）; 硝子沼（硝子沼の集落）; 割れた水面（硝子沼の集落）; 沼底の参道（硝子沼の集落）; 赤灰の外壁（赤灰の砦）; 焼けた兵舎（赤灰の砦）; 砦地下倉庫（赤灰の砦）; 深層炉入口（深層炉前哨基地）; 炉心監視塔（深層炉前哨基地）; 機工整備場（深層炉前哨基地）; 星落ちの観測台（星落ちの観測所）; 砕けた望遠塔（星落ちの観測所）; 星屑の実験室（星落ちの観測所）; ヴァルハラ外郭（空中要塞ヴァルハラ）; 機械兵格納庫（空中要塞ヴァルハラ）; 空塞昇降路（空中要塞ヴァルハラ）; 黒灯りの路地; 埋没水路; 竜骨の峡谷; 硝子沼の集落; 空鐘の町; 鉄雪の関所; 祈りの丘; 赤灰の砦; 沈黙の修道院; 星落ちの観測所; はじまりの星原; 白銀鉱山・カイ; ヴァルハラ,equip jobs not in DB
+weapon,wpn_wood_axe,木こりの斧,axe,N,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_broken_wrap,欠けた拳帯,fist,N,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_leather_gauntlet,皮巻きの拳甲,fist,N,YES,starter_job;area_drop;shop;kai_forge;valhalla,ジョブ選択; 星原の外れ（はじまりの星原）; 星屑の草道（はじまりの星原）; 古い訓練場（はじまりの星原）; 古道の荷車跡（古道の宿場村）; 朽ちた旅籠（古道の宿場村）; 盗賊の抜け道（古道の宿場村）; 薄明の海岸（薄明の港町）; 灯台下の岩場（薄明の港町）; 沈没船の甲板（薄明の港町）; 白銀坑道（白銀鉱山街）; 旧採掘路（白銀鉱山街）; 結晶の縦穴（白銀鉱山街）; 霧深き獣道（霧深き森の集落）; 毒蔦の小径（霧深き森の集落）; 古樹の根元（霧深き森の集落）; 雨音の路地（雨音の廃村）; 水没した家屋（雨音の廃村）; 朽ちた井戸（雨音の廃村）; 月下図書館・禁書区画（月下図書館）; 紙魚の回廊（月下図書館）; 記録端末室（月下図書館）; 忘却の地下路（忘却の地下市）; 黒市の裏通り（忘却の地下市）; 呪具置き場（忘却の地下市）; 砂時計の廃路（砂時計の都）; 時紋の市場跡（砂時計の都）; 喪失者の広場（砂時計の都）; 灰冠の王都地下（灰冠の王都跡）; 旧統治軍詰所（灰冠の王都跡）; 王都地下牢（灰冠の王都跡）; 竜骨の峡谷（竜骨の峡谷）; 大骨市場跡（竜骨の峡谷）; 竜鳴きの崖（竜骨の峡谷）; 沈黙の回廊（沈黙の修道院）; 懺悔室（沈黙の修道院）; 祈りの間（沈黙の修道院）; 硝子沼（硝子沼の集落）; 割れた水面（硝子沼の集落）; 沼底の参道（硝子沼の集落）; 赤灰の外壁（赤灰の砦）; 焼けた兵舎（赤灰の砦）; 砦地下倉庫（赤灰の砦）; 深層炉入口（深層炉前哨基地）; 炉心監視塔（深層炉前哨基地）; 機工整備場（深層炉前哨基地）; 星落ちの観測台（星落ちの観測所）; 砕けた望遠塔（星落ちの観測所）; 星屑の実験室（星落ちの観測所）; ヴァルハラ外郭（空中要塞ヴァルハラ）; 機械兵格納庫（空中要塞ヴァルハラ）; 空塞昇降路（空中要塞ヴァルハラ）; 黒灯りの路地; 埋没水路; 竜骨の峡谷; 硝子沼の集落; 空鐘の町; 鉄雪の関所; 古道の宿場村; 祈りの丘; 赤灰の砦; 沈黙の修道院; 星落ちの観測所; はじまりの星原; 白銀鉱山・カイ; ヴァルハラ,equip jobs not in DB
+weapon,wpn_prayer_rod,祈りの短杖,rod,N,YES,starter_job;area_drop;kai_forge;valhalla,ジョブ選択; 星原の外れ（はじまりの星原）; 星屑の草道（はじまりの星原）; 古い訓練場（はじまりの星原）; 古道の荷車跡（古道の宿場村）; 朽ちた旅籠（古道の宿場村）; 盗賊の抜け道（古道の宿場村）; 薄明の海岸（薄明の港町）; 灯台下の岩場（薄明の港町）; 沈没船の甲板（薄明の港町）; 白銀坑道（白銀鉱山街）; 旧採掘路（白銀鉱山街）; 結晶の縦穴（白銀鉱山街）; 霧深き獣道（霧深き森の集落）; 毒蔦の小径（霧深き森の集落）; 古樹の根元（霧深き森の集落）; 雨音の路地（雨音の廃村）; 水没した家屋（雨音の廃村）; 朽ちた井戸（雨音の廃村）; 月下図書館・禁書区画（月下図書館）; 紙魚の回廊（月下図書館）; 記録端末室（月下図書館）; 忘却の地下路（忘却の地下市）; 黒市の裏通り（忘却の地下市）; 呪具置き場（忘却の地下市）; 砂時計の廃路（砂時計の都）; 時紋の市場跡（砂時計の都）; 喪失者の広場（砂時計の都）; 灰冠の王都地下（灰冠の王都跡）; 旧統治軍詰所（灰冠の王都跡）; 王都地下牢（灰冠の王都跡）; 竜骨の峡谷（竜骨の峡谷）; 大骨市場跡（竜骨の峡谷）; 竜鳴きの崖（竜骨の峡谷）; 沈黙の回廊（沈黙の修道院）; 懺悔室（沈黙の修道院）; 祈りの間（沈黙の修道院）; 硝子沼（硝子沼の集落）; 割れた水面（硝子沼の集落）; 沼底の参道（硝子沼の集落）; 赤灰の外壁（赤灰の砦）; 焼けた兵舎（赤灰の砦）; 砦地下倉庫（赤灰の砦）; 深層炉入口（深層炉前哨基地）; 炉心監視塔（深層炉前哨基地）; 機工整備場（深層炉前哨基地）; 星落ちの観測台（星落ちの観測所）; 砕けた望遠塔（星落ちの観測所）; 星屑の実験室（星落ちの観測所）; ヴァルハラ外郭（空中要塞ヴァルハラ）; 機械兵格納庫（空中要塞ヴァルハラ）; 空塞昇降路（空中要塞ヴァルハラ）; 白銀鉱山・カイ; ヴァルハラ,equip jobs not in DB
+weapon,wpn_crude_spear,粗末な槍,spear,N,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_apprentice_staff,見習い杖,staff,N,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_training_shield,訓練用大盾,shield,N,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_training_hammer,訓練用槌,hammer,N,YES,starter_job;area_drop;shop;kai_forge;valhalla,ジョブ選択; 星原の外れ（はじまりの星原）; 星屑の草道（はじまりの星原）; 古い訓練場（はじまりの星原）; 古道の荷車跡（古道の宿場村）; 朽ちた旅籠（古道の宿場村）; 盗賊の抜け道（古道の宿場村）; 薄明の海岸（薄明の港町）; 灯台下の岩場（薄明の港町）; 沈没船の甲板（薄明の港町）; 白銀坑道（白銀鉱山街）; 旧採掘路（白銀鉱山街）; 結晶の縦穴（白銀鉱山街）; 崩落した作業場（白銀鉱山街）; 霧深き獣道（霧深き森の集落）; 毒蔦の小径（霧深き森の集落）; 古樹の根元（霧深き森の集落）; 雨音の路地（雨音の廃村）; 水没した家屋（雨音の廃村）; 朽ちた井戸（雨音の廃村）; 月下図書館・禁書区画（月下図書館）; 紙魚の回廊（月下図書館）; 記録端末室（月下図書館）; 忘却の地下路（忘却の地下市）; 黒市の裏通り（忘却の地下市）; 呪具置き場（忘却の地下市）; 砂時計の廃路（砂時計の都）; 時紋の市場跡（砂時計の都）; 喪失者の広場（砂時計の都）; 灰冠の王都地下（灰冠の王都跡）; 旧統治軍詰所（灰冠の王都跡）; 王都地下牢（灰冠の王都跡）; 竜骨の峡谷（竜骨の峡谷）; 大骨市場跡（竜骨の峡谷）; 竜鳴きの崖（竜骨の峡谷）; 沈黙の回廊（沈黙の修道院）; 懺悔室（沈黙の修道院）; 祈りの間（沈黙の修道院）; 硝子沼（硝子沼の集落）; 割れた水面（硝子沼の集落）; 沼底の参道（硝子沼の集落）; 赤灰の外壁（赤灰の砦）; 焼けた兵舎（赤灰の砦）; 砦地下倉庫（赤灰の砦）; 深層炉入口（深層炉前哨基地）; 炉心監視塔（深層炉前哨基地）; 機工整備場（深層炉前哨基地）; 星落ちの観測台（星落ちの観測所）; 砕けた望遠塔（星落ちの観測所）; 星屑の実験室（星落ちの観測所）; ヴァルハラ外郭（空中要塞ヴァルハラ）; 機械兵格納庫（空中要塞ヴァルハラ）; 空塞昇降路（空中要塞ヴァルハラ）; 古道の宿場村; 白銀鉱山街; 白銀鉱山・カイ; ヴァルハラ,equip jobs not in DB
+weapon,wpn_iron_scrap_barrel,鉄屑の砲筒,cannon,N,YES,area_drop,黒鉄鉱脈（白銀鉱山街）,equip jobs not in DB
+weapon,wpn_rust_dagger,錆びた短剣,dagger,N,YES,starter_job;area_drop;kai_forge;valhalla,ジョブ選択; 星原の外れ（はじまりの星原）; 星屑の草道（はじまりの星原）; 古い訓練場（はじまりの星原）; 古道の荷車跡（古道の宿場村）; 朽ちた旅籠（古道の宿場村）; 盗賊の抜け道（古道の宿場村）; 薄明の海岸（薄明の港町）; 灯台下の岩場（薄明の港町）; 沈没船の甲板（薄明の港町）; 白銀坑道（白銀鉱山街）; 旧採掘路（白銀鉱山街）; 結晶の縦穴（白銀鉱山街）; 霧深き獣道（霧深き森の集落）; 毒蔦の小径（霧深き森の集落）; 古樹の根元（霧深き森の集落）; 雨音の路地（雨音の廃村）; 水没した家屋（雨音の廃村）; 朽ちた井戸（雨音の廃村）; 月下図書館・禁書区画（月下図書館）; 紙魚の回廊（月下図書館）; 記録端末室（月下図書館）; 忘却の地下路（忘却の地下市）; 黒市の裏通り（忘却の地下市）; 呪具置き場（忘却の地下市）; 砂時計の廃路（砂時計の都）; 時紋の市場跡（砂時計の都）; 喪失者の広場（砂時計の都）; 灰冠の王都地下（灰冠の王都跡）; 旧統治軍詰所（灰冠の王都跡）; 王都地下牢（灰冠の王都跡）; 竜骨の峡谷（竜骨の峡谷）; 大骨市場跡（竜骨の峡谷）; 竜鳴きの崖（竜骨の峡谷）; 沈黙の回廊（沈黙の修道院）; 懺悔室（沈黙の修道院）; 祈りの間（沈黙の修道院）; 硝子沼（硝子沼の集落）; 割れた水面（硝子沼の集落）; 沼底の参道（硝子沼の集落）; 赤灰の外壁（赤灰の砦）; 焼けた兵舎（赤灰の砦）; 砦地下倉庫（赤灰の砦）; 深層炉入口（深層炉前哨基地）; 炉心監視塔（深層炉前哨基地）; 機工整備場（深層炉前哨基地）; 星落ちの観測台（星落ちの観測所）; 砕けた望遠塔（星落ちの観測所）; 星屑の実験室（星落ちの観測所）; ヴァルハラ外郭（空中要塞ヴァルハラ）; 機械兵格納庫（空中要塞ヴァルハラ）; 空塞昇降路（空中要塞ヴァルハラ）; 白銀鉱山・カイ; ヴァルハラ,equip jobs not in DB
+weapon,wpn_rain_bow,雨濡れの弓,bow,N,YES,area_drop;shop,沈没船の甲板（薄明の港町）; 潮騒の洞窟（薄明の港町）; 海霧の倉庫街（薄明の港町）; 雨音の路地（雨音の廃村）; 水没した家屋（雨音の廃村）; 朽ちた井戸（雨音の廃村）; 雨漏りの礼拝堂（雨音の廃村）; 泥濘の畑（雨音の廃村）; 雨音の廃村,equip jobs not in DB
+weapon,wpn_old_road_dagger,古道の短剣,dagger,R,YES,area_drop,盗賊の抜け道（古道の宿場村）; 石積みの橋（古道の宿場村）; 旅人の墓標（古道の宿場村）,equip jobs not in DB
+weapon,wpn_starfield_sword,星原の剣,sword,R,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_moon_rod,月読の短杖,rod,R,YES,area_drop,月下図書館・禁書区画（月下図書館）; 紙魚の回廊（月下図書館）; 記録端末室（月下図書館）; 影写しの閲覧室（月下図書館）; 無答の書庫（月下図書館）,equip jobs not in DB
+weapon,wpn_silence_seal,沈黙の聖印,seal,R,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_ash_spear,灰冠の槍,spear,R,YES,area_drop,喪失者の広場（砂時計の都）; 逆さ時計塔（砂時計の都）; 記憶の保管庫（砂時計の都）,equip jobs not in DB
+weapon,wpn_silver_hammer,白銀の槌,hammer,R,YES,area_drop;shop,白銀坑道（白銀鉱山街）; 旧採掘路（白銀鉱山街）; 結晶の縦穴（白銀鉱山街）; 崩落した作業場（白銀鉱山街）; 黒鉄鉱脈（白銀鉱山街）; 白銀鉱山街,equip jobs not in DB
+weapon,wpn_glass_blade,硝子沼の刃,sword,R,YES,area_drop,黒市の裏通り（忘却の地下市）; 呪具置き場（忘却の地下市）; 契約失敗体の檻（忘却の地下市）; 仮面商人の隠し倉庫（忘却の地下市）; 硝子沼（硝子沼の集落）; 割れた水面（硝子沼の集落）; 沼底の参道（硝子沼の集落）; 反射する森（硝子沼の集落）; 硝子花の群生地（硝子沼の集落）,equip jobs not in DB
+weapon,wpn_dragon_fist,竜骨の拳甲,fist,R,YES,area_drop,眠れる獣の巣（霧深き森の集落）,equip jobs not in DB
+weapon,wpn_twilight_bow,薄明の弓,bow,R,YES,area_drop;shop,薄明の海岸（薄明の港町）; 灯台下の岩場（薄明の港町）; 沈没船の甲板（薄明の港町）; 潮騒の洞窟（薄明の港町）; 海霧の倉庫街（薄明の港町）; 薄明の港町,equip jobs not in DB
+weapon,wpn_red_ash_axe,赤灰の斧,axe,R,YES,area_drop,呪具置き場（忘却の地下市）; 契約失敗体の檻（忘却の地下市）; 仮面商人の隠し倉庫（忘却の地下市）; 焼けた兵舎（赤灰の砦）; 砦地下倉庫（赤灰の砦）; 炎の訓練場（赤灰の砦）; 赤灰の見張り台（赤灰の砦）,equip jobs not in DB
+weapon,wpn_iron_snow_shield,鉄雪の盾,shield,R,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_mist_staff,霧払いの杖,staff,R,YES,starter_job;area_drop;kai_forge;valhalla,ジョブ選択; 星原の外れ（はじまりの星原）; 星屑の草道（はじまりの星原）; 古い訓練場（はじまりの星原）; 古道の荷車跡（古道の宿場村）; 朽ちた旅籠（古道の宿場村）; 盗賊の抜け道（古道の宿場村）; 薄明の海岸（薄明の港町）; 灯台下の岩場（薄明の港町）; 沈没船の甲板（薄明の港町）; 白銀坑道（白銀鉱山街）; 旧採掘路（白銀鉱山街）; 結晶の縦穴（白銀鉱山街）; 霧深き獣道（霧深き森の集落）; 毒蔦の小径（霧深き森の集落）; 古樹の根元（霧深き森の集落）; 雨音の路地（雨音の廃村）; 水没した家屋（雨音の廃村）; 朽ちた井戸（雨音の廃村）; 月下図書館・禁書区画（月下図書館）; 紙魚の回廊（月下図書館）; 記録端末室（月下図書館）; 忘却の地下路（忘却の地下市）; 黒市の裏通り（忘却の地下市）; 呪具置き場（忘却の地下市）; 砂時計の廃路（砂時計の都）; 時紋の市場跡（砂時計の都）; 喪失者の広場（砂時計の都）; 灰冠の王都地下（灰冠の王都跡）; 旧統治軍詰所（灰冠の王都跡）; 王都地下牢（灰冠の王都跡）; 竜骨の峡谷（竜骨の峡谷）; 大骨市場跡（竜骨の峡谷）; 竜鳴きの崖（竜骨の峡谷）; 沈黙の回廊（沈黙の修道院）; 懺悔室（沈黙の修道院）; 祈りの間（沈黙の修道院）; 硝子沼（硝子沼の集落）; 割れた水面（硝子沼の集落）; 沼底の参道（硝子沼の集落）; 赤灰の外壁（赤灰の砦）; 焼けた兵舎（赤灰の砦）; 砦地下倉庫（赤灰の砦）; 深層炉入口（深層炉前哨基地）; 炉心監視塔（深層炉前哨基地）; 機工整備場（深層炉前哨基地）; 星落ちの観測台（星落ちの観測所）; 砕けた望遠塔（星落ちの観測所）; 星屑の実験室（星落ちの観測所）; ヴァルハラ外郭（空中要塞ヴァルハラ）; 機械兵格納庫（空中要塞ヴァルハラ）; 空塞昇降路（空中要塞ヴァルハラ）; 白銀鉱山・カイ; ヴァルハラ,equip jobs not in DB
+weapon,wpn_black_lamp_twin,黒灯りの双刃,dagger,R,YES,area_drop,忘却の地下路（忘却の地下市）; 黒市の裏通り（忘却の地下市）; 呪具置き場（忘却の地下市）; 契約失敗体の檻（忘却の地下市）; 仮面商人の隠し倉庫（忘却の地下市）; 黒灯りの路地（黒灯りの路地）; 煤煙の抜け道（黒灯りの路地）,equip jobs not in DB
+weapon,wpn_starfall_spear,星落ちの槍,spear,SR,YES,area_drop,逆さ時計塔（砂時計の都）; 記憶の保管庫（砂時計の都）,equip jobs not in DB
+weapon,wpn_moon_staff_sr,月読の杖,staff,SR,YES,area_drop,記録端末室（月下図書館）; 影写しの閲覧室（月下図書館）; 無答の書庫（月下図書館）,equip jobs not in DB
+weapon,wpn_silence_seal_sr,沈黙の聖印,seal,SR,YES,area_drop,懺悔室（沈黙の修道院）; 祈りの間（沈黙の修道院）; 聖水工房跡（沈黙の修道院）; 無言の巡礼路（沈黙の修道院）,equip jobs not in DB
+weapon,wpn_ash_knight_shield,灰騎士の大盾,shield,SR,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_dragon_fist_sr,竜骨の拳甲,fist,SR,YES,area_drop,竜鳴きの崖（竜骨の峡谷）; 骨喰い鳥の巣（竜骨の峡谷）; 古竜の裂け目（竜骨の峡谷）,equip jobs not in DB
+weapon,wpn_red_ash_axe_sr,赤灰の戦斧,axe,SR,YES,area_drop,赤灰の外壁（赤灰の砦）; 焼けた兵舎（赤灰の砦）; 砦地下倉庫（赤灰の砦）; 炎の訓練場（赤灰の砦）; 赤灰の見張り台（赤灰の砦）,equip jobs not in DB
+weapon,wpn_mist_bow_sr,霧払いの弓,bow,SR,YES,area_drop,反射する森（硝子沼の集落）; 硝子花の群生地（硝子沼の集落）,equip jobs not in DB
+weapon,wpn_unique_silence,静寂の聖印,seal,SR,YES,src_manifest;kai_forge,/upgrade manifest; カイ Src変質,—
+weapon,wpn_black_exec_blade,黒灯の処刑刃,sword,SR,YES,area_drop,契約失敗体の檻（忘却の地下市）; 仮面商人の隠し倉庫（忘却の地下市）,equip jobs not in DB
+weapon,wpn_moon_spell_staff,月下術杖,staff,SSR,YES,area_drop,無答の書庫（月下図書館）,equip jobs not in DB
+weapon,wpn_deep_cannon,深層機構砲,cannon,SSR,YES,area_drop,深層炉入口（深層炉前哨基地）; 炉心監視塔（深層炉前哨基地）; 機工整備場（深層炉前哨基地）; アーク残滓研究所（深層炉前哨基地）; 鉄熱の補給路（深層炉前哨基地）,equip jobs not in DB
+weapon,wpn_ash_knight_sword,灰冠騎士剣,sword,SSR,YES,area_drop,灰冠の王都地下（灰冠の王都跡）; 旧統治軍詰所（灰冠の王都跡）; 破れた玉座前（灰冠の王都跡）; 王都地下牢（灰冠の王都跡）; 灰の大通り（灰冠の王都跡）,equip jobs not in DB
+weapon,wpn_prayer_robe_weapon,祈り縫いの聖衣,robe,SSR,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_hollow_bell_bow,空鐘の弓,bow,SSR,YES,area_drop,落星孔（星落ちの観測所）,equip jobs not in DB
+weapon,wpn_dragon_pierce,竜骨穿槍,spear,SSR,YES,area_drop,竜骨の峡谷（竜骨の峡谷）; 大骨市場跡（竜骨の峡谷）; 竜鳴きの崖（竜骨の峡谷）; 骨喰い鳥の巣（竜骨の峡谷）; 古竜の裂け目（竜骨の峡谷）,equip jobs not in DB
+weapon,wpn_iron_snow_greatshield,鉄雪大盾,shield,SSR,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_black_iron_blade,黒鉄の処刑刃,sword,SSR,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_src_old_shield,Src: 古王盾,shield,Src,YES,kai_forge;legacy,カイ/Kai or manifest; manifest or kai_src,equip jobs not in DB
+weapon,wpn_src_star_scar,Src: 星痕槍,spear,Src,YES,kai_forge;legacy,カイ/Kai or manifest; manifest or kai_src,equip jobs not in DB
+weapon,wpn_src_echo,Src: 残響弓,bow,Src,YES,kai_forge;legacy,カイ/Kai or manifest; manifest or kai_src,equip jobs not in DB
+weapon,wpn_src_deep,Src: 深層砲,cannon,Src,YES,kai_forge;legacy,カイ/Kai or manifest; manifest or kai_src,equip jobs not in DB
+weapon,wpn_src_lamp,Src: 灯火杖,rod,Src,YES,kai_forge;legacy,カイ/Kai or manifest; manifest or kai_src,equip jobs not in DB
+weapon,wpn_src_mirror,Src: 灰鏡刀,dagger,Src,YES,kai_forge;legacy,カイ/Kai or manifest; manifest or kai_src,equip jobs not in DB
+weapon,wpn_src_silver,Src: 白銀槌,hammer,Src,YES,kai_forge;legacy,カイ/Kai or manifest; manifest or kai_src,equip jobs not in DB
+weapon,wpn_src_bind,Src: 繋ぎ糸,bind,Src,YES,kai_forge;legacy,カイ/Kai or manifest; manifest or kai_src,equip jobs not in DB
+weapon,wpn_src_tuner,Src: 調律器,tuner,Src,YES,kai_forge;legacy,カイ/Kai or manifest; manifest or kai_src,equip jobs not in DB
+weapon,wpn_src_mist_lantern,Src: 霧灯星杖,staff,Src,YES,kai_forge;legacy,カイ/Kai or manifest; manifest or kai_src,equip jobs not in DB
+weapon,wpn_src_silence,Src: 静寂聖印,seal,Src,YES,kai_forge;legacy,カイ/Kai or manifest; manifest or kai_src,equip jobs not in DB
+weapon,wpn_src_twilight,Src: 黄昏剣,sword,Src,YES,kai_forge;legacy,カイ/Kai or manifest; manifest or kai_src,equip jobs not in DB
+weapon,wpn_src_black_fox,Src: 黒狐刃,dagger,Src,YES,kai_forge;legacy,カイ/Kai or manifest; manifest or kai_src,equip jobs not in DB
+weapon,wpn_valhalla_blade,ヴァルハラ・ブレード,sword,UR,YES,area_drop;valhalla,ヴァルハラ外郭（空中要塞ヴァルハラ）; 機械兵格納庫（空中要塞ヴァルハラ）; 実験区画（空中要塞ヴァルハラ）; 旧王の玉座（空中要塞ヴァルハラ）; 深層炉心（空中要塞ヴァルハラ）; 空塞昇降路（空中要塞ヴァルハラ）; 統治軍制御室（空中要塞ヴァルハラ）; マキナの残響区画（空中要塞ヴァルハラ）; ヴァルハラ,equip jobs not in DB
+weapon,wpn_old_king_staff,旧王の魔杖,staff,UR,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_starfall_judge,星落ちの裁杖,staff,UR,YES,area_drop,砕けた望遠塔（星落ちの観測所）; 星屑の実験室（星落ちの観測所）; 天文記録室（星落ちの観測所）; 落星孔（星落ちの観測所）,equip jobs not in DB
+weapon,wpn_deep_cannon_regin,深層砲レギン,cannon,UR,YES,area_drop;valhalla,アーク残滓研究所（深層炉前哨基地）; 鉄熱の補給路（深層炉前哨基地）; 実験区画（空中要塞ヴァルハラ）; 旧王の玉座（空中要塞ヴァルハラ）; 深層炉心（空中要塞ヴァルハラ）; 統治軍制御室（空中要塞ヴァルハラ）; マキナの残響区画（空中要塞ヴァルハラ）; ヴァルハラ,equip jobs not in DB
+weapon,wpn_ash_wing_twin,灰翼の双刃,dagger,UR,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_core_spear_grau,炉心槍グラウ,spear,UR,YES,area_drop;valhalla,機械兵格納庫（空中要塞ヴァルハラ）; 実験区画（空中要塞ヴァルハラ）; 旧王の玉座（空中要塞ヴァルハラ）; 深層炉心（空中要塞ヴァルハラ）; 空塞昇降路（空中要塞ヴァルハラ）; 統治軍制御室（空中要塞ヴァルハラ）; マキナの残響区画（空中要塞ヴァルハラ）; ヴァルハラ,equip jobs not in DB
+weapon,wpn_sky_bow_fress,空塞弓フレス,bow,UR,YES,area_drop;valhalla,実験区画（空中要塞ヴァルハラ）; 旧王の玉座（空中要塞ヴァルハラ）; 深層炉心（空中要塞ヴァルハラ）; 空塞昇降路（空中要塞ヴァルハラ）; 統治軍制御室（空中要塞ヴァルハラ）; マキナの残響区画（空中要塞ヴァルハラ）; ヴァルハラ,equip jobs not in DB
+weapon,wpn_zero_shield,統治軍制式大盾・零式,shield,UR,YES,area_drop;valhalla,実験区画（空中要塞ヴァルハラ）; 旧王の玉座（空中要塞ヴァルハラ）; 深層炉心（空中要塞ヴァルハラ）; マキナの残響区画（空中要塞ヴァルハラ）; ヴァルハラ,equip jobs not in DB
+weapon,wpn_iron_snow_king_shield,鉄雪王盾,shield,UR,NO,,,no acquisition path found; equip jobs not in DB
+weapon,wpn_black_exec_sword,黒灯処刑剣,sword,UR,YES,area_drop,仮面商人の隠し倉庫（忘却の地下市）,equip jobs not in DB
+weapon,wpn_unique_bind,古びた繋ぎ糸,bind,Uni,YES,src_manifest;kai_forge,/upgrade manifest; カイ Src変質,—
+weapon,wpn_unique_old_hammer,古炉の訓練槌,hammer,Uni,YES,kai_forge,カイ Src変質,equip jobs not in DB
+weapon,wpn_unique_old_shield,古王の割盾,shield,Uni,YES,src_manifest;kai_forge,/upgrade manifest; カイ Src変質,—
+weapon,wpn_unique_tuner,壊れた調律器,tuner,Uni,YES,src_manifest;kai_forge,/upgrade manifest; カイ Src変質,—
+weapon,wpn_unique_star_scar,星痕の古槍,spear,Uni,YES,src_manifest;kai_forge,/upgrade manifest; カイ Src変質,—
+weapon,wpn_unique_echo,残響の古弓,bow,Uni,YES,src_manifest;kai_forge,/upgrade manifest; カイ Src変質,—
+weapon,wpn_unique_deep,深層の砲筒,cannon,Uni,YES,area_drop;src_manifest;kai_forge,機工整備場（深層炉前哨基地）; アーク残滓研究所（深層炉前哨基地）; 鉄熱の補給路（深層炉前哨基地）; /upgrade manifest; カイ Src変質,—
+weapon,wpn_unique_lamp,灯火の古杖,rod,Uni,YES,src_manifest;kai_forge,/upgrade manifest; カイ Src変質,—
+weapon,wpn_unique_mirror,灰鏡の刀,dagger,Uni,YES,src_manifest;kai_forge,/upgrade manifest; カイ Src変質,—
+weapon,wpn_unique_silver,白銀の古槌,hammer,Uni,YES,src_manifest;kai_forge,/upgrade manifest; カイ Src変質,—
+weapon,wpn_unique_mist_lantern,霧灯の星杖,staff,Uni,YES,src_manifest;kai_forge,/upgrade manifest; カイ Src変質,—
+weapon,wpn_unique_twilight,黄昏の古剣,sword,Uni,YES,src_manifest;kai_forge,/upgrade manifest; カイ Src変質,—
+weapon,wpn_unique_black_fox,黒狐の短刃,dagger,Uni,YES,src_manifest;kai_forge,/upgrade manifest; カイ Src変質,—
+armor,acc_traveler_ring,旅人の指輪,accessory1,N,YES,shop,霧深き森の集落,—
+armor,acc_silver_bracelet,白銀の腕輪,accessory1,R,YES,shop,忘却の地下市,—
+armor,acc_moon_pendant,月下のペンダント,accessory1,SR,YES,shop,忘却の地下市,—
+armor,acc_raid_random,残響の指輪,accessory1,SSR,NO,unobtainable,—,no pool/shop/drop
+armor,acc_deep_gear_ring,深層炉の機構環,accessory1,SSR,NO,unobtainable,—,no pool/shop/drop
+armor,acc_valhalla_necklace,ヴァルハラの首飾り,accessory1,UR,NO,unobtainable,—,no pool/shop/drop
+armor,acc_traveler_talisman,旅人の護符,accessory2,N,NO,unobtainable,—,no pool/shop/drop
+armor,acc_mist_talisman,霧守りの護符,accessory2,R,YES,shop,霧深き森の集落,—
+armor,acc_black_lamp_ring,黒灯の指輪,accessory2,SR,YES,area_drop,煤煙の抜け道（黒灯りの路地）,—
+armor,acc_starfall_earring,星落ちの耳飾り,accessory2,SSR,NO,unobtainable,—,no pool/shop/drop
+armor,acc_old_king_seal,旧王の印章,accessory2,UR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_old_road_arms,古道篭手,arms,R,YES,area_drop;shop,朽ちた旅籠（古道の宿場村）; 古道の宿場村,—
+armor,arm_set_starfield_arms,星原篭手,arms,R,YES,area_drop;shop,星屑の草道（はじまりの星原）; 黒灯りの路地; 埋没水路; 竜骨の峡谷; 硝子沼の集落; 空鐘の町; 鉄雪の関所; 祈りの丘; 赤灰の砦; 沈黙の修道院; 星落ちの観測所; はじまりの星原,—
+armor,arm_set_silver_arms,白銀篭手,arms,R,YES,area_drop;shop,結晶の縦穴（白銀鉱山街）; 白銀鉱山街,—
+armor,arm_set_twilight_arms,薄明篭手,arms,R,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_rain_arms,雨音篭手,arms,R,YES,area_drop,雨漏りの礼拝堂（雨音の廃村）; 泥濘の畑（雨音の廃村）,—
+armor,arm_set_mist_arms,霧守り篭手,arms,R,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_moon_arms,月下篭手,arms,SR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_silence_arms,沈黙篭手,arms,SR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_ash_crown_arms,灰冠篭手,arms,SR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_glass_arms,硝子沼篭手,arms,SR,YES,area_drop,沼底の参道（硝子沼の集落）; 反射する森（硝子沼の集落）; 硝子花の群生地（硝子沼の集落）,—
+armor,arm_set_dragonbone_arms,竜骨篭手,arms,SR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_red_ash_arms,赤灰篭手,arms,SR,YES,area_drop,砦地下倉庫（赤灰の砦）; 炎の訓練場（赤灰の砦）; 赤灰の見張り台（赤灰の砦）,—
+armor,arm_set_starfall_arms,星落ち篭手,arms,SSR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_deep_furnace_arms,深層炉篭手,arms,SSR,YES,area_drop,機工整備場（深層炉前哨基地）,—
+armor,arm_set_iron_snow_arms,鉄雪篭手,arms,SSR,YES,area_drop,炎の訓練場（赤灰の砦）,—
+armor,arm_set_black_lamp_arms,黒灯篭手,arms,SSR,YES,area_drop,煤煙の抜け道（黒灯りの路地）,—
+armor,arm_set_valhalla_arms,ヴァルハラ篭手,arms,UR,YES,area_drop;valhalla,ヴァルハラ外郭（空中要塞ヴァルハラ）; ヴァルハラ,—
+armor,arm_set_old_king_arms,旧王篭手,arms,UR,YES,area_drop,灰の大通り（灰冠の王都跡）,—
+armor,arm_set_old_road_body,古道鎧,body,R,YES,area_drop,石積みの橋（古道の宿場村）; 旅人の墓標（古道の宿場村）,—
+armor,arm_set_starfield_body,星原鎧,body,R,YES,shop,黒灯りの路地; 埋没水路; 竜骨の峡谷; 硝子沼の集落; 空鐘の町; 鉄雪の関所; 祈りの丘; 赤灰の砦; 沈黙の修道院; 星落ちの観測所; はじまりの星原,—
+armor,arm_set_silver_body,白銀鎧,body,R,YES,area_drop,崩落した作業場（白銀鉱山街）; 黒鉄鉱脈（白銀鉱山街）,—
+armor,arm_set_twilight_body,薄明鎧,body,R,YES,area_drop,海霧の倉庫街（薄明の港町）,—
+armor,arm_set_rain_body,雨音鎧,body,R,YES,area_drop,水没した家屋（雨音の廃村）; 朽ちた井戸（雨音の廃村）; 雨漏りの礼拝堂（雨音の廃村）; 泥濘の畑（雨音の廃村）,—
+armor,arm_set_mist_body,霧守り鎧,body,R,YES,area_drop,迷い茸の群生地（霧深き森の集落）; 眠れる獣の巣（霧深き森の集落）,—
+armor,arm_set_moon_body,月下鎧,body,SR,YES,area_drop,影写しの閲覧室（月下図書館）; 無答の書庫（月下図書館）,—
+armor,arm_set_silence_body,沈黙鎧,body,SR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_ash_crown_body,灰冠鎧,body,SR,YES,area_drop,破れた玉座前（灰冠の王都跡）; 王都地下牢（灰冠の王都跡）; 灰の大通り（灰冠の王都跡）,—
+armor,arm_set_glass_body,硝子沼鎧,body,SR,YES,area_drop,割れた水面（硝子沼の集落）; 沼底の参道（硝子沼の集落）; 反射する森（硝子沼の集落）; 硝子花の群生地（硝子沼の集落）,—
+armor,arm_set_dragonbone_body,竜骨鎧,body,SR,YES,area_drop,骨喰い鳥の巣（竜骨の峡谷）; 古竜の裂け目（竜骨の峡谷）,—
+armor,arm_set_red_ash_body,赤灰鎧,body,SR,YES,area_drop,焼けた兵舎（赤灰の砦）; 砦地下倉庫（赤灰の砦）; 炎の訓練場（赤灰の砦）; 赤灰の見張り台（赤灰の砦）,—
+armor,arm_set_starfall_body,星落ち鎧,body,SSR,YES,area_drop,天文記録室（星落ちの観測所）; 落星孔（星落ちの観測所）,—
+armor,arm_set_deep_furnace_body,深層炉鎧,body,SSR,YES,area_drop,機工整備場（深層炉前哨基地）; アーク残滓研究所（深層炉前哨基地）; 鉄熱の補給路（深層炉前哨基地）,—
+armor,arm_set_iron_snow_body,鉄雪鎧,body,SSR,YES,area_drop,赤灰の見張り台（赤灰の砦）,—
+armor,arm_set_black_lamp_body,黒灯鎧,body,SSR,YES,area_drop,煤煙の抜け道（黒灯りの路地）,—
+armor,arm_set_valhalla_body,ヴァルハラ鎧,body,UR,YES,area_drop;valhalla,ヴァルハラ外郭（空中要塞ヴァルハラ）; 深層炉心（空中要塞ヴァルハラ）; ヴァルハラ,—
+armor,arm_set_old_king_body,旧王鎧,body,UR,YES,area_drop,破れた玉座前（灰冠の王都跡）,—
+armor,arm_set_old_road_feet,古道靴,feet,R,YES,shop,古道の宿場村,—
+armor,arm_set_starfield_feet,星原靴,feet,R,YES,shop,黒灯りの路地; 埋没水路; 竜骨の峡谷; 硝子沼の集落; 空鐘の町; 鉄雪の関所; 祈りの丘; 赤灰の砦; 沈黙の修道院; 星落ちの観測所; はじまりの星原,—
+armor,arm_set_silver_feet,白銀靴,feet,R,YES,shop,白銀鉱山街,—
+armor,arm_set_twilight_feet,薄明靴,feet,R,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_rain_feet,雨音靴,feet,R,YES,area_drop,雨漏りの礼拝堂（雨音の廃村）,—
+armor,arm_set_mist_feet,霧守り靴,feet,R,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_moon_feet,月下靴,feet,SR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_silence_feet,沈黙靴,feet,SR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_ash_crown_feet,灰冠靴,feet,SR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_glass_feet,硝子沼靴,feet,SR,YES,area_drop,硝子花の群生地（硝子沼の集落）,—
+armor,arm_set_dragonbone_feet,竜骨靴,feet,SR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_red_ash_feet,赤灰靴,feet,SR,YES,area_drop,赤灰の見張り台（赤灰の砦）,—
+armor,arm_set_starfall_feet,星落ち靴,feet,SSR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_deep_furnace_feet,深層炉靴,feet,SSR,YES,area_drop,鉄熱の補給路（深層炉前哨基地）,—
+armor,arm_set_iron_snow_feet,鉄雪靴,feet,SSR,YES,area_drop,炎の訓練場（赤灰の砦）,—
+armor,arm_set_black_lamp_feet,黒灯靴,feet,SSR,YES,area_drop,黒灯りの路地（黒灯りの路地）,—
+armor,arm_set_valhalla_feet,ヴァルハラ靴,feet,UR,YES,area_drop;valhalla,ヴァルハラ外郭（空中要塞ヴァルハラ）; ヴァルハラ,—
+armor,arm_set_old_king_feet,旧王靴,feet,UR,YES,area_drop,灰の大通り（灰冠の王都跡）,—
+armor,arm_set_old_road_head,古道兜,head,R,YES,area_drop;shop,朽ちた旅籠（古道の宿場村）; 盗賊の抜け道（古道の宿場村）; 石積みの橋（古道の宿場村）; 旅人の墓標（古道の宿場村）; 古道の宿場村,—
+armor,arm_set_starfield_head,星原兜,head,R,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_silver_head,白銀兜,head,R,YES,area_drop;shop,結晶の縦穴（白銀鉱山街）; 崩落した作業場（白銀鉱山街）; 黒鉄鉱脈（白銀鉱山街）; 白銀鉱山街,—
+armor,arm_set_twilight_head,薄明兜,head,R,YES,area_drop;shop,潮騒の洞窟（薄明の港町）; 海霧の倉庫街（薄明の港町）; 薄明の港町,—
+armor,arm_set_rain_head,雨音兜,head,R,YES,area_drop,雨音の路地（雨音の廃村）; 水没した家屋（雨音の廃村）; 朽ちた井戸（雨音の廃村）; 雨漏りの礼拝堂（雨音の廃村）; 泥濘の畑（雨音の廃村）,—
+armor,arm_set_mist_head,霧守り兜,head,R,YES,area_drop,古樹の根元（霧深き森の集落）; 迷い茸の群生地（霧深き森の集落）; 眠れる獣の巣（霧深き森の集落）,—
+armor,arm_set_moon_head,月下兜,head,SR,YES,area_drop,記録端末室（月下図書館）; 影写しの閲覧室（月下図書館）; 無答の書庫（月下図書館）,—
+armor,arm_set_silence_head,沈黙兜,head,SR,YES,area_drop,祈りの間（沈黙の修道院）; 聖水工房跡（沈黙の修道院）; 無言の巡礼路（沈黙の修道院）,—
+armor,arm_set_ash_crown_head,灰冠兜,head,SR,YES,area_drop,旧統治軍詰所（灰冠の王都跡）; 破れた玉座前（灰冠の王都跡）; 王都地下牢（灰冠の王都跡）; 灰の大通り（灰冠の王都跡）,—
+armor,arm_set_glass_head,硝子沼兜,head,SR,YES,area_drop,硝子沼（硝子沼の集落）; 割れた水面（硝子沼の集落）; 沼底の参道（硝子沼の集落）; 反射する森（硝子沼の集落）; 硝子花の群生地（硝子沼の集落）,—
+armor,arm_set_dragonbone_head,竜骨兜,head,SR,YES,area_drop,大骨市場跡（竜骨の峡谷）; 竜鳴きの崖（竜骨の峡谷）; 骨喰い鳥の巣（竜骨の峡谷）; 古竜の裂け目（竜骨の峡谷）,—
+armor,arm_set_red_ash_head,赤灰兜,head,SR,YES,area_drop,赤灰の外壁（赤灰の砦）; 焼けた兵舎（赤灰の砦）; 砦地下倉庫（赤灰の砦）; 炎の訓練場（赤灰の砦）; 赤灰の見張り台（赤灰の砦）,—
+armor,arm_set_starfall_head,星落ち兜,head,SSR,YES,area_drop,星屑の実験室（星落ちの観測所）; 天文記録室（星落ちの観測所）; 落星孔（星落ちの観測所）,—
+armor,arm_set_deep_furnace_head,深層炉兜,head,SSR,YES,area_drop,炉心監視塔（深層炉前哨基地）; 機工整備場（深層炉前哨基地）; アーク残滓研究所（深層炉前哨基地）; 鉄熱の補給路（深層炉前哨基地）,—
+armor,arm_set_iron_snow_head,鉄雪兜,head,SSR,YES,area_drop,赤灰の見張り台（赤灰の砦）,—
+armor,arm_set_black_lamp_head,黒灯兜,head,SSR,YES,area_drop,煤煙の抜け道（黒灯りの路地）,—
+armor,arm_set_valhalla_head,ヴァルハラ兜,head,UR,YES,area_drop;valhalla,ヴァルハラ外郭（空中要塞ヴァルハラ）; 深層炉心（空中要塞ヴァルハラ）; ヴァルハラ,—
+armor,arm_set_old_king_head,旧王兜,head,UR,YES,area_drop,破れた玉座前（灰冠の王都跡）,—
+armor,arm_set_old_road_legs,古道腿当て,legs,R,YES,area_drop;shop,石積みの橋（古道の宿場村）; 古道の宿場村,—
+armor,arm_set_starfield_legs,星原腿当て,legs,R,YES,shop,黒灯りの路地; 埋没水路; 竜骨の峡谷; 硝子沼の集落; 空鐘の町; 鉄雪の関所; 祈りの丘; 赤灰の砦; 沈黙の修道院; 星落ちの観測所; はじまりの星原,—
+armor,arm_set_silver_legs,白銀腿当て,legs,R,YES,area_drop;shop,崩落した作業場（白銀鉱山街）; 白銀鉱山街,—
+armor,arm_set_twilight_legs,薄明腿当て,legs,R,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_rain_legs,雨音腿当て,legs,R,YES,area_drop,泥濘の畑（雨音の廃村）,—
+armor,arm_set_mist_legs,霧守り腿当て,legs,R,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_moon_legs,月下腿当て,legs,SR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_silence_legs,沈黙腿当て,legs,SR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_ash_crown_legs,灰冠腿当て,legs,SR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_glass_legs,硝子沼腿当て,legs,SR,YES,area_drop,反射する森（硝子沼の集落）; 硝子花の群生地（硝子沼の集落）,—
+armor,arm_set_dragonbone_legs,竜骨腿当て,legs,SR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_red_ash_legs,赤灰腿当て,legs,SR,YES,area_drop,炎の訓練場（赤灰の砦）; 赤灰の見張り台（赤灰の砦）,—
+armor,arm_set_starfall_legs,星落ち腿当て,legs,SSR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_deep_furnace_legs,深層炉腿当て,legs,SSR,NO,unobtainable,—,no pool/shop/drop
+armor,arm_set_iron_snow_legs,鉄雪腿当て,legs,SSR,YES,area_drop,炎の訓練場（赤灰の砦）,—
+armor,arm_set_black_lamp_legs,黒灯腿当て,legs,SSR,YES,area_drop,黒灯りの路地（黒灯りの路地）,—
+armor,arm_set_valhalla_legs,ヴァルハラ腿当て,legs,UR,YES,area_drop;valhalla,ヴァルハラ外郭（空中要塞ヴァルハラ）; ヴァルハラ,—
+armor,arm_set_old_king_legs,旧王腿当て,legs,UR,YES,area_drop,灰の大通り（灰冠の王都跡）,—

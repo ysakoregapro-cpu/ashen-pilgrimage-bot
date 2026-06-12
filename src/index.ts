@@ -1063,6 +1063,22 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
 
 
 
+  if (parts[0] === 'inv' && parts[1] === 'use') {
+    const invId = Number(parts[2]);
+    const { useConsumableOutOfBattle } = await import('./systems/inventoryUseSystem');
+    const { buildInventoryDetailPickView } = await import('./systems/itemDetailSystem');
+    await disableOldComponents(interaction.message);
+    const channel = getSendableChannel(interaction.channel);
+    if (!channel) return;
+    await interaction.deferUpdate();
+    const result = useConsumableOutOfBattle(userId, invId);
+    await channel.send({
+      embeds: [result.ok ? successEmbed(result.message) : errorEmbed(result.message)],
+      components: nextActionButtons('inventory'),
+    });
+    return;
+  }
+
   if (parts[0] === 'equip' && parts[1] === 'confirm') {
     const invId = Number(parts[2]);
     const { assertInventoryOwned } = await import('./systems/itemDetailSystem');
@@ -1243,6 +1259,12 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
       ...result,
       components: nextActionButtons('upgrade_done', { facilityId: repairFac, upgradeAction: 'dismantle' }),
     });
+    return;
+  }
+
+  if (parts[0] === 'job') {
+    const { handleJobButton } = await import('./systems/jobUiSystem');
+    await handleJobButton(interaction, parts);
     return;
   }
 

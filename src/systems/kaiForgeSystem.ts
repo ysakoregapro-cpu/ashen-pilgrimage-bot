@@ -2,26 +2,41 @@ import { getDb } from '../db/database';
 import { nowIso } from '../types';
 import {
   KAI_UNIQUE_TARGETS, MAX_AWAKENING_LEVEL, awakeningLabel, isMaxAwakening,
-  SRC_FORGE_MATERIAL_ID, UNI_FORGE_MATERIAL_IDS, MAT_STARFALL_OBSIDIAN, MAT_BLACK_LANTERN_CINDER,
+  SRC_FORGE_MATERIAL_ID,
 } from '../db/seedData/awakeningMaster';
-import { isJobStarterWeapon, STARTER_WEAPON_IDS } from '../db/seedData/jobStarterWeapons';
+import { SRC_FORGE_ECHO_QTY, SRC_FORGE_GOLD_COST } from '../db/seedData/forgeMaster';
+import { isJobStarterWeapon, STARTER_WEAPON_IDS, JOB_STARTER_WEAPONS } from '../db/seedData/jobStarterWeapons';
+import { UNI_JOB_MATERIALS } from '../db/seedData/jobProgressionMaster';
+import { requirePlayer, spendGold } from './playerSystem';
 import { hasStoryFlag, setStoryFlag } from './storySystem';
 import { unlockTownForPlayer } from './townSystem';
 import { getItemCount, consumeMaterial } from './inventorySystem';
 import { getSrcManifestInfo } from './srcWeaponSystem';
 import { recalculatePlayerStats } from './playerSystem';
 
-function uniMaterialStatus(userId: string): { ok: boolean; reason?: string; lines: string[] } {
-  const star = getItemCount(userId, MAT_STARFALL_OBSIDIAN);
-  const lantern = getItemCount(userId, MAT_BLACK_LANTERN_CINDER);
-  const starName = (getDb().prepare('SELECT name FROM items WHERE id = ?').get(MAT_STARFALL_OBSIDIAN) as { name: string } | undefined)?.name ?? '星見の残光';
-  const lanternName = (getDb().prepare('SELECT name FROM items WHERE id = ?').get(MAT_BLACK_LANTERN_CINDER) as { name: string } | undefined)?.name ?? '黒灯の残滓';
+const STARTER_TO_JOB: Record<string, string> = Object.fromEntries(
+  Object.entries(JOB_STARTER_WEAPONS).map(([job, wpn]) => [wpn, job]),
+);
+
+function matName(matId: string): string {
+  return (getDb().prepare('SELECT name FROM items WHERE id = ?').get(matId) as { name: string } | undefined)?.name ?? matId;
+}
+
+function uniMaterialStatus(userId: string, starterItemId: string): { ok: boolean; reason?: string; lines: string[] } {
+  const job = STARTER_TO_JOB[starterItemId];
+  const req = job ? UNI_JOB_MATERIALS[job] : undefined;
+  if (!req) {
+    return { ok: false, reason: 'この武器の伝承素材が未設定です。', lines: [] };
+  }
+  const c1 = getItemCount(userId, req.mat1);
+  const c2 = getItemCount(userId, req.mat2);
   const lines = [
-    `**${starName}**: ${star}/1（星落ちの観測所ボス再戦）`,
-    `**${lanternName}**: ${lantern}/1（黒灯りの路地ボス再戦）`,
+    `**必要素材**`,
+    `・${matName(req.mat1)} ${c1}/${req.qty}`,
+    `・${matName(req.mat2)} ${c2}/${req.qty}`,
   ];
-  if (star < 1 || lantern < 1) {
-    return { ok: false, reason: '伝承の素材が足りない。星の落ちた場所と黒い灯の路地で、再戦素材を集めろ。', lines };
+  if (c1 < req.qty || c2 < req.qty) {
+    return { ok: false, reason: '職別伝承素材が足りない。ボス再戦で集めろ。', lines };
   }
   return { ok: true, lines };
 }
@@ -56,7 +71,7 @@ export function canKaiUnique(userId: string, inventoryId: number): { ok: boolean
   if (!isMaxAwakening(row.awakening_level)) {
     return { ok: false, reason: `最大覚醒（${awakeningLabel(MAX_AWAKENING_LEVEL)}）が必要です。（現在 ${awakeningLabel(row.awakening_level)}）` };
   }
-  const mats = uniMaterialStatus(userId);
+  const mats = uniMaterialStatus(userId, row.item_id);
   if (!mats.ok) return { ok: false, reason: mats.reason };
   return { ok: true };
 }
@@ -70,10 +85,10 @@ export function getKaiUniqueInfo(userId: string, inventoryId: number): string {
   if (!row) return '武器が見つかりません。';
 
   const target = KAI_UNIQUE_TARGETS[row.item_id];
-  const mats = uniMaterialStatus(userId);
+  const mats = uniMaterialStatus(userId, row.item_id);
   const lines = [
     `**${row.name}** — ${awakeningLabel(row.awakening_level)}`,
-    'カイの伝承（昇華）: 最大覚醒 + 星見の残光 + 黒灯の残滓',
+    'カイの伝承（昇華）: 最大覚醒 + 職別素材×2種',
     ...mats.lines,
     target ? `→ **${(getDb().prepare('SELECT name FROM items WHERE id = ?').get(target) as { name: string })?.name ?? target}**（Uni）` : '→ Uni武器として刻印',
   ];
@@ -85,10 +100,14 @@ export function kaiUniqueTransform(userId: string, inventoryId: number): { succe
   const check = canKaiUnique(userId, inventoryId);
   if (!check.ok) return { success: false, message: check.reason ?? '伝承できません。' };
 
-  for (const matId of UNI_FORGE_MATERIAL_IDS) {
-    if (!consumeMaterial(userId, matId, 1)) {
-      return { success: false, message: '伝承の素材が足りません。' };
-    }
+  const rowMeta = getDb().prepare(`
+    SELECT pi.item_id FROM player_inventory pi WHERE pi.id = ? AND pi.user_id = ?
+  `).get(inventoryId, userId) as { item_id: string };
+  const job = STARTER_TO_JOB[rowMeta.item_id];
+  const req = job ? UNI_JOB_MATERIALS[job] : undefined;
+  if (!req) return { success: false, message: '伝承素材が未設定です。' };
+  if (!consumeMaterial(userId, req.mat1, req.qty) || !consumeMaterial(userId, req.mat2, req.qty)) {
+    return { success: false, message: '伝承の素材が足りません。' };
   }
 
   const row = getDb().prepare(`
@@ -144,8 +163,12 @@ export function canKaiSrc(userId: string, inventoryId: number): { ok: boolean; r
   if (!row.src_weapon_id) return { ok: false, reason: 'この武器には変質の名が刻まれていません。' };
 
   const have = getItemCount(userId, SRC_FORGE_MATERIAL_ID);
-  if (have < 1) {
-    return { ok: false, reason: `Src変質の素材（星巡の残響）が必要です。（所持 ${have}）` };
+  const player = requirePlayer(userId);
+  if (have < SRC_FORGE_ECHO_QTY) {
+    return { ok: false, reason: `星巡の残響が必要です。（所持 ${have}/${SRC_FORGE_ECHO_QTY}）` };
+  }
+  if (player.gold < SRC_FORGE_GOLD_COST) {
+    return { ok: false, reason: `Src変質には${SRC_FORGE_GOLD_COST}Gが必要です。（所持 ${player.gold}G）` };
   }
   return { ok: true };
 }
@@ -154,12 +177,14 @@ export function getKaiSrcInfo(userId: string, inventoryId: number): string {
   const check = canKaiSrc(userId, inventoryId);
   const info = getSrcManifestInfo(userId, inventoryId);
   const have = getItemCount(userId, SRC_FORGE_MATERIAL_ID);
+  const player = requirePlayer(userId);
   const matName = (getDb().prepare('SELECT name FROM items WHERE id = ?').get(SRC_FORGE_MATERIAL_ID) as { name: string } | undefined)?.name ?? '星巡の残響';
   return [
     info,
     '',
-    `**${matName}**: ${have}/1（ヴァルハラ周回・低確率）`,
-    'カイのSrc変質: 素材1個のみ（ゴールド不要）',
+    `**${matName}**: ${have}/${SRC_FORGE_ECHO_QTY}（ヴァルハラ周回・10%）`,
+    `**ゴールド**: ${player.gold}/${SRC_FORGE_GOLD_COST}G`,
+    `カイのSrc変質: 星巡の残響×${SRC_FORGE_ECHO_QTY} + ${SRC_FORGE_GOLD_COST}G`,
     check.ok ? '' : `⚠ ${check.reason}`,
   ].filter(Boolean).join('\n');
 }
@@ -168,8 +193,11 @@ export function kaiSrcTransform(userId: string, inventoryId: number): { success:
   const check = canKaiSrc(userId, inventoryId);
   if (!check.ok) return { success: false, message: check.reason ?? 'Src変質できません。' };
 
-  if (!consumeMaterial(userId, SRC_FORGE_MATERIAL_ID, 1)) {
+  if (!consumeMaterial(userId, SRC_FORGE_MATERIAL_ID, SRC_FORGE_ECHO_QTY)) {
     return { success: false, message: '星巡の残響が足りません。' };
+  }
+  if (!spendGold(userId, SRC_FORGE_GOLD_COST)) {
+    return { success: false, message: `ゴールドが足りません。（必要 ${SRC_FORGE_GOLD_COST}G）` };
   }
 
   const row = getDb().prepare(`

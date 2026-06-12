@@ -1,0 +1,102 @@
+item_id,name,rarity,slot,series,jobs,max_hp,max_mp,attack,magic,defense,speed,max_upgrade,methods,locations,source_kinds,drop_rates,shop,area_pool,boss,valhalla_raid,obtainable,unknown
+acc_traveler_ring,旅人の指輪,N,accessory1,—,全職,15,0,2,0,0,0,7,shop,霧深き森の集落,shop,—,YES,NO,NO,NO,YES,—
+acc_silver_bracelet,白銀の腕輪,R,accessory1,—,全職,0,0,5,0,0,0,7,shop,忘却の地下市,shop,—,YES,NO,NO,NO,YES,—
+acc_moon_pendant,月下のペンダント,SR,accessory1,—,全職,0,0,0,8,0,0,7,shop,忘却の地下市,shop,—,YES,NO,NO,NO,YES,—
+acc_raid_random,残響の指輪,SSR,accessory1,—,全職,0,0,0,0,0,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+acc_deep_gear_ring,深層炉の機構環,SSR,accessory1,—,全職,0,0,12,0,8,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+acc_valhalla_necklace,ヴァルハラの首飾り,UR,accessory1,—,全職,0,0,15,15,10,0,10,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+acc_traveler_talisman,旅人の護符,N,accessory2,—,全職,0,0,0,0,2,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+acc_mist_talisman,霧守りの護符,R,accessory2,—,全職,0,0,0,0,0,0,7,shop,霧深き森の集落,shop,—,YES,NO,NO,NO,YES,—
+acc_black_lamp_ring,黒灯の指輪,SR,accessory2,—,全職,0,0,0,0,0,5,7,area_drop,煤煙の抜け道（黒灯りの路地）,area_drop,weighted,NO,YES,NO,NO,YES,—
+acc_starfall_earring,星落ちの耳飾り,SSR,accessory2,—,全職,0,0,0,12,0,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+acc_old_king_seal,旧王の印章,UR,accessory2,—,全職,0,0,18,0,12,0,10,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_old_road_arms,古道篭手,R,arms,set_old_road,全職,10,0,0,0,6,0,5,area_drop;shop,朽ちた旅籠（古道の宿場村）; 古道の宿場村,area_drop;shop,weighted; —,YES,YES,NO,NO,YES,—
+arm_set_starfield_arms,星原篭手,R,arms,set_starfield,全職,10,0,0,0,6,0,5,area_drop;shop;shop;shop;shop;shop;shop;shop;shop;shop;shop;shop,星屑の草道（はじまりの星原）; 黒灯りの路地; 埋没水路; 竜骨の峡谷; 硝子沼の集落; 空鐘の町; 鉄雪の関所; 祈りの丘; 赤灰の砦; 沈黙の修道院; 星落ちの観測所; はじまりの星原,area_drop;shop,weighted; —; —; —; —; —; —; —; —; —; —; —,YES,YES,NO,NO,YES,—
+arm_set_silver_arms,白銀篭手,R,arms,set_silver,全職,10,0,0,0,8,0,5,area_drop;shop,結晶の縦穴（白銀鉱山街）; 白銀鉱山街,area_drop;shop,weighted; —,YES,YES,NO,NO,YES,—
+arm_set_twilight_arms,薄明篭手,R,arms,set_twilight,全職,10,0,0,0,7,0,5,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_rain_arms,雨音篭手,R,arms,set_rain,全職,10,0,0,0,7,0,5,area_drop;area_drop,雨漏りの礼拝堂（雨音の廃村）; 泥濘の畑（雨音の廃村）,area_drop,weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_mist_arms,霧守り篭手,R,arms,set_mist,全職,10,0,0,0,8,0,5,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_moon_arms,月下篭手,SR,arms,set_moon,全職,10,0,0,0,11,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_silence_arms,沈黙篭手,SR,arms,set_silence,全職,10,0,0,0,11,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_ash_crown_arms,灰冠篭手,SR,arms,set_ash_crown,全職,10,0,0,0,12,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_glass_arms,硝子沼篭手,SR,arms,set_glass,全職,10,0,0,0,11,0,7,area_drop;area_drop;area_drop,沼底の参道（硝子沼の集落）; 反射する森（硝子沼の集落）; 硝子花の群生地（硝子沼の集落）,area_drop,weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_dragonbone_arms,竜骨篭手,SR,arms,set_dragonbone,全職,10,0,0,0,12,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_red_ash_arms,赤灰篭手,SR,arms,set_red_ash,全職,10,0,0,0,13,0,7,area_drop;area_drop;area_drop,砦地下倉庫（赤灰の砦）; 炎の訓練場（赤灰の砦）; 赤灰の見張り台（赤灰の砦）,area_drop,weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_starfall_arms,星落ち篭手,SSR,arms,set_starfall,全職,10,0,0,0,15,0,10,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_deep_furnace_arms,深層炉篭手,SSR,arms,set_deep_furnace,全職,10,0,0,0,16,0,10,area_drop,機工整備場（深層炉前哨基地）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_iron_snow_arms,鉄雪篭手,SSR,arms,set_iron_snow,全職,10,0,0,0,17,0,10,area_drop,炎の訓練場（赤灰の砦）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_black_lamp_arms,黒灯篭手,SSR,arms,set_black_lamp,全職,10,0,0,0,15,0,10,area_drop,煤煙の抜け道（黒灯りの路地）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_valhalla_arms,ヴァルハラ篭手,UR,arms,set_valhalla,全職,10,0,0,0,21,0,15,area_drop;valhalla,ヴァルハラ外郭（空中要塞ヴァルハラ）; ヴァルハラ,area_drop;valhalla,weighted; —,NO,YES,NO,YES,YES,—
+arm_set_old_king_arms,旧王篭手,UR,arms,set_old_king,全職,10,0,0,0,20,0,15,area_drop,灰の大通り（灰冠の王都跡）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_old_road_body,古道鎧,R,body,set_old_road,全職,20,0,0,0,9,0,5,area_drop;area_drop,石積みの橋（古道の宿場村）; 旅人の墓標（古道の宿場村）,area_drop,weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_starfield_body,星原鎧,R,body,set_starfield,全職,20,0,0,0,9,0,5,shop;shop;shop;shop;shop;shop;shop;shop;shop;shop;shop,黒灯りの路地; 埋没水路; 竜骨の峡谷; 硝子沼の集落; 空鐘の町; 鉄雪の関所; 祈りの丘; 赤灰の砦; 沈黙の修道院; 星落ちの観測所; はじまりの星原,shop,—; —; —; —; —; —; —; —; —; —; —,YES,NO,NO,NO,YES,—
+arm_set_silver_body,白銀鎧,R,body,set_silver,全職,20,0,0,0,11,0,5,area_drop;area_drop,崩落した作業場（白銀鉱山街）; 黒鉄鉱脈（白銀鉱山街）,area_drop,weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_twilight_body,薄明鎧,R,body,set_twilight,全職,20,0,0,0,10,0,5,area_drop,海霧の倉庫街（薄明の港町）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_rain_body,雨音鎧,R,body,set_rain,全職,20,0,0,0,10,0,5,area_drop;area_drop;area_drop;area_drop,水没した家屋（雨音の廃村）; 朽ちた井戸（雨音の廃村）; 雨漏りの礼拝堂（雨音の廃村）; 泥濘の畑（雨音の廃村）,area_drop,weighted; weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_mist_body,霧守り鎧,R,body,set_mist,全職,20,0,0,0,11,0,5,area_drop;area_drop,迷い茸の群生地（霧深き森の集落）; 眠れる獣の巣（霧深き森の集落）,area_drop,weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_moon_body,月下鎧,SR,body,set_moon,全職,20,0,0,0,14,0,7,area_drop;area_drop,影写しの閲覧室（月下図書館）; 無答の書庫（月下図書館）,area_drop,weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_silence_body,沈黙鎧,SR,body,set_silence,全職,20,0,0,0,14,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_ash_crown_body,灰冠鎧,SR,body,set_ash_crown,全職,20,0,0,0,15,0,7,area_drop;area_drop;area_drop,破れた玉座前（灰冠の王都跡）; 王都地下牢（灰冠の王都跡）; 灰の大通り（灰冠の王都跡）,area_drop,weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_glass_body,硝子沼鎧,SR,body,set_glass,全職,20,0,0,0,14,0,7,area_drop;area_drop;area_drop;area_drop,割れた水面（硝子沼の集落）; 沼底の参道（硝子沼の集落）; 反射する森（硝子沼の集落）; 硝子花の群生地（硝子沼の集落）,area_drop,weighted; weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_dragonbone_body,竜骨鎧,SR,body,set_dragonbone,全職,20,0,0,0,15,0,7,area_drop;area_drop,骨喰い鳥の巣（竜骨の峡谷）; 古竜の裂け目（竜骨の峡谷）,area_drop,weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_red_ash_body,赤灰鎧,SR,body,set_red_ash,全職,20,0,0,0,16,0,7,area_drop;area_drop;area_drop;area_drop,焼けた兵舎（赤灰の砦）; 砦地下倉庫（赤灰の砦）; 炎の訓練場（赤灰の砦）; 赤灰の見張り台（赤灰の砦）,area_drop,weighted; weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_starfall_body,星落ち鎧,SSR,body,set_starfall,全職,20,0,0,0,18,0,10,area_drop;area_drop,天文記録室（星落ちの観測所）; 落星孔（星落ちの観測所）,area_drop,weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_deep_furnace_body,深層炉鎧,SSR,body,set_deep_furnace,全職,20,0,0,0,19,0,10,area_drop;area_drop;area_drop,機工整備場（深層炉前哨基地）; アーク残滓研究所（深層炉前哨基地）; 鉄熱の補給路（深層炉前哨基地）,area_drop,weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_iron_snow_body,鉄雪鎧,SSR,body,set_iron_snow,全職,20,0,0,0,20,0,10,area_drop,赤灰の見張り台（赤灰の砦）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_black_lamp_body,黒灯鎧,SSR,body,set_black_lamp,全職,20,0,0,0,18,0,10,area_drop,煤煙の抜け道（黒灯りの路地）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_valhalla_body,ヴァルハラ鎧,UR,body,set_valhalla,全職,20,0,0,0,24,0,15,area_drop;area_drop;valhalla,ヴァルハラ外郭（空中要塞ヴァルハラ）; 深層炉心（空中要塞ヴァルハラ）; ヴァルハラ,area_drop;valhalla,weighted; weighted; —,NO,YES,NO,YES,YES,—
+arm_set_old_king_body,旧王鎧,UR,body,set_old_king,全職,20,0,0,0,23,0,15,area_drop,破れた玉座前（灰冠の王都跡）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_old_road_feet,古道靴,R,feet,set_old_road,全職,10,0,0,0,6,0,5,shop,古道の宿場村,shop,—,YES,NO,NO,NO,YES,—
+arm_set_starfield_feet,星原靴,R,feet,set_starfield,全職,10,0,0,0,6,0,5,shop;shop;shop;shop;shop;shop;shop;shop;shop;shop;shop,黒灯りの路地; 埋没水路; 竜骨の峡谷; 硝子沼の集落; 空鐘の町; 鉄雪の関所; 祈りの丘; 赤灰の砦; 沈黙の修道院; 星落ちの観測所; はじまりの星原,shop,—; —; —; —; —; —; —; —; —; —; —,YES,NO,NO,NO,YES,—
+arm_set_silver_feet,白銀靴,R,feet,set_silver,全職,10,0,0,0,8,0,5,shop,白銀鉱山街,shop,—,YES,NO,NO,NO,YES,—
+arm_set_twilight_feet,薄明靴,R,feet,set_twilight,全職,10,0,0,0,7,0,5,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_rain_feet,雨音靴,R,feet,set_rain,全職,10,0,0,0,7,0,5,area_drop,雨漏りの礼拝堂（雨音の廃村）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_mist_feet,霧守り靴,R,feet,set_mist,全職,10,0,0,0,8,0,5,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_moon_feet,月下靴,SR,feet,set_moon,全職,10,0,0,0,11,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_silence_feet,沈黙靴,SR,feet,set_silence,全職,10,0,0,0,11,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_ash_crown_feet,灰冠靴,SR,feet,set_ash_crown,全職,10,0,0,0,12,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_glass_feet,硝子沼靴,SR,feet,set_glass,全職,10,0,0,0,11,0,7,area_drop,硝子花の群生地（硝子沼の集落）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_dragonbone_feet,竜骨靴,SR,feet,set_dragonbone,全職,10,0,0,0,12,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_red_ash_feet,赤灰靴,SR,feet,set_red_ash,全職,10,0,0,0,13,0,7,area_drop,赤灰の見張り台（赤灰の砦）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_starfall_feet,星落ち靴,SSR,feet,set_starfall,全職,10,0,0,0,15,0,10,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_deep_furnace_feet,深層炉靴,SSR,feet,set_deep_furnace,全職,10,0,0,0,16,0,10,area_drop,鉄熱の補給路（深層炉前哨基地）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_iron_snow_feet,鉄雪靴,SSR,feet,set_iron_snow,全職,10,0,0,0,17,0,10,area_drop,炎の訓練場（赤灰の砦）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_black_lamp_feet,黒灯靴,SSR,feet,set_black_lamp,全職,10,0,0,0,15,0,10,area_drop,黒灯りの路地（黒灯りの路地）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_valhalla_feet,ヴァルハラ靴,UR,feet,set_valhalla,全職,10,0,0,0,21,0,15,area_drop;valhalla,ヴァルハラ外郭（空中要塞ヴァルハラ）; ヴァルハラ,area_drop;valhalla,weighted; —,NO,YES,NO,YES,YES,—
+arm_set_old_king_feet,旧王靴,UR,feet,set_old_king,全職,10,0,0,0,20,0,15,area_drop,灰の大通り（灰冠の王都跡）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_old_road_head,古道兜,R,head,set_old_road,全職,10,0,0,0,7,0,5,area_drop;area_drop;area_drop;area_drop;shop,朽ちた旅籠（古道の宿場村）; 盗賊の抜け道（古道の宿場村）; 石積みの橋（古道の宿場村）; 旅人の墓標（古道の宿場村）; 古道の宿場村,area_drop;shop,weighted; weighted; weighted; weighted; —,YES,YES,NO,NO,YES,—
+arm_set_starfield_head,星原兜,R,head,set_starfield,全職,10,0,0,0,7,0,5,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_silver_head,白銀兜,R,head,set_silver,全職,10,0,0,0,9,0,5,area_drop;area_drop;area_drop;shop,結晶の縦穴（白銀鉱山街）; 崩落した作業場（白銀鉱山街）; 黒鉄鉱脈（白銀鉱山街）; 白銀鉱山街,area_drop;shop,weighted; weighted; weighted; —,YES,YES,NO,NO,YES,—
+arm_set_twilight_head,薄明兜,R,head,set_twilight,全職,10,0,0,0,8,0,5,area_drop;area_drop;shop,潮騒の洞窟（薄明の港町）; 海霧の倉庫街（薄明の港町）; 薄明の港町,area_drop;shop,weighted; weighted; —,YES,YES,NO,NO,YES,—
+arm_set_rain_head,雨音兜,R,head,set_rain,全職,10,0,0,0,8,0,5,area_drop;area_drop;area_drop;area_drop;area_drop,雨音の路地（雨音の廃村）; 水没した家屋（雨音の廃村）; 朽ちた井戸（雨音の廃村）; 雨漏りの礼拝堂（雨音の廃村）; 泥濘の畑（雨音の廃村）,area_drop,weighted; weighted; weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_mist_head,霧守り兜,R,head,set_mist,全職,10,0,0,0,9,0,5,area_drop;area_drop;area_drop,古樹の根元（霧深き森の集落）; 迷い茸の群生地（霧深き森の集落）; 眠れる獣の巣（霧深き森の集落）,area_drop,weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_moon_head,月下兜,SR,head,set_moon,全職,10,0,0,0,12,0,7,area_drop;area_drop;area_drop,記録端末室（月下図書館）; 影写しの閲覧室（月下図書館）; 無答の書庫（月下図書館）,area_drop,weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_silence_head,沈黙兜,SR,head,set_silence,全職,10,0,0,0,12,0,7,area_drop;area_drop;area_drop,祈りの間（沈黙の修道院）; 聖水工房跡（沈黙の修道院）; 無言の巡礼路（沈黙の修道院）,area_drop,weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_ash_crown_head,灰冠兜,SR,head,set_ash_crown,全職,10,0,0,0,13,0,7,area_drop;area_drop;area_drop;area_drop,旧統治軍詰所（灰冠の王都跡）; 破れた玉座前（灰冠の王都跡）; 王都地下牢（灰冠の王都跡）; 灰の大通り（灰冠の王都跡）,area_drop,weighted; weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_glass_head,硝子沼兜,SR,head,set_glass,全職,10,0,0,0,12,0,7,area_drop;area_drop;area_drop;area_drop;area_drop,硝子沼（硝子沼の集落）; 割れた水面（硝子沼の集落）; 沼底の参道（硝子沼の集落）; 反射する森（硝子沼の集落）; 硝子花の群生地（硝子沼の集落）,area_drop,weighted; weighted; weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_dragonbone_head,竜骨兜,SR,head,set_dragonbone,全職,10,0,0,0,13,0,7,area_drop;area_drop;area_drop;area_drop,大骨市場跡（竜骨の峡谷）; 竜鳴きの崖（竜骨の峡谷）; 骨喰い鳥の巣（竜骨の峡谷）; 古竜の裂け目（竜骨の峡谷）,area_drop,weighted; weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_red_ash_head,赤灰兜,SR,head,set_red_ash,全職,10,0,0,0,14,0,7,area_drop;area_drop;area_drop;area_drop;area_drop,赤灰の外壁（赤灰の砦）; 焼けた兵舎（赤灰の砦）; 砦地下倉庫（赤灰の砦）; 炎の訓練場（赤灰の砦）; 赤灰の見張り台（赤灰の砦）,area_drop,weighted; weighted; weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_starfall_head,星落ち兜,SSR,head,set_starfall,全職,10,0,0,0,16,0,10,area_drop;area_drop;area_drop,星屑の実験室（星落ちの観測所）; 天文記録室（星落ちの観測所）; 落星孔（星落ちの観測所）,area_drop,weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_deep_furnace_head,深層炉兜,SSR,head,set_deep_furnace,全職,10,0,0,0,17,0,10,area_drop;area_drop;area_drop;area_drop,炉心監視塔（深層炉前哨基地）; 機工整備場（深層炉前哨基地）; アーク残滓研究所（深層炉前哨基地）; 鉄熱の補給路（深層炉前哨基地）,area_drop,weighted; weighted; weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_iron_snow_head,鉄雪兜,SSR,head,set_iron_snow,全職,10,0,0,0,18,0,10,area_drop,赤灰の見張り台（赤灰の砦）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_black_lamp_head,黒灯兜,SSR,head,set_black_lamp,全職,10,0,0,0,16,0,10,area_drop,煤煙の抜け道（黒灯りの路地）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_valhalla_head,ヴァルハラ兜,UR,head,set_valhalla,全職,10,0,0,0,22,0,15,area_drop;area_drop;valhalla,ヴァルハラ外郭（空中要塞ヴァルハラ）; 深層炉心（空中要塞ヴァルハラ）; ヴァルハラ,area_drop;valhalla,weighted; weighted; —,NO,YES,NO,YES,YES,—
+arm_set_old_king_head,旧王兜,UR,head,set_old_king,全職,10,0,0,0,21,0,15,area_drop,破れた玉座前（灰冠の王都跡）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_old_road_legs,古道腿当て,R,legs,set_old_road,全職,10,0,0,0,6,0,5,area_drop;shop,石積みの橋（古道の宿場村）; 古道の宿場村,area_drop;shop,weighted; —,YES,YES,NO,NO,YES,—
+arm_set_starfield_legs,星原腿当て,R,legs,set_starfield,全職,10,0,0,0,6,0,5,shop;shop;shop;shop;shop;shop;shop;shop;shop;shop;shop,黒灯りの路地; 埋没水路; 竜骨の峡谷; 硝子沼の集落; 空鐘の町; 鉄雪の関所; 祈りの丘; 赤灰の砦; 沈黙の修道院; 星落ちの観測所; はじまりの星原,shop,—; —; —; —; —; —; —; —; —; —; —,YES,NO,NO,NO,YES,—
+arm_set_silver_legs,白銀腿当て,R,legs,set_silver,全職,10,0,0,0,8,0,5,area_drop;shop,崩落した作業場（白銀鉱山街）; 白銀鉱山街,area_drop;shop,weighted; —,YES,YES,NO,NO,YES,—
+arm_set_twilight_legs,薄明腿当て,R,legs,set_twilight,全職,10,0,0,0,7,0,5,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_rain_legs,雨音腿当て,R,legs,set_rain,全職,10,0,0,0,7,0,5,area_drop,泥濘の畑（雨音の廃村）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_mist_legs,霧守り腿当て,R,legs,set_mist,全職,10,0,0,0,8,0,5,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_moon_legs,月下腿当て,SR,legs,set_moon,全職,10,0,0,0,11,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_silence_legs,沈黙腿当て,SR,legs,set_silence,全職,10,0,0,0,11,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_ash_crown_legs,灰冠腿当て,SR,legs,set_ash_crown,全職,10,0,0,0,12,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_glass_legs,硝子沼腿当て,SR,legs,set_glass,全職,10,0,0,0,11,0,7,area_drop;area_drop,反射する森（硝子沼の集落）; 硝子花の群生地（硝子沼の集落）,area_drop,weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_dragonbone_legs,竜骨腿当て,SR,legs,set_dragonbone,全職,10,0,0,0,12,0,7,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_red_ash_legs,赤灰腿当て,SR,legs,set_red_ash,全職,10,0,0,0,13,0,7,area_drop;area_drop,炎の訓練場（赤灰の砦）; 赤灰の見張り台（赤灰の砦）,area_drop,weighted; weighted,NO,YES,NO,NO,YES,—
+arm_set_starfall_legs,星落ち腿当て,SSR,legs,set_starfall,全職,10,0,0,0,15,0,10,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_deep_furnace_legs,深層炉腿当て,SSR,legs,set_deep_furnace,全職,10,0,0,0,16,0,10,unobtainable,—,unobtainable,—,NO,NO,NO,NO,NO,no pool/shop/drop
+arm_set_iron_snow_legs,鉄雪腿当て,SSR,legs,set_iron_snow,全職,10,0,0,0,17,0,10,area_drop,炎の訓練場（赤灰の砦）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_black_lamp_legs,黒灯腿当て,SSR,legs,set_black_lamp,全職,10,0,0,0,15,0,10,area_drop,黒灯りの路地（黒灯りの路地）,area_drop,weighted,NO,YES,NO,NO,YES,—
+arm_set_valhalla_legs,ヴァルハラ腿当て,UR,legs,set_valhalla,全職,10,0,0,0,21,0,15,area_drop;valhalla,ヴァルハラ外郭（空中要塞ヴァルハラ）; ヴァルハラ,area_drop;valhalla,weighted; —,NO,YES,NO,YES,YES,—
+arm_set_old_king_legs,旧王腿当て,UR,legs,set_old_king,全職,10,0,0,0,20,0,15,area_drop,灰の大通り（灰冠の王都跡）,area_drop,weighted,NO,YES,NO,NO,YES,—

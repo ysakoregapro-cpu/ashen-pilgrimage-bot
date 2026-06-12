@@ -29,8 +29,19 @@ function main() {
     } catch { return 'parse_error'; }
   };
 
+  const outOfBattleUsable = consumables.filter((c) => {
+    if (!c.battle_usable || !c.battle_effect_json) return false;
+    try {
+      const t = (JSON.parse(c.battle_effect_json) as { type: string }).type;
+      return ['heal_hp', 'heal_mp', 'restore_mp', 'cure_poison', 'cure_status'].includes(t);
+    } catch { return false; }
+  });
+
+  const nonUsable = consumables.filter((c) => !outOfBattleUsable.includes(c));
+
   const rows = consumables.map((c) => [
     c.id, c.name, c.battle_usable ? 'battle' : '—', classify(c.battle_effect_json),
+    outOfBattleUsable.some((u) => u.id === c.id) ? 'YES' : 'NO',
   ]);
 
   const md = [
@@ -38,31 +49,34 @@ function main() {
     '',
     `Generated: ${new Date().toISOString()}`,
     '',
-    '## Current battle use',
-    '- `battleSystem.ts` → `useBattleItem()` — battle only',
+    '## Phase2 implementation status',
+    '- **`inv:use` 実装済み** — `src/index.ts` handler + `inventoryUseSystem.ts`',
+    '- **`itemDetailSystem.ts`** — `battle_usable` かつ consumable のみ `[使用]` ボタン（`inv:use:{inventoryId}`）',
+    '- **使用不可アイテム** — 使用ボタン非表示（護符・救難信号片・戦闘専用消耗品等）',
+    '',
+    '## Out-of-battle use rules (`inventoryUseSystem.ts`)',
+    '- HP回復: HP満タン時は消費しない（エラー表示）',
+    '- MP回復: MP満タン時は消費しない',
+    '- 解毒/状態異常解除: 毒/状態異常がない場合は消費しない',
+    '- 煙玉・蘇生等の戦闘専用効果: 町・探索中は使用不可',
+    '',
+    '## Battle use (unchanged)',
+    '- `battleSystem.ts` → `useBattleItem()` — 戦闘中のみ',
     '- Requires `items.battle_usable=1` and `battle_effect_json`',
-    '- Inventory UI: **no use button** (`itemDetailSystem.ts` — compare only)',
     '',
-    '## Out-of-battle use',
-    '- **Not implemented** for consumables from inventory',
-    '- Inn/shrine heal via `innSystem.ts`',
-    '- Facility status cure via `facilitySystem.ts`',
+    '## Out-of-battle usable consumables',
+    mdTable(['id', 'name', 'effect'], outOfBattleUsable.map((c) => [c.id, c.name, classify(c.battle_effect_json)])),
     '',
-    '## battle_usable items',
+    '## Non out-of-battle (no use button or blocked)',
+    mdTable(['id', 'name', 'reason'], nonUsable.map((c) => [
+      c.id, c.name, !c.battle_usable ? 'battle_usable=0' : classify(c.battle_effect_json),
+    ])),
+    '',
+    '## battle_usable items (all)',
     mdTable(['id', 'name', 'category', 'effect'], battleUsable.map((b) => [b.id, b.name, b.category, classify(b.battle_effect_json)])),
     '',
-    '## consumables',
-    mdTable(['id', 'name', 'battle', 'effect'], rows),
-    '',
-    '## Phase2 implementation proposal',
-    '- Button on item detail: `inv:use:{inventoryId}:{page}:{category}`',
-    '- Handler in `uxHandler.ts` / `index.ts`',
-    '- `useConsumableOutOfBattle(userId, inventoryId)` in new or inventorySystem',
-    '- DB change: **not required** (use existing battle_effect_json)',
-    '- componentSafety: inventoryId in custom_id avoids duplicate static ids',
-    '',
-    '## Difficulty',
-    '中 — battle path exists; need UI + non-battle apply + poison sync',
+    '## consumables summary',
+    mdTable(['id', 'name', 'battle', 'effect', 'out_of_battle'], rows),
   ].join('\n');
 
   writeReport('item-use-audit.md', md);

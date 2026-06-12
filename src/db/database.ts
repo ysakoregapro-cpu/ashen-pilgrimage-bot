@@ -6,6 +6,8 @@ import { seedDatabase } from './seed';
 import { runMigrations } from './migrations';
 import { ensureMonstersIsBossColumn } from './monsterSchema';
 import { ensurePhase2Seed } from './seedData/phase2Seed';
+import { ensurePhase2Jobs } from './seedData/ensurePhase2Jobs';
+import { ensurePhase2EquipmentRoutes } from './seedData/ensurePhase2EquipmentRoutes';
 import { ensureMasterDataSeed } from './seedData/masterDataSeed';
 import { ensureMaterialsSeed } from './seedData/materials';
 import { ensureTownsSeed } from './seedData/towns';
@@ -29,6 +31,8 @@ export function getDb(): Database.Database {
     ensureMaterialsSeed(db);
     ensureTownsSeed(db);
     ensurePhase2Seed(db);
+    ensurePhase2Jobs(db);
+    ensurePhase2EquipmentRoutes(db);
     ensureMasterDataSeed(db);
   }
   return db;

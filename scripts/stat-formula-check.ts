@@ -4,38 +4,13 @@ import { ensurePhase2Seed } from '../src/db/seedData/phase2Seed';
 import { ensureMaterialsSeed } from '../src/db/seedData/materials';
 import { baseMaxMpFromLevel, scaledJobMpMod } from '../src/systems/combatMp';
 import { writeReport, mdTable } from './audit/reportWriter';
+import { computeBaseStatsFromLevel, applyJobStatMultipliers } from '../src/db/seedData/jobMultiplierMaster';
 
 const BASIC_JOBS = ['剣士', '重騎士', '狩人', '魔術師', '祈祷師', '斥候', '機工師', '格闘士', '巡礼者'] as const;
 const LEVELS = [1, 20, 50, 70, 80, 100];
 
-const MAIN_JOB_MULTS: Record<string, Record<string, number>> = {
-  '剣士': { max_hp: 1.05, max_mp: 1.00, attack: 1.15, magic: 0.95, defense: 1.02, speed: 1.00 },
-  '重騎士': { max_hp: 1.20, max_mp: 0.95, attack: 1.05, magic: 0.90, defense: 1.20, speed: 0.88 },
-  '狩人': { max_hp: 1.00, max_mp: 1.00, attack: 1.10, magic: 0.95, defense: 0.98, speed: 1.08 },
-  '魔術師': { max_hp: 0.90, max_mp: 1.18, attack: 0.85, magic: 1.22, defense: 0.92, speed: 1.00 },
-  '祈祷師': { max_hp: 1.00, max_mp: 1.15, attack: 0.92, magic: 1.10, defense: 1.00, speed: 0.98 },
-  '斥候': { max_hp: 0.95, max_mp: 1.00, attack: 1.05, magic: 0.95, defense: 0.92, speed: 1.18 },
-  '機工師': { max_hp: 1.00, max_mp: 1.05, attack: 1.08, magic: 1.08, defense: 0.98, speed: 1.00 },
-  '格闘士': { max_hp: 1.08, max_mp: 0.95, attack: 1.18, magic: 0.85, defense: 0.98, speed: 1.05 },
-  '巡礼者': { max_hp: 1.00, max_mp: 1.00, attack: 1.00, magic: 1.00, defense: 1.00, speed: 1.00 },
-};
-
-const SUB_JOB_MULTS: Record<string, Record<string, number>> = {
-  '刃走り': { max_hp: 1.00, max_mp: 1.00, attack: 1.08, magic: 0.98, defense: 0.98, speed: 1.10 },
-  '灰術士': { max_hp: 0.96, max_mp: 1.06, attack: 0.95, magic: 1.10, defense: 0.96, speed: 1.00 },
-  '繋ぎ手': { max_hp: 1.00, max_mp: 1.00, attack: 1.00, magic: 1.00, defense: 1.00, speed: 1.00 },
-};
-
 function baseStats(level: number) {
-  return {
-    max_hp: 100 + (level - 1) * 15,
-    max_mp: baseMaxMpFromLevel(level),
-    attack: 10 + (level - 1) * 2,
-    magic: 10 + (level - 1) * 2,
-    defense: 8 + (level - 1) * 1,
-    spirit: 8 + (level - 1) * 1,
-    speed: 10 + (level - 1) * 1,
-  };
+  return computeBaseStatsFromLevel(level);
 }
 
 function currentJobMods(db: ReturnType<typeof getDb>, jobName: string) {
@@ -74,23 +49,9 @@ function calcCurrent(mainJob: string, subJob: string | null, level: number, db: 
 }
 
 function calcPhase2(mainJob: string, subJob: string | null, level: number) {
-  const b = baseStats(level);
-  const mm = MAIN_JOB_MULTS[mainJob] ?? MAIN_JOB_MULTS['巡礼者']!;
-  const sm = subJob ? (SUB_JOB_MULTS[subJob] ?? SUB_JOB_MULTS['繋ぎ手']!) : null;
-  const apply = (key: keyof typeof b, multKey: string) => {
-    let v = b[key] * (mm[multKey] ?? 1);
-    if (sm) v *= sm[multKey] ?? 1;
-    return Math.floor(v);
-  };
-  return {
-    max_hp: apply('max_hp', 'max_hp'),
-    max_mp: apply('max_mp', 'max_mp'),
-    attack: apply('attack', 'attack'),
-    magic: apply('magic', 'magic'),
-    defense: apply('defense', 'defense'),
-    spirit: b.spirit,
-    speed: apply('speed', 'speed'),
-  };
+  const b = computeBaseStatsFromLevel(level);
+  applyJobStatMultipliers(b, mainJob, subJob);
+  return b;
 }
 
 function main() {
@@ -106,8 +67,8 @@ function main() {
     '## Current formula (recalculatePlayerStats)',
     '- Base: HP 100+(Lv-1)*15, ATK/MAG 10+(Lv-1)*2, DEF/SPI/SPD 8+(Lv-1)*1',
     '- MP: baseMaxMpFromLevel + scaledJobMpMod(main) + floor(sub*0.4)',
-    '- Job: **flat additive** from jobs table',
-    '- Sub: 40% of sub job flat mods',
+    '- Job: **multiplier** via jobMultiplierMaster (Phase2 implemented)',
+    '- Sub: multiplier stacked on base',
     '- Equipment + set % applied after',
     '',
   ];
@@ -123,7 +84,7 @@ function main() {
     lines.push('');
   }
 
-  lines.push('## Phase2 simulation (GPT draft mults, equipment excluded)');
+  lines.push('## Phase2 implemented (jobMultiplierMaster, equipment excluded)');
   lines.push('Formula: floor(base × main × sub) — 巡礼者/繋ぎ手 example with 魔術師+灰術士');
   const p2rows: string[][] = [];
   for (const lv of LEVELS) {

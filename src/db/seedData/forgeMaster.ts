@@ -8,12 +8,17 @@ export const MAT_BLACK_LANTERN_CINDER = 'mat_black_lantern_cinder';
 /** カイの変質（Uni→Src）に必要 — ヴァルハラ周回 */
 export const SRC_FORGE_MATERIAL_ID = 'mat_star_pilgrim_echo';
 
+/** @deprecated legacy Uni mats — kept for existing players, not used in Phase2 Kai Uni */
 export const UNI_FORGE_MATERIAL_IDS = [MAT_STARFALL_OBSIDIAN, MAT_BLACK_LANTERN_CINDER] as const;
+
+export { PHASE2_UNI_MATERIAL_DROPS } from './jobProgressionMaster';
 
 export const UNI_FORGE_DROP_RATE = 0.10;
 export const UNI_FORGE_PITY_AFTER = 12;
 
-export const SRC_FORGE_MATERIAL_DROP_RATE = 0.08;
+export const SRC_FORGE_MATERIAL_DROP_RATE = 0.10;
+export const SRC_FORGE_GOLD_COST = 5000;
+export const SRC_FORGE_ECHO_QTY = 3;
 
 /** 再戦専用ボス（素材ボス） */
 export const REMATCH_MATERIAL_BOSSES = {

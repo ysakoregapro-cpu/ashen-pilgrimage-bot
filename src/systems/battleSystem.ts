@@ -3,7 +3,7 @@ import { getDifficultyModifiers } from './difficultySystem';
 import { calcBattleExp, calcBossExp } from './expSystem';
 import { SRC_FORGE_MATERIAL_ID, SRC_FORGE_MATERIAL_DROP_RATE } from '../db/seedData/awakeningMaster';
 import {
-  REMATCH_MATERIAL_BOSSES, UNI_FORGE_DROP_RATE, SRC_FARM_MONSTER_IDS,
+  REMATCH_MATERIAL_BOSSES, UNI_FORGE_DROP_RATE, SRC_FARM_MONSTER_IDS, PHASE2_UNI_MATERIAL_DROPS,
 } from '../db/seedData/forgeMaster';
 import { calcElementDamageMultiplier, applyElementToDamage, resolveAttackElement, getPlayerElementResistances, applyPlayerElementResist } from './elementSystem';
 import {
@@ -15,10 +15,12 @@ import type { StatusEffectKey } from '../db/seedData/skillEffectMaster';
 import { resolveSkillEffect } from '../db/seedData/skillEffectMaster';
 import { addExp, addGold, requirePlayer, recalculatePlayerStats } from './playerSystem';
 import { addItem } from './inventorySystem';
-import { applyDefeat } from './defeatSystem';
+import { applyDefeat, applyTrialDefeat } from './defeatSystem';
 import { incrementWeeklyProgress } from './weeklySystem';
 import { getUsableBattleSkills, isUsableBattleSkill, skillTypeLabel, scalingLabel, type SkillRow } from './skillSystem';
 import { grantBattleJobExp, getJobProgressText } from './jobLevelSystem';
+import { afterJobExpGranted } from './jobProgressionSystem';
+import { handleTrialVictory, isTrialBattleSession, parseTrialBaseJob } from './trialBattleSystem';
 import { roll, uuid, randomInt, weightedChoice } from '../utils/random';
 import {
   getAreaLootTier, rollBattleEquipmentRarity, resolveEquipSlot, pickEquipmentFromAreaPool,
@@ -33,6 +35,7 @@ import {
   scaleMonsterForBattle, calcPhysicalDamage, calcEnemyDamageToPlayer,
   getThreatLabel, type ScaledMonster,
 } from './combatMath';
+import { getBattleRewardMultipliers } from './enemyBalanceV2';
 import {
   buildEnemyStateFromMonsters,
   loadEnemyState,
@@ -90,6 +93,7 @@ type SessionRow = {
   enemy_hp: number; enemy_break: number; enemy_state_json?: string | null; status_json: string;
   is_boss: number; is_raid: number;
   is_event_battle: number; can_flee: number; status: BattleStatus;
+  trial_type?: string | null; trial_job?: string | null;
 };
 
 const ACTION_PRIORITY: Record<string, number> = { defend: 20, item: 10, attack: 0, skill: 0 };
@@ -107,7 +111,10 @@ export function createBattle(
   userId: string,
   monsterIdOrIds: string | string[],
   areaId: string | null,
-  opts?: { isBoss?: boolean; isRaid?: boolean; isEvent?: boolean; isRematch?: boolean },
+  opts?: {
+    isBoss?: boolean; isRaid?: boolean; isEvent?: boolean; isRematch?: boolean;
+    isTrial?: boolean; trialType?: string; trialJob?: string;
+  },
 ): string {
   const monsterIds = Array.isArray(monsterIdOrIds) ? monsterIdOrIds : [monsterIdOrIds];
   return createBattleInternal(userId, monsterIds, areaId, opts);
@@ -117,7 +124,10 @@ function createBattleInternal(
   userId: string,
   monsterIds: string[],
   areaId: string | null,
-  opts?: { isBoss?: boolean; isRaid?: boolean; isEvent?: boolean; isRematch?: boolean },
+  opts?: {
+    isBoss?: boolean; isRaid?: boolean; isEvent?: boolean; isRematch?: boolean;
+    isTrial?: boolean; trialType?: string; trialJob?: string;
+  },
 ): string {
   const player = requirePlayer(userId);
   recalculatePlayerStats(userId);
@@ -131,7 +141,10 @@ function createBattleInternal(
   const isRaid = opts?.isRaid ?? false;
   const isEvent = opts?.isEvent ?? false;
   const isRematch = opts?.isRematch ?? false;
-  const canFlee = (!isBoss && !isRaid && !isEvent) ? 1 : 0;
+  const isTrial = opts?.isTrial ?? false;
+  const trialType = opts?.trialType ?? null;
+  const trialJob = opts?.trialJob ?? null;
+  const canFlee = (!isBoss && !isRaid && !isEvent && !isTrial) ? 1 : 0;
   const tutorialBattle = monsterId === 'mon_star_slime' && countCompletedBattles(userId) === 0;
   const areaRank = areaId ? getAreaRank(areaId) : 1;
   const enemyState = buildEnemyStateFromMonsters(monsterIds, areaId, {
@@ -163,11 +176,11 @@ function createBattleInternal(
   };
 
   getDb().prepare(`
-    INSERT INTO battle_sessions (id, user_id, area_id, monster_id, player_hp, player_mp, enemy_hp, enemy_break, enemy_state_json, status_json, is_boss, is_raid, is_event_battle, can_flee, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
+    INSERT INTO battle_sessions (id, user_id, area_id, monster_id, player_hp, player_mp, enemy_hp, enemy_break, enemy_state_json, status_json, is_boss, is_raid, is_event_battle, can_flee, trial_type, trial_job, status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
   `).run(id, userId, areaId, legacy.monster_id, p.hp, p.mp, legacy.enemy_hp, legacy.enemy_break,
     serializeEnemyState(enemyState), JSON.stringify(state),
-    isBoss ? 1 : 0, isRaid ? 1 : 0, isEvent ? 1 : 0, canFlee, nowIso(), nowIso());
+    isBoss ? 1 : 0, isRaid ? 1 : 0, isEvent ? 1 : 0, canFlee, trialType, trialJob, nowIso(), nowIso());
   return id;
 }
 
@@ -1014,19 +1027,41 @@ function resolveVictory(
   syncBattleResourcesToPlayer(userId, pHp, pMp);
   syncBattleStatusToPlayer(userId, state);
   endBattle(sessionId, 'victory');
+
+  if (isTrialBattleSession(session)) {
+    const baseJob = parseTrialBaseJob(session);
+    const trialMsg = baseJob ? handleTrialVictory(userId, baseJob) : '試練に勝利した。';
+    pushLog(state, 'info', '勝利。');
+    return {
+      done: true,
+      status: 'victory' as BattleStatus,
+      message: `🔵 現身の試練に勝利した。\n\n${trialMsg}`,
+      sessionId,
+      isRematch: false,
+    };
+  }
+
   const player = requirePlayer(userId);
   const scale = getCombatScale(state, monster);
-  const tierExpMult = scale.threatTier === 'rare' ? 1.85 : scale.threatTier === 'elite' ? 1.9 : scale.threatTier === 'tough' ? 1.35 : 1;
-  const tierGoldMult = scale.threatTier === 'rare' ? 1.75 : scale.threatTier === 'elite' ? 1.85 : scale.threatTier === 'tough' ? 1.3 : 1;
-  const rematchMult = state.isRematch ? 0.55 : 1;
-  let exp = calcBattleExp(Math.floor(monster.exp_reward * tierExpMult * rematchMult * rewardMult), player.level, monster.level);
+  const rewardMults = getBattleRewardMultipliers({
+    threatTier: scale.threatTier,
+    areaTag: monster.area_tag ?? 'starfield',
+    isBoss: session.is_boss === 1,
+    isRematch: !!state.isRematch,
+    isRaid: session.is_raid === 1,
+    partyRewardMult: es.rewardMult ?? 1,
+  });
+  let exp = calcBattleExp(Math.floor(monster.exp_reward * rewardMults.expMult), player.level, monster.level);
   if (session.is_boss) {
     const first = state.isRematch ? false : wasFirstKill;
-    exp = calcBossExp(calcBattleExp(Math.floor(monster.exp_reward * tierExpMult * rematchMult * rewardMult), player.level, monster.level), first);
+    exp = calcBossExp(calcBattleExp(Math.floor(monster.exp_reward * rewardMults.expMult), player.level, monster.level), first);
   }
-  const gold = Math.floor(monster.gold_reward * tierGoldMult * 1.2 * rematchMult * rewardMult);
+  const gold = Math.floor(monster.gold_reward * rewardMults.goldMult);
   const levelResult = addExp(userId, exp);
   const jobResults = grantBattleJobExp(userId, exp);
+  for (const jr of jobResults) {
+    afterJobExpGranted(userId, jr.jobName);
+  }
   addGold(userId, gold);
   // Pending rewards are confirmed on town return; battle victory keeps them pending until then
   const dropMsgs: string[] = [];
@@ -1071,6 +1106,13 @@ function resolveVictory(
       if (roll(UNI_FORGE_DROP_RATE)) {
         addItem(userId, matId, 1, { pending: true });
         dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(matId) as { name: string }).name);
+      }
+    }
+    for (const drop of PHASE2_UNI_MATERIAL_DROPS) {
+      if (drop.monsterId !== session.monster_id) continue;
+      if (roll(drop.rate)) {
+        addItem(userId, drop.matId, 1, { pending: true });
+        dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(drop.matId) as { name: string }).name);
       }
     }
   } else {
@@ -1156,7 +1198,10 @@ function resolveDefeat(
   syncBattleResourcesToPlayer(userId, pHp, pMp);
   syncBattleStatusToPlayer(userId, state);
   endBattle(sessionId, 'defeat');
-  return { done: true, status: 'defeat' as BattleStatus, message: applyDefeat(userId, session.is_boss === 1, session.area_id), sessionId };
+  const defeatMsg = isTrialBattleSession(session)
+    ? applyTrialDefeat(userId)
+    : applyDefeat(userId, session.is_boss === 1, session.area_id);
+  return { done: true, status: 'defeat' as BattleStatus, message: defeatMsg, sessionId };
 }
 
 function persistBattle(

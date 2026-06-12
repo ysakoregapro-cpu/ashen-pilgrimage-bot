@@ -1,4 +1,18 @@
 import { MONSTER_TO_STORY_BOSS } from '../db/seedData/storyData';
+import {
+  applyV2StatScalingFull,
+  DEFENSE_MITIGATION_COEFF,
+  ENEMY_HP_DAMAGE_WEIGHT,
+  ENEMY_HIT_PCT_V2,
+  ENEMY_STAT_DAMAGE_WEIGHT,
+} from './enemyBalanceV2';
+
+export {
+  DEFENSE_MITIGATION_COEFF,
+  ENEMY_HP_DAMAGE_WEIGHT,
+  ENEMY_HIT_PCT_V2,
+  ENEMY_STAT_DAMAGE_WEIGHT,
+} from './enemyBalanceV2';
 
 export type ThreatTier = 'normal' | 'tough' | 'rare' | 'elite' | 'boss';
 
@@ -39,6 +53,7 @@ const TIER_MULT: Record<ThreatTier, { atk: number; hp: number }> = {
   boss: { atk: 1.35, hp: 1.85 },
 };
 
+/** @deprecated Phase2 uses ENEMY_HIT_PCT_V2 via calcEnemyDamageToPlayer */
 const ENEMY_HIT_PCT: Record<ThreatTier, { min: number; max: number }> = {
   normal: { min: 0.04, max: 0.07 },
   tough: { min: 0.06, max: 0.10 },
@@ -70,7 +85,7 @@ export function isRandomExploreBoss(monsterId: string): boolean {
 }
 
 export function scaleMonsterForBattle(monster: {
-  id: string; area_tag: string; hp: number; attack: number; magic: number;
+  id: string; area_tag: string; level?: number; hp: number; attack: number; magic: number;
   defense: number; spirit: number; speed: number; is_boss?: number;
 }, opts?: { forceBoss?: boolean; isStoryBoss?: boolean }): ScaledMonster {
   const area = AREA_MULT[monster.area_tag] ?? { atk: 1.3, hp: 1.25, mag: 1.25, def: 1.1 };
@@ -78,16 +93,22 @@ export function scaleMonsterForBattle(monster: {
     forceBoss: opts?.forceBoss,
     isStoryBoss: opts?.isStoryBoss ?? monster.is_boss === 1,
   });
-  const tier = TIER_MULT[threat];
-  return {
-    hp: Math.floor(monster.hp * area.hp * tier.hp),
-    attack: Math.floor(monster.attack * area.atk * tier.atk),
-    magic: Math.floor(monster.magic * area.mag * tier.atk),
-    defense: Math.floor(monster.defense * area.def * (threat === 'elite' ? 1.1 : 1)),
-    spirit: Math.floor(monster.spirit * area.def),
-    speed: monster.speed,
-    threatTier: threat,
-  };
+  const level = monster.level ?? 1;
+  const scaled = applyV2StatScalingFull(
+    {
+      hp: monster.hp,
+      attack: monster.attack,
+      magic: monster.magic,
+      defense: monster.defense,
+      spirit: monster.spirit,
+      speed: monster.speed,
+    },
+    level,
+    threat,
+    monster.area_tag,
+    area,
+  );
+  return { ...scaled, threatTier: threat };
 }
 
 /** Ratio-based physical/magic damage — defense reduces but never nullifies */
@@ -98,7 +119,7 @@ export function calcPhysicalDamage(
   variance = 0.12,
 ): number {
   if (attack <= 0) return 1;
-  const mitigated = attack * multiplier * (100 / (100 + defense * 0.52));
+  const mitigated = attack * multiplier * (100 / (100 + defense * DEFENSE_MITIGATION_COEFF));
   const varMult = 1 - variance + Math.random() * variance * 2;
   return Math.max(1, Math.floor(mitigated * varMult));
 }
@@ -113,14 +134,14 @@ export function calcEnemyDamageToPlayer(opts: {
   heavy?: boolean;
 }): number {
   const mult = opts.multiplier ?? 1;
-  const pct = ENEMY_HIT_PCT[opts.threatTier];
+  const pct = ENEMY_HIT_PCT_V2[opts.threatTier];
   const heavyMult = opts.heavy ? 1.45 : 1;
   const hpRoll = pct.min + Math.random() * (pct.max - pct.min);
   const hpBased = Math.floor(opts.playerMaxHp * hpRoll * heavyMult * opts.takenMult);
   const statBased = Math.floor(
     calcPhysicalDamage(opts.attack, opts.playerDefense, mult * heavyMult) * opts.takenMult,
   );
-  return Math.max(1, Math.floor(hpBased * 0.45 + statBased * 0.55));
+  return Math.max(1, Math.floor(hpBased * ENEMY_HP_DAMAGE_WEIGHT + statBased * ENEMY_STAT_DAMAGE_WEIGHT));
 }
 
 export function calcPlayerDamageToEnemy(

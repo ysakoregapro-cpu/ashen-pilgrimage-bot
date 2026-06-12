@@ -27,6 +27,7 @@ import {
   AWAKENING_MAX_HINT, KAI_UNI_MATERIAL_HINT, isMaxAwakening,
 } from '../db/seedData/awakeningMaster';
 import { isJobStarterWeapon } from '../db/seedData/jobStarterWeapons';
+import { isInventoryItemUsableOutOfBattle } from './inventoryUseSystem';
 import { ButtonBuilder, ButtonStyle, ActionRowBuilder, type MessageActionRowComponentBuilder } from 'discord.js';
 
 export type DetailContext = 'inventory' | 'shop_buy' | 'shop_sell' | 'market' | 'upgrade' | 'equip' | 'skill' | 'general';
@@ -63,9 +64,38 @@ function townForAreaHint(detail: string): string | null {
   return area?.town ?? null;
 }
 
+export function buildAcquisitionHintLines(itemId: string, userId?: string): string[] {
+  const sources = parseAcquisition(itemId);
+  if (!sources.length) return [];
+  const uid = userId ?? '';
+  const lines: string[] = [];
+  for (const s of sources) {
+    if (s.detail?.includes('UNKNOWN')) continue;
+    if (uid) {
+      const hint = getItemAcquisitionHint(uid, itemId);
+      if (hint && hint !== '探索・店・ボスなど各所') {
+        return hint.split('\n').slice(0, 5);
+      }
+    }
+    const labels: Record<string, string> = {
+      shop: '店', drop_monster: '敵', drop_area: '探索', boss_reward: 'ボス',
+      raid_reward: 'レイド', story_reward: 'ストーリー', craft: 'カイの昇華',
+      upgrade_material: '強化', start: '初期', rematch: '再戦',
+    };
+    lines.push(`・${labels[s.type] ?? s.type}：${s.detail}`);
+  }
+  return [...new Set(lines)].slice(0, 5);
+}
+
+export function formatAcquisitionSourceHint(itemId: string, userId?: string): string {
+  const lines = buildAcquisitionHintLines(itemId, userId);
+  if (!lines.length) return '入手先：現在調査中';
+  return '入手先：\n' + lines.join('\n');
+}
+
 export function getItemAcquisitionHint(userId: string, itemId: string): string {
   const sources = parseAcquisition(itemId);
-  if (!sources.length) return '探索・店・ボスなど各所';
+  if (!sources.length) return '現在調査中';
   const unlocked = new Set(getUnlockedTowns(userId));
   const lines: string[] = [];
 
@@ -632,6 +662,7 @@ export function buildItemDetailView(userId: string, opts: {
   const embed = baseEmbed('品の詳細', body);
   const components: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [];
   let slot = opts.slot;
+  const detailCtx = opts.context ?? 'inventory';
 
   if (opts.inventoryId != null) {
     const invRow = getDb().prepare(`
@@ -645,10 +676,17 @@ export function buildItemDetailView(userId: string, opts: {
         new ButtonBuilder().setCustomId(`detail:compare:${opts.inventoryId}`).setLabel('装備比較').setStyle(ButtonStyle.Primary),
       ));
     }
+    if (detailCtx === 'inventory' && invRow?.category === 'consumable' && isInventoryItemUsableOutOfBattle(userId, opts.inventoryId)) {
+      components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`inv:use:${opts.inventoryId}:0:consumable`)
+          .setLabel('使用する')
+          .setStyle(ButtonStyle.Success),
+      ));
+    }
     if (!slot && invRow?.slot) slot = invRow.slot;
   }
 
-  const detailCtx = opts.context ?? 'inventory';
   const detailContextMap: Record<DetailContext, NextActionExtra['detailContext']> = {
     inventory: 'inventory',
     general: 'inventory',

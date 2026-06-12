@@ -1,0 +1,4 @@
+path,condition,ui,reachable,notes
+Kai (kaiSrcTransform),Uni + mat_star_pilgrim_echo×1,facilitySystem 鍛冶 kai_src,YES,player-facing
+manifest (manifestSrcWeapon),per-weapon gold + src_core mats,/upgrade manifest,YES (SR filter bug?),legacy per-weapon mats
+Phase2 GPT plan,Uni + 星巡の残響×3 + 5000G,not implemented,N/A,align with Kai

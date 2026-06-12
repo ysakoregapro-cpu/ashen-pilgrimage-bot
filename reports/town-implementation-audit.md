@@ -1,6 +1,6 @@
 # Town Implementation Audit
 
-Generated: 2026-06-12T20:07:03.945Z
+Generated: 2026-06-12T21:30:58.890Z
 
 | Lv | 街 | 移動 | 探索 | 敵 | loot | shop | facility | 状態 | 必要性 | コメント |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

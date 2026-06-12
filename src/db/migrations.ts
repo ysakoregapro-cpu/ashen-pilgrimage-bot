@@ -168,6 +168,28 @@ export function runMigrations(db: Database.Database): void {
   addColumn(db, 'battle_sessions', 'can_flee', 'INTEGER DEFAULT 1');
   addColumn(db, 'battle_sessions', 'is_event_battle', 'INTEGER DEFAULT 0');
   addColumn(db, 'battle_sessions', 'enemy_state_json', 'TEXT');
+  addColumn(db, 'battle_sessions', 'trial_type', 'TEXT');
+  addColumn(db, 'battle_sessions', 'trial_job', 'TEXT');
+  addColumn(db, 'battle_sessions', 'trial_payload_json', 'TEXT');
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS player_sub_job_unlocks (
+      user_id TEXT NOT NULL,
+      sub_job TEXT NOT NULL,
+      unlocked_at TEXT NOT NULL,
+      unlock_source TEXT,
+      PRIMARY KEY (user_id, sub_job)
+    );
+    CREATE TABLE IF NOT EXISTS player_advanced_job_unlocks (
+      user_id TEXT NOT NULL,
+      advanced_job TEXT NOT NULL,
+      base_job TEXT NOT NULL,
+      unlocked_at TEXT,
+      trial_cleared_at TEXT,
+      unlock_source TEXT,
+      PRIMARY KEY (user_id, advanced_job)
+    );
+  `);
 
   addColumn(db, 'equipment', 'passive_skill_id', 'TEXT');
   addColumn(db, 'equipment', 'src_skill_id', 'TEXT');

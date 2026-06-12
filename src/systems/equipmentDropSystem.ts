@@ -5,11 +5,12 @@ import { getDb } from '../db/database';
 import { weightedChoice } from '../utils/random';
 
 export const EQUIP_SLOT_WEIGHTS: Record<string, number> = {
-  weapon: 35,
-  head: 15,
-  body: 20,
-  legs: 15,
-  feet: 15,
+  weapon: 30,
+  head: 14,
+  body: 18,
+  arms: 12,
+  legs: 13,
+  feet: 13,
 };
 
 export type LootTier = 'early' | 'mid' | 'late' | 'valhalla';
@@ -99,7 +100,7 @@ export function getAreaLootTier(areaMinLv: number, townId: string): LootTier {
 
 function normalizeSlot(slot: string): string {
   if (slot === 'weapon') return 'weapon';
-  if (['head', 'body', 'legs', 'feet'].includes(slot)) return slot;
+  if (['head', 'body', 'arms', 'legs', 'feet'].includes(slot)) return slot;
   return 'weapon';
 }
 
@@ -108,16 +109,34 @@ export function pickEquipmentFromAreaPool(
   rarity: string,
   equipSlot: string,
 ): string | null {
-  const candidates: Array<{ item_id: string; weight: number }> = [];
-  for (const p of pool) {
-    const row = getDb().prepare(`
-      SELECT i.rarity, e.slot FROM items i
-      JOIN equipment e ON i.id = e.item_id
-      WHERE i.id = ? AND i.category = 'equipment'
-    `).get(p.item_id) as { rarity: string; slot: string } | undefined;
-    if (!row || row.rarity !== rarity) continue;
-    if (normalizeSlot(row.slot) !== equipSlot) continue;
-    candidates.push(p);
+  const buildCandidates = (slot: string) => {
+    const candidates: Array<{ item_id: string; weight: number }> = [];
+    for (const p of pool) {
+      const row = getDb().prepare(`
+        SELECT i.rarity, e.slot FROM items i
+        JOIN equipment e ON i.id = e.item_id
+        WHERE i.id = ? AND i.category = 'equipment'
+      `).get(p.item_id) as { rarity: string; slot: string } | undefined;
+      if (!row || row.rarity !== rarity) continue;
+      if (normalizeSlot(row.slot) !== slot) continue;
+      candidates.push(p);
+    }
+    return candidates;
+  };
+
+  let candidates = buildCandidates(equipSlot);
+  if (!candidates.length) {
+    const any: Array<{ item_id: string; weight: number }> = [];
+    for (const p of pool) {
+      const row = getDb().prepare(`
+        SELECT i.rarity, e.slot FROM items i
+        JOIN equipment e ON i.id = e.item_id
+        WHERE i.id = ? AND i.category = 'equipment'
+      `).get(p.item_id) as { rarity: string; slot: string } | undefined;
+      if (!row || row.rarity !== rarity) continue;
+      any.push(p);
+    }
+    candidates = any;
   }
   if (!candidates.length) return null;
   return weightedChoice(candidates).item_id;
