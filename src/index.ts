@@ -32,6 +32,8 @@ import { nextActionButtons, errorRecoveryPayload, type UpgradeActionKind } from 
 import type { UiPayload } from './utils/townUi';
 import { townHubEmbed } from './utils/townUi';
 import { selectMenu } from './utils/embeds';
+import { sanitizeComponents } from './utils/componentSafety';
+import { prependConfirmNavigation } from './utils/navigationComponents';
 
 import { handleJobSelect } from './commands/job';
 
@@ -224,7 +226,10 @@ async function sendSelectResultLog(
   if (!interaction.deferred && !interaction.replied) {
     await interaction.deferUpdate();
   }
-  await channel.send({ embeds: payload.embeds, components: payload.components });
+  await channel.send({
+    embeds: payload.embeds,
+    components: sanitizeComponents(payload.components ?? [], 'select-result'),
+  });
 }
 
 
@@ -324,21 +329,22 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
     const slot = action as import('./types').EquipmentSlot;
     const { isEquipNoneValue } = await import('./systems/equipmentLabelSystem');
     if (isEquipNoneValue(value)) {
-      const { handleUnequip } = await import('./commands/equip');
-      const msg = handleUnequip(userId, slot);
-      await sendSelectResultLog(interaction, {
-        embeds: [successEmbed(msg)],
-        components: nextActionButtons('equip_done', { slot }),
-      });
+      const { buildEquipNoneConfirmPayload } = await import('./systems/equipConfirmSystem');
+      await sendSelectResultLog(interaction, buildEquipNoneConfirmPayload(userId, slot, 'slash'));
       return;
     }
 
     const invId = Number(value);
     const { buildEquipmentDetailView } = await import('./systems/itemDetailSystem');
-    const payload = buildEquipmentDetailView(userId, invId, { compare: true, context: 'equip' });
-    payload.components.unshift(new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`equip:confirm:${invId}`).setLabel('装備する').setStyle(ButtonStyle.Success),
-    ));
+    const slotRow = getDb().prepare(`
+      SELECT e.slot FROM player_inventory pi
+      JOIN equipment e ON pi.item_id = e.item_id
+      WHERE pi.id = ? AND pi.user_id = ?
+    `).get(invId, userId) as { slot: string } | undefined;
+    const equipSlot = (slotRow?.slot ?? slot) as import('./types').EquipmentSlot;
+    const { buildEquipChangeConfirmRows } = await import('./systems/equipConfirmSystem');
+    const payload = buildEquipmentDetailView(userId, invId, { compare: true, context: 'equip', slot: equipSlot });
+    payload.components = prependConfirmNavigation(payload.components, buildEquipChangeConfirmRows(invId, equipSlot, 'slash'));
     await sendSelectResultLog(interaction, payload);
     return;
 
@@ -427,6 +433,8 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
     if (action === 'dismantle') {
       const invId = Number(value);
       const { buildItemDetailView, getActionWarnings, canDismantleItem } = await import('./systems/itemDetailSystem');
+      const { resolveUpgradeFacilityId } = await import('./systems/upgradeConfirmSystem');
+      const { buildBackButton, buildTownButton } = await import('./utils/navigationComponents');
       const dis = canDismantleItem(userId, invId);
       const warnings = [
         ...getActionWarnings(userId, invId, 'dismantle'),
@@ -434,25 +442,24 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
         ...(dis.warning ? [dis.warning] : []),
       ];
       const payload = buildItemDetailView(userId, { inventoryId: invId, context: 'upgrade', warnings });
-      payload.components.unshift(new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId(`upgrade:confirm_dismantle:${invId}`).setLabel('分解する').setStyle(ButtonStyle.Danger).setDisabled(!dis.ok),
-      ));
+      const fac = resolveUpgradeFacilityId(userId);
+      payload.components = prependConfirmNavigation(payload.components, [
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setCustomId(`upgrade:confirm_dismantle:${invId}`).setLabel('分解する').setStyle(ButtonStyle.Danger).setDisabled(!dis.ok),
+        ),
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          buildBackButton('upgrade', `dismantle:${fac}`),
+          buildTownButton(),
+        ),
+      ]);
       await sendSelectResultLog(interaction, payload);
       return;
     }
 
-    const result = handleUpgradeAction(userId, action!, Number(value));
-    const { findFacilityInTown } = await import('./systems/facilitySystem');
-    const repairFac = findFacilityInTown(userId, 'repair_shop') ?? findFacilityInTown(userId, 'blacksmith');
-    await sendSelectResultLog(interaction, {
-      ...result,
-      components: nextActionButtons('upgrade_done', {
-        facilityId: repairFac,
-        inventoryId: Number(value),
-        upgradeAction: action as UpgradeActionKind,
-      }),
-    });
-
+    const invId = Number(value);
+    const { buildUpgradeConfirmPayload, resolveUpgradeFacilityId } = await import('./systems/upgradeConfirmSystem');
+    const payload = buildUpgradeConfirmPayload(userId, action as UpgradeActionKind, invId, resolveUpgradeFacilityId(userId));
+    await sendSelectResultLog(interaction, payload);
     return;
 
   }
@@ -534,9 +541,15 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
     }
     const stackable = itemRow?.category !== 'equipment';
     if (!stackable) {
-      const { buyShopItem } = await import('./systems/shopSystem');
-      const r = buyShopItem(userId, value, townId, 1);
-      await sendSelectResultLog(interaction, { embeds: [r.ok ? successEmbed(r.message) : errorEmbed(r.message)], components: nextActionButtons('facility') });
+      const { findFacilityInTown } = await import('./systems/facilitySystem');
+      const { buildShopBuyConfirmPayload } = await import('./systems/navHandlerSystem');
+      const shopFac = findFacilityInTown(userId, 'item_shop') ?? 'unknown';
+      const payload = buildShopBuyConfirmPayload(userId, value, shopFac);
+      if (!payload) {
+        await sendSelectResultLog(interaction, { embeds: [errorEmbed('品が見つかりません。')], components: nextActionButtons('facility') });
+        return;
+      }
+      await sendSelectResultLog(interaction, payload);
       return;
     }
     const opts = [
@@ -572,21 +585,13 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
       await sendSelectResultLog(interaction, { embeds: [errorEmbed('品が見つかりません。')], components: nextActionButtons('facility') });
       return;
     }
-    const player = requirePlayer(userId);
-    const total = entry.buy_price * qty;
-    await sendSelectResultLog(interaction, {
-      embeds: [baseEmbed('購入確認', [
-        `**${entry.name}** ×${qty}`,
-        `合計: ${total}G`,
-        `所持金: ${player.gold}G`,
-        '',
-        '購入しますか？',
-      ].join('\n'))],
-      components: [new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId(`shop:confirm_buy:${itemId}:${qty}`).setLabel('購入する').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId(`shop:buy_pick:${itemId}`).setLabel('個数を選び直す').setStyle(ButtonStyle.Secondary),
-      )],
-    });
+    const { buildShopBuyQtyConfirmPayload } = await import('./systems/navHandlerSystem');
+    const payload = buildShopBuyQtyConfirmPayload(userId, itemId, qty);
+    if (!payload) {
+      await sendSelectResultLog(interaction, { embeds: [errorEmbed('品が見つかりません。')], components: nextActionButtons('facility') });
+      return;
+    }
+    await sendSelectResultLog(interaction, payload);
     return;
   }
 
@@ -697,21 +702,28 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
         await sendSelectResultLog(interaction, { embeds: [errorEmbed('装備スロットが不明です。')], components: nextActionButtons('equip') });
         return;
       }
-      const { unequipWithDiff } = await import('./systems/prepSystem');
-      const r = unequipWithDiff(userId, slot);
-      await sendSelectResultLog(interaction, {
-        embeds: [successEmbed(r.message)],
-        components: nextActionButtons('equip_done', { slot }),
-      });
+      const { buildEquipNoneConfirmPayload } = await import('./systems/equipConfirmSystem');
+      await sendSelectResultLog(interaction, buildEquipNoneConfirmPayload(userId, slot, 'prep'));
       return;
     }
 
     const invId = Number(value);
     const { buildEquipmentDetailView } = await import('./systems/itemDetailSystem');
-    const payload = buildEquipmentDetailView(userId, invId, { compare: true, context: 'equip' });
-    payload.components.unshift(new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`prep:confirm_equip:${invId}`).setLabel('この装備に変更').setStyle(ButtonStyle.Success),
-    ));
+    const slotRow = getDb().prepare(`
+      SELECT e.slot FROM player_inventory pi
+      JOIN equipment e ON pi.item_id = e.item_id
+      WHERE pi.id = ? AND pi.user_id = ?
+    `).get(invId, userId) as { slot: string } | undefined;
+    const equipSlot = slotRow?.slot as import('./types').EquipmentSlot | undefined;
+    const { buildEquipChangeConfirmRows } = await import('./systems/equipConfirmSystem');
+    const payload = buildEquipmentDetailView(userId, invId, { compare: true, context: 'equip', slot: equipSlot });
+    if (equipSlot) {
+      payload.components = prependConfirmNavigation(payload.components, buildEquipChangeConfirmRows(invId, equipSlot, 'prep'));
+    } else {
+      payload.components.unshift(new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId(`prep:confirm_equip:${invId}`).setLabel('この装備に変更').setStyle(ButtonStyle.Success),
+      ));
+    }
     await sendSelectResultLog(interaction, payload);
     return;
   }
@@ -1102,6 +1114,21 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
+  if (parts[0] === 'equip' && parts[1] === 'confirm_none') {
+    const slot = parts[2] as import('./types').EquipmentSlot;
+    const { handleUnequip } = await import('./commands/equip');
+    await disableOldComponents(interaction.message);
+    const channel = getSendableChannel(interaction.channel);
+    if (!channel) return;
+    await interaction.deferUpdate();
+    const msg = handleUnequip(userId, slot);
+    await channel.send({
+      embeds: [successEmbed(msg)],
+      components: nextActionButtons('equip_done', { slot }),
+    });
+    return;
+  }
+
   if (parts[0] === 'equip' && parts[1] === 'confirm') {
     const invId = Number(parts[2]);
     const { assertInventoryOwned } = await import('./systems/itemDetailSystem');
@@ -1262,6 +1289,29 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
+  if (parts[0] === 'upgrade' && parts[1] === 'confirm' && parts.length >= 4) {
+    const action = parts[2] as UpgradeActionKind;
+    const invId = Number(parts[3]);
+    const { assertInventoryOwned } = await import('./systems/itemDetailSystem');
+    const owned = assertInventoryOwned(userId, invId);
+    await disableOldComponents(interaction.message);
+    const channel = getSendableChannel(interaction.channel);
+    if (!channel) return;
+    await interaction.deferUpdate();
+    if (!owned.ok) {
+      await channel.send({ embeds: [errorEmbed(owned.reason ?? '装備が見つかりません。')], components: nextActionButtons('upgrade') });
+      return;
+    }
+    const result = handleUpgradeAction(userId, action, invId);
+    const { findFacilityInTown } = await import('./systems/facilitySystem');
+    const repairFac = findFacilityInTown(userId, 'repair_shop') ?? findFacilityInTown(userId, 'blacksmith');
+    await channel.send({
+      ...result,
+      components: nextActionButtons('upgrade_done', { facilityId: repairFac, inventoryId: invId, upgradeAction: action }),
+    });
+    return;
+  }
+
   if (parts[0] === 'upgrade' && parts[1] === 'confirm_dismantle') {
     const invId = Number(parts[2]);
     const { canDismantleItem, assertInventoryOwned } = await import('./systems/itemDetailSystem');
@@ -1288,6 +1338,21 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
   if (parts[0] === 'job') {
     const { handleJobButton } = await import('./systems/jobUiSystem');
     await handleJobButton(interaction, parts);
+    return;
+  }
+
+  if (parts[0] === 'prep' && parts[1] === 'confirm_none') {
+    const slot = parts[2] as import('./types').EquipmentSlot;
+    const { unequipWithDiff } = await import('./systems/prepSystem');
+    await disableOldComponents(interaction.message);
+    const channel = getSendableChannel(interaction.channel);
+    if (!channel) return;
+    await interaction.deferUpdate();
+    const r = unequipWithDiff(userId, slot);
+    await channel.send({
+      embeds: [successEmbed(r.message)],
+      components: nextActionButtons('equip_done', { slot }),
+    });
     return;
   }
 

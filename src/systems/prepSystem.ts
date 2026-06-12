@@ -6,6 +6,7 @@ import {
   type OwnedEquipmentSelectRow,
 } from './equipmentLabelSystem';
 import { recalculatePlayerStats, requirePlayer } from './playerSystem';
+import { buildActiveSetBonusSection } from './setBonusDisplaySystem';
 import { SLOT_LABELS, type EquipmentSlot } from '../types';
 
 const PREP_SLOTS: EquipmentSlot[] = [
@@ -138,7 +139,7 @@ export function buildPrepEquipSelectOptions(userId: string, slot: EquipmentSlot)
 
 export function formatCurrentEquipment(userId: string): string {
   const equipped = getEquipped(userId) as Array<{ slot: string; name: string | null; upgrade_level: number; rarity: string | null }>;
-  return PREP_SLOTS.map((s) => {
+  const body = PREP_SLOTS.map((s) => {
     const eq = equipped.find((e) => e.slot === s);
     if (eq?.name) {
       const upg = eq.upgrade_level > 0 ? ` +${eq.upgrade_level}` : '';
@@ -146,6 +147,7 @@ export function formatCurrentEquipment(userId: string): string {
     }
     return `**${SLOT_LABELS[s]}**: —`;
   }).join('\n');
+  return [body, '', buildActiveSetBonusSection(userId)].join('\n');
 }
 
 export { PREP_SLOTS };

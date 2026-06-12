@@ -342,9 +342,9 @@ export function nextActionButtons(
     case 'explore_area':
       return [
         row(
-          btn(`flow:explore:${extra?.areaId ?? ''}`, '探索する', ButtonStyle.Success),
-          btn('town:explore', '別の場所', ButtonStyle.Secondary),
-          btn('town:home', '町へ戻る', ButtonStyle.Secondary),
+          btn(`flow:explore:${extra?.areaId ?? ''}`, '探索を開始する', ButtonStyle.Success),
+          btn('nav:back:explore:list', 'ひとつ戻る', ButtonStyle.Secondary),
+          btn('town:home', '街に戻る', ButtonStyle.Secondary),
         ),
       ];
 

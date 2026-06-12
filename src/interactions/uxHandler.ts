@@ -215,6 +215,17 @@ export async function handleUxButton(interaction: ButtonInteraction): Promise<bo
     return true;
   }
 
+  if (base.startsWith('nav:back:')) {
+    const { buildNavBackPayload } = await import('../systems/navHandlerSystem');
+    const payload = buildNavBackPayload(userId, base) ?? buildTownHub(userId);
+    if (isPanelButton(interaction.customId, userId)) {
+      await updateActionPanel(interaction, payload, userId);
+    } else {
+      await sendJourneyLog(interaction, payload);
+    }
+    return true;
+  }
+
   if (base === 'town:home') {
     const payload = buildTownHub(userId);
     if (isPanelButton(interaction.customId, userId)) {

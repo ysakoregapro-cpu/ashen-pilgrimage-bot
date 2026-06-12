@@ -3,6 +3,8 @@ import { recalculatePlayerStats, requirePlayer } from './playerSystem';
 import { checkEquipRequirements } from './prepSystem';
 import { nowIso, SLOT_LABELS, type EquipmentSlot } from '../types';
 
+import { buildActiveSetBonusSection } from './setBonusDisplaySystem';
+
 const EQUIPPABLE_SLOTS: EquipmentSlot[] = [
   'weapon', 'head', 'body', 'arms', 'legs', 'feet', 'accessory1', 'accessory2', 'sub',
 ];
@@ -82,5 +84,5 @@ export function formatEquipmentDisplay(userId: string): string {
       lines.push(`**${SLOT_LABELS[s]}**: —`);
     }
   }
-  return lines.join('\n');
+  return [...lines, '', buildActiveSetBonusSection(userId)].join('\n');
 }

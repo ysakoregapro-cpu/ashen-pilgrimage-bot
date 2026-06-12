@@ -1,0 +1,171 @@
+import {
+  buildEquipChangeSelectOptions,
+  mapInventoryRowToEquipmentSelect,
+} from './equipmentLabelSystem';
+import { getEquippableItems } from './equipmentSystem';
+import { buildPrepEquipSelectOptions } from './prepSystem';
+import { buildUpgradeSelectPayload } from './upgradeConfirmSystem';
+import { buildExploreList, buildTownHub } from './townActionSystem';
+import { getFacility } from './facilitySystem';
+import { detailOpenButton } from './itemDetailSystem';
+import { parseUpgradeBackPayload } from '../utils/navigationComponents';
+import type { UpgradeActionKind } from '../utils/nextActionButtons';
+import type { UiPayload } from '../utils/townUi';
+import { townHubEmbed } from '../utils/townUi';
+import { selectMenu } from '../utils/embeds';
+import { buildConfirmNavigationRows } from '../utils/navigationComponents';
+import { baseEmbed } from '../utils/embeds';
+import { getShopCatalog } from './shopSystem';
+import { getCurrentTown } from './townSystem';
+import { requirePlayer } from './playerSystem';
+import { calcMaxBuyable } from './shopSystem';
+import type { EquipmentSlot } from '../types';
+
+/** Parse `nav:back:{context}:{payload}` from full custom_id (session-stripped). */
+export function parseNavBackId(base: string): { context: string; payload: string } | null {
+  if (!base.startsWith('nav:back:')) return null;
+  const rest = base.slice('nav:back:'.length);
+  const sep = rest.indexOf(':');
+  if (sep < 0) return { context: rest, payload: '' };
+  return { context: rest.slice(0, sep), payload: rest.slice(sep + 1) };
+}
+
+export function buildNavBackPayload(userId: string, base: string): UiPayload | null {
+  const parsed = parseNavBackId(base);
+  if (!parsed) return null;
+
+  if (parsed.context === 'explore' && parsed.payload === 'list') {
+    return buildExploreList(userId);
+  }
+
+  if (parsed.context === 'upgrade') {
+    const up = parseUpgradeBackPayload(parsed.payload);
+    if (!up) return null;
+    return buildUpgradeSelectPayload(userId, up.action, up.facilityId);
+  }
+
+  if (parsed.context === 'equip') {
+    const slot = parsed.payload as EquipmentSlot;
+    const items = getEquippableItems(userId, slot) as Array<Record<string, unknown>>;
+    const rows = items.map((i) => mapInventoryRowToEquipmentSelect({
+      id: i.id as number,
+      name: i.name as string,
+      rarity: i.rarity as string,
+      upgrade_level: i.upgrade_level as number,
+      src_level: (i.src_level as number) ?? 0,
+      awakening_level: (i.awakening_level as number) ?? 0,
+      durability_state: (i.durability_state as string) ?? '良好',
+      is_equipped: (i.is_equipped as number) ?? 0,
+      slot,
+    }));
+    const options = buildEquipChangeSelectOptions(slot, rows);
+    return {
+      embeds: [baseEmbed('装備変更', `${slot}に装備するアイテムを選択`)],
+      components: [selectMenu(`equip:${slot}`, '装備を選択', options)],
+    };
+  }
+
+  if (parsed.context === 'prep') {
+    const slot = parsed.payload as EquipmentSlot;
+    const pickOpts = buildPrepEquipSelectOptions(userId, slot);
+    return {
+      embeds: [townHubEmbed('装備変更', `**${slot}** の装備候補`)],
+      components: [
+        selectMenu('prep:equip', '装備を選ぶ', pickOpts),
+        selectMenu('detail:inv', '詳細を見る', pickOpts.filter((o) => !o.value.startsWith('none'))),
+      ],
+    };
+  }
+
+  if (parsed.context === 'shop' && parsed.payload.startsWith('buy:')) {
+    const facId = parsed.payload.slice('buy:'.length);
+    const town = getCurrentTown(userId) as { id: string } | undefined;
+    const catalog = getShopCatalog(town?.id ?? 'start_starfield').slice(0, 25);
+    return {
+      embeds: [townHubEmbed(getFacility(facId)?.name ?? '店', '何を買いますか？')],
+      components: catalog.length ? [
+        selectMenu('shop:buy', '品を選ぶ', catalog.map((c) => ({
+          label: c.name, value: c.item_id, description: `${c.buy_price}G`,
+        }))),
+        selectMenu('detail:shop', '商品詳細', catalog.map((c) => ({
+          label: c.name, value: c.item_id, description: `${c.buy_price}G [${c.rarity}]`.slice(0, 100),
+        }))),
+        detailOpenButton('shop_buy'),
+      ] : [],
+    };
+  }
+
+  if (parsed.context === 'shop' && parsed.payload.startsWith('buy_qty:')) {
+    const itemId = parsed.payload.slice('buy_qty:'.length);
+    const town = getCurrentTown(userId) as { id: string } | undefined;
+    const townId = town?.id ?? 'start_starfield';
+    const entry = getShopCatalog(townId).find((c) => c.item_id === itemId);
+    if (!entry) return null;
+    const player = requirePlayer(userId);
+    const maxBuy = calcMaxBuyable(player.gold, entry.buy_price);
+    const opts = [
+      { label: '1個', value: '1' },
+      { label: '3個', value: '3' },
+      { label: '5個', value: '5' },
+      { label: '10個', value: '10' },
+      { label: '買えるだけ', value: String(maxBuy) },
+    ].filter((o) => Number(o.value) >= 1 && Number(o.value) <= maxBuy).slice(0, 25);
+    return {
+      embeds: [baseEmbed('購入数を選ぶ', [
+        `**${entry.name}**`,
+        `単価: ${entry.buy_price}G`,
+        `所持金: ${player.gold}G`,
+      ].join('\n'))],
+      components: [selectMenu(`shop:buy_qty:${itemId}`, '購入数', opts)],
+    };
+  }
+
+  return buildTownHub(userId);
+}
+
+export function buildShopBuyConfirmPayload(userId: string, itemId: string, facilityId: string): UiPayload | null {
+  const town = getCurrentTown(userId) as { id: string } | undefined;
+  const townId = town?.id ?? 'start_starfield';
+  const entry = getShopCatalog(townId).find((c) => c.item_id === itemId);
+  if (!entry) return null;
+  const player = requirePlayer(userId);
+  return {
+    embeds: [baseEmbed('購入確認', [
+      `**${entry.name}** ×1`,
+      `価格: ${entry.buy_price}G`,
+      `所持金: ${player.gold}G`,
+      '',
+      '購入しますか？',
+    ].join('\n'))],
+    components: buildConfirmNavigationRows({
+      confirmId: `shop:confirm_buy:${itemId}:1`,
+      confirmLabel: '購入する',
+      backContext: 'shop',
+      backPayload: `buy:${facilityId}`,
+    }),
+  };
+}
+
+export function buildShopBuyQtyConfirmPayload(userId: string, itemId: string, qty: number): UiPayload | null {
+  const town = getCurrentTown(userId) as { id: string } | undefined;
+  const townId = town?.id ?? 'start_starfield';
+  const entry = getShopCatalog(townId).find((c) => c.item_id === itemId);
+  if (!entry) return null;
+  const player = requirePlayer(userId);
+  const total = entry.buy_price * qty;
+  return {
+    embeds: [baseEmbed('購入確認', [
+      `**${entry.name}** ×${qty}`,
+      `合計: ${total}G`,
+      `所持金: ${player.gold}G`,
+      '',
+      '購入しますか？',
+    ].join('\n'))],
+    components: buildConfirmNavigationRows({
+      confirmId: `shop:confirm_buy:${itemId}:${qty}`,
+      confirmLabel: '購入する',
+      backContext: 'shop',
+      backPayload: `buy_qty:${itemId}`,
+    }),
+  };
+}

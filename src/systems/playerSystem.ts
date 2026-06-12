@@ -1,6 +1,7 @@
 import { getDb } from '../db/database';
 import type { Player, StatModifiers } from '../types';
 import { nowIso } from '../types';
+import { getActiveSetEffectLinesCompat } from './setBonusDisplaySystem';
 import { addItem } from './inventorySystem';
 import { equipItem } from './equipmentSystem';
 import { calcUpgradeStatBonuses, getPrimaryStatKey } from './enhanceSystem';
@@ -180,28 +181,7 @@ function applySetBonuses(setCounts: Record<string, number>): StatModifiers {
 }
 
 export function getActiveSetEffectLines(userId: string): string[] {
-  const db = getDb();
-  const equipped = db.prepare(`
-    SELECT e.series_id FROM player_equipment pe
-    JOIN player_inventory pi ON pe.inventory_id = pi.id
-    JOIN equipment e ON pi.item_id = e.item_id
-    WHERE pe.user_id = ? AND e.series_id IS NOT NULL
-  `).all(userId) as Array<{ series_id: string }>;
-  const setCounts: Record<string, number> = {};
-  for (const eq of equipped) setCounts[eq.series_id] = (setCounts[eq.series_id] ?? 0) + 1;
-
-  const lines: string[] = [];
-  for (const [setId, count] of Object.entries(setCounts)) {
-    const set = db.prepare('SELECT name FROM equipment_sets WHERE id = ?').get(setId) as { name: string } | undefined;
-    const bonuses = db.prepare(`
-      SELECT piece_count, effect_description FROM equipment_set_bonuses
-      WHERE set_id = ? AND piece_count <= ? ORDER BY piece_count
-    `).all(setId, count) as Array<{ piece_count: number; effect_description: string }>;
-    if (!bonuses.length) continue;
-    lines.push(`**${set?.name ?? setId}** (${count}部位)`);
-    for (const b of bonuses) lines.push(`  ${b.piece_count}部位: ${b.effect_description}`);
-  }
-  return lines;
+  return getActiveSetEffectLinesCompat(userId);
 }
 
 function collectLevelUpUnlockHints(userId: string, oldLevel: number, newLevel: number): string[] {
