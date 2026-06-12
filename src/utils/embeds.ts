@@ -88,6 +88,36 @@ export function battleEmbed(
   return embed;
 }
 
+export function battleEmbedMulti(
+  title: string,
+  playerHp: number,
+  playerMaxHp: number,
+  playerMp: number,
+  playerMaxMp: number,
+  enemies: Array<{ label: string; name: string; hp: number; max_hp: number; break: number; break_max: number; is_alive?: boolean }>,
+  log: string[],
+  extraNote?: string,
+): EmbedBuilder {
+  const logText = log.slice(-5).join('\n\n') || '—';
+  const embed = baseEmbed(title === '対象選択' || title === '技と術' || title === '所持品' ? title : '戦闘')
+    .setColor(COLORS.battle)
+    .addFields({
+      name: '🔵 あなた',
+      value: `HP ${hpBar(playerHp, playerMaxHp)}\nMP ${playerMp}/${playerMaxMp}`,
+      inline: false,
+    });
+  for (const e of enemies) {
+    if (e.is_alive === false) continue;
+    embed.addFields({
+      name: `🔴 ${e.label}: ${e.name}`,
+      value: `HP ${hpBar(e.hp, e.max_hp)}\n${breakBar(e.break, e.break_max)}`,
+      inline: true,
+    });
+  }
+  embed.addFields({ name: '戦いの流れ', value: extraNote ? `${extraNote}\n\n${logText}` : logText, inline: false });
+  return embed;
+}
+
 export function townMenuEmbed(
   townName: string,
   intro: string,

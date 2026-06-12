@@ -28,7 +28,7 @@ export async function handleBattleAction(
   userId: string,
   sessionId: string,
   action: string,
-  opts?: { skillId?: string; inventoryId?: number },
+  opts?: { skillId?: string; inventoryId?: number; targetInstanceId?: string },
 ) {
   return processBattleAction(userId, sessionId, action, opts);
 }

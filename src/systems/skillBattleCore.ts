@@ -2,6 +2,9 @@
  * Solo/coop共通のスキル戦闘計算。
  * battleSystem と coopBattleSystem から利用する。
  */
+
+/** AOE: 1体あたりダメージ倍率（同Lv単体火力の55〜75%目安） */
+export const AOE_DAMAGE_MULT = 0.68;
 import { roll } from '../utils/random';
 import { calcPhysicalDamage } from './combatMath';
 import { resolveSkillEffect } from '../db/seedData/skillEffectMaster';

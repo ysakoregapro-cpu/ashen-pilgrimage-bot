@@ -40,7 +40,7 @@ export function resolveSkillTargetType(s: BattleSkillDef): SkillTargetType {
   }
   if (['guard', 'support'].includes(s.skill_type) && s.power <= 0) return 'self';
   if (s.hits && s.hits >= 3 && ['magic', 'machine', 'physical'].includes(s.skill_type)) {
-    if (['bs_stardust_storm', 'bs_control_volley', 'bs_ash_fist_rampage', 'bs_twilight_combo'].includes(s.id)) {
+    if (['bs_stardust_storm', 'bs_control_volley', 'bs_ash_fist_rampage'].includes(s.id)) {
       return 'all_enemies';
     }
   }
@@ -184,7 +184,7 @@ export const ALL_JOB_SKILLS: BattleSkillDef[] = [
   { id: 'bs_sword_focus', name: '剣気集中', job: '剣士', desc: '剣に力を込める。', mp: 5, power: 0, skill_type: 'support', scaling_stat: 'attack', effect_type: 'atk_buff' },
   { id: 'bs_ash_thrust', name: '灰燼突き', job: '剣士', desc: '灰を纏った突き。', mp: 7, power: 1.15, skill_type: 'physical', scaling_stat: 'attack', break_power: 10 },
   { id: 'bs_counter_blade', name: '返し刃', job: '剣士', desc: '受けて返す。', mp: 6, power: 0, skill_type: 'guard', scaling_stat: 'defense', effect_type: 'guard', break_power: 15 },
-  { id: 'bs_twilight_combo', name: '黄昏連斬', job: '剣士', desc: '黄昏の連撃。', mp: 9, power: 0.55, skill_type: 'physical', scaling_stat: 'attack', hits: 3 },
+  { id: 'bs_twilight_combo', name: '黄昏連斬', job: '剣士', desc: '黄昏の連撃。', mp: 9, power: 0.55, skill_type: 'physical', scaling_stat: 'attack', hits: 3, target_type: 'single_enemy' },
   { id: 'bs_sword_pressure', name: '剣圧解放', job: '剣士', desc: '剣圧で敵を崩す。', mp: 10, power: 1.2, skill_type: 'break', scaling_stat: 'attack', break_power: 35 },
   { id: 'bs_star_sever', name: '星断ち', job: '剣士', desc: '星屑を断つ一撃。', mp: 12, power: 1.35, skill_type: 'physical', scaling_stat: 'attack', crit_bonus: 0.1 },
   { id: 'bs_twilight_sword_ultimate', name: '黄昏剣奥義', job: '剣士', desc: '剣士の奥義。', mp: 18, power: 1.65, skill_type: 'special', scaling_stat: 'attack', break_power: 40, crit_bonus: 0.15 },
@@ -268,7 +268,7 @@ export const ALL_JOB_SKILLS: BattleSkillDef[] = [
   { id: 'bs_arc_jam', name: 'アーク干渉', job: '機工師', desc: '干渉波を放つ。', mp: 9, power: 0.85, skill_type: 'debuff', scaling_stat: 'magic', effect_type: 'slow', target_type: 'single_enemy' },
   { id: 'bs_multi_aim', name: '多重照準', job: '機工師', desc: '複数照準。', mp: 8, power: 0, skill_type: 'support', scaling_stat: 'magic', effect_type: 'scan' },
   { id: 'bs_deep_analysis', name: '深層解析', job: '機工師', desc: '深層を解析。', mp: 7, power: 0, skill_type: 'support', scaling_stat: 'magic', effect_type: 'scan', break_power: 10 },
-  { id: 'bs_control_volley', name: '制御弾幕', job: '機工師', desc: '制御された弾幕。', mp: 12, power: 0.45, skill_type: 'machine', scaling_stat: 'magic', hits: 3, target_type: 'all_enemies' },
+  { id: 'bs_control_volley', name: '制御弾幕', job: '機工師', desc: '制御された弾幕。', mp: 12, power: 0.42, skill_type: 'machine', scaling_stat: 'magic', hits: 3, target_type: 'all_enemies' },
   { id: 'bs_creation_cannon_ultimate', name: '創造砲奥義', job: '機工師', desc: '機工師の奥義。', mp: 18, power: 1.7, skill_type: 'special', scaling_stat: 'magic', secondary_scaling_stat: 'attack', break_power: 35 },
 
   // --- 格闘士 ---
@@ -278,7 +278,7 @@ export const ALL_JOB_SKILLS: BattleSkillDef[] = [
   { id: 'bs_armor_break', name: '破甲拳', job: '格闘士', desc: '装甲を砕く。', mp: 7, power: 1.0, skill_type: 'break', scaling_stat: 'attack', break_power: 22 },
   { id: 'bs_ukemi', name: '受け身', job: '格闘士', desc: '受け身で身を守る。', mp: 4, power: 0, skill_type: 'guard', scaling_stat: 'speed', effect_type: 'guard' },
   { id: 'bs_dragon_bone_crush', name: '竜骨砕き', job: '格闘士', desc: '竜骨を砕く。', mp: 9, power: 1.15, skill_type: 'break', scaling_stat: 'attack', break_power: 28 },
-  { id: 'bs_ash_fist_rampage', name: '灰拳乱舞', job: '格闘士', desc: '灰の乱舞。', mp: 10, power: 0.5, skill_type: 'physical', scaling_stat: 'attack', hits: 4, target_type: 'all_enemies' },
+  { id: 'bs_ash_fist_rampage', name: '灰拳乱舞', job: '格闘士', desc: '灰の乱舞。', mp: 10, power: 0.32, skill_type: 'physical', scaling_stat: 'attack', hits: 4, target_type: 'all_enemies' },
   { id: 'bs_blood_stance', name: '血潮の構え', job: '格闘士', desc: '血潮を燃やす。', mp: 7, power: 0, skill_type: 'support', scaling_stat: 'attack', effect_type: 'atk_buff' },
   { id: 'bs_taboo_combo', name: '破戒連撃', job: '格闘士', desc: '破戒の連撃。', mp: 11, power: 0.6, skill_type: 'physical', scaling_stat: 'attack', hits: 3, break_power: 12 },
   { id: 'bs_iron_body', name: '剛体', job: '格闘士', desc: '体を鋼にする。', mp: 8, power: 0, skill_type: 'guard', scaling_stat: 'defense', effect_type: 'guard_strong' },

@@ -1,6 +1,7 @@
 import { getDb } from '../db/database';
 import { requirePlayer } from './playerSystem';
 import { createBattle, getActiveBattle } from './battleSystem';
+import { pickEncounterMonsters } from './multiEncounter';
 import { addItem } from './inventorySystem';
 import { incrementWeeklyProgress } from './weeklySystem';
 import { underlevelWarning } from './difficultySystem';
@@ -68,12 +69,16 @@ export function exploreArea(userId: string, areaId: string): {
   switch (event.type) {
     case 'battle': {
       const pool = JSON.parse(area.monster_pool_json) as Array<{ monster_id: string; weight: number }>;
-      const pick = weightedChoice(pool);
-      const threat = getMonsterThreatTier(pick.monster_id);
-      const battleId = createBattle(userId, pick.monster_id, areaId, { isBoss: threat === 'boss' });
-      const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(pick.monster_id) as { name: string };
-      const threatLine = getThreatLabel(threat, mon.name);
-      const lines = [`${statusPrefix}${prefix}${area.name}で${mon.name}に遭遇した。`];
+      const monsterIds = pickEncounterMonsters(pool, areaId);
+      const pick = monsterIds[0]!;
+      const threat = getMonsterThreatTier(pick);
+      const battleId = createBattle(userId, monsterIds, areaId, { isBoss: threat === 'boss' });
+      const names = monsterIds.map((id) => {
+        const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(id) as { name: string };
+        return mon.name;
+      });
+      const threatLine = getThreatLabel(threat, names[0] ?? '');
+      const lines = [`${statusPrefix}${prefix}${area.name}で${names.join('と')}に遭遇した。`];
       if (threatLine) lines.push(threatLine);
       if (levelDeficit >= 3) lines.push('⚠ 推奨Lvより低い — 敵の刃が鋭い。');
       return { type: 'battle', message: lines.join('\n'), battleId };
@@ -91,9 +96,9 @@ export function exploreArea(userId: string, areaId: string): {
       const pool = buildEffectiveRewardPool(area.town_id, areaId);
       if (levelDeficit >= 2 && roll(0.25 + levelDeficit * 0.05)) {
         const poolM = JSON.parse(area.monster_pool_json) as Array<{ monster_id: string; weight: number }>;
-        const pick = weightedChoice(poolM);
-        const battleId = createBattle(userId, pick.monster_id, areaId);
-        const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(pick.monster_id) as { name: string };
+        const monsterIds = pickEncounterMonsters(poolM, areaId, { forceSingle: true });
+        const battleId = createBattle(userId, monsterIds, areaId);
+        const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(monsterIds[0]!) as { name: string };
         return {
           type: 'battle',
           message: `${statusPrefix}${prefix}箱を開けようとしたが、${mon.name}が待ち構えていた！`,

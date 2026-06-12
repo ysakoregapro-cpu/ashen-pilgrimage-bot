@@ -167,6 +167,7 @@ export function runMigrations(db: Database.Database): void {
 
   addColumn(db, 'battle_sessions', 'can_flee', 'INTEGER DEFAULT 1');
   addColumn(db, 'battle_sessions', 'is_event_battle', 'INTEGER DEFAULT 0');
+  addColumn(db, 'battle_sessions', 'enemy_state_json', 'TEXT');
 
   addColumn(db, 'equipment', 'passive_skill_id', 'TEXT');
   addColumn(db, 'equipment', 'src_skill_id', 'TEXT');

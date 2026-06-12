@@ -5,6 +5,7 @@ import { ensureMaterialsSeed } from '../src/db/seedData/materials';
 import { calcInnCost, calcShrineCost } from '../src/systems/innSystem';
 import { createPlayer, getPlayer } from '../src/systems/playerSystem';
 import { RESCUE_HP_MULT, RAID_HP_MULT } from '../src/systems/coop/coopTypes';
+import { encounterRewardMult, totalAttackPowerMult } from '../src/systems/multiEncounter';
 
 const TEST_USER = 'economy-balance-check-user';
 const issues: string[] = [];
@@ -70,6 +71,16 @@ function main() {
     if (raidGold > 5000) issues.push(`レイド基本G ${raidGold} 高すぎ`);
     console.log(`   レイドHP倍率: x${RAID_HP_MULT[4]} / 救難HP倍率: x${RESCUE_HP_MULT[4]}`);
   }
+
+  const r2 = encounterRewardMult(2, false);
+  const r3 = encounterRewardMult(3, false);
+  const f2 = totalAttackPowerMult(2, 5);
+  const f3 = totalAttackPowerMult(3, 7);
+  console.log(`   複数戦報酬: 2体×${r2} / 3体×${r3}`);
+  console.log(`   複数戦火力: 2体×${f2.toFixed(2)} / 3体×${f3.toFixed(2)}`);
+  if (r3 > 2.2) issues.push(`3体報酬倍率 ${r3} > 2.2`);
+  if (f2 > 1.7) issues.push(`2体火力 ${f2.toFixed(2)} > 1.7`);
+  if (f3 > 2.0) issues.push(`3体火力 ${f3.toFixed(2)} > 2.0`);
 
   if (issues.length) {
     console.error('❌ economy-balance-check failed:');

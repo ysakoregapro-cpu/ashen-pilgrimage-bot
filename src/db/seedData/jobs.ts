@@ -8,14 +8,14 @@ const ADVANCED_JOBS = [
 const HIDDEN_JOBS = ['星剣士', '繋ぎ手', '黄昏騎士', '創造砲士', '解析者', '執行者', 'アーク技師', '調律師'];
 
 const JOB_MODS: Record<string, { hp: number; mp: number; atk: number; mag: number; def: number; spi: number; spd: number }> = {
-  剣士: { hp: 10, mp: 0, atk: 8, mag: 0, def: 4, spi: 0, spd: 2 },
-  重騎士: { hp: 20, mp: -5, atk: 4, mag: 0, def: 12, spi: 4, spd: -4 },
-  狩人: { hp: 5, mp: 5, atk: 6, mag: 2, def: 2, spi: 2, spd: 6 },
-  魔術師: { hp: -5, mp: 20, atk: 0, mag: 12, def: 0, spi: 6, spd: 2 },
-  祈祷師: { hp: 5, mp: 15, atk: 0, mag: 8, def: 4, spi: 10, spd: 0 },
-  斥候: { hp: 0, mp: 5, atk: 5, mag: 0, def: 2, spi: 2, spd: 10 },
-  機工師: { hp: 5, mp: 10, atk: 4, mag: 6, def: 4, spi: 4, spd: 0 },
-  格闘士: { hp: 8, mp: 0, atk: 10, mag: 0, def: 6, spi: 0, spd: 4 },
+  剣士: { hp: 10, mp: 5, atk: 8, mag: 0, def: 4, spi: 0, spd: 2 },
+  重騎士: { hp: 20, mp: -8, atk: 4, mag: 0, def: 12, spi: 4, spd: -4 },
+  狩人: { hp: 5, mp: 8, atk: 6, mag: 2, def: 2, spi: 2, spd: 6 },
+  魔術師: { hp: -5, mp: 22, atk: 0, mag: 12, def: 0, spi: 6, spd: 2 },
+  祈祷師: { hp: 5, mp: 18, atk: 0, mag: 8, def: 4, spi: 10, spd: 0 },
+  斥候: { hp: 0, mp: 3, atk: 5, mag: 0, def: 2, spi: 2, spd: 10 },
+  機工師: { hp: 5, mp: 8, atk: 4, mag: 6, def: 4, spi: 4, spd: 0 },
+  格闘士: { hp: 8, mp: -5, atk: 10, mag: 0, def: 6, spi: 0, spd: 4 },
   剣豪: { hp: 12, mp: 0, atk: 14, mag: 2, def: 6, spi: 2, spd: 4 },
   魔剣士: { hp: 8, mp: 8, atk: 10, mag: 8, def: 4, spi: 4, spd: 4 },
   城塞騎士: { hp: 25, mp: -5, atk: 6, mag: 0, def: 16, spi: 6, spd: -6 },

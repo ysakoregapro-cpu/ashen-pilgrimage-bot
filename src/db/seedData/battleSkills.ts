@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3';
 import { nowIso } from '../../types';
 import { ALL_JOB_SKILLS, JOB_SKILL_UNLOCKS, resolveSkillTargetType, type BattleSkillDef } from './jobSkillData';
+import { designSkillMpCost, designLegacySkillMpCost } from '../../systems/mpCostDesign';
 
 export type { BattleSkillDef } from './jobSkillData';
 
@@ -26,8 +27,9 @@ export function seedBattleSkills(db: Database.Database): void {
   `);
 
   for (const s of ALL_JOB_SKILLS) {
+    const mpCost = designSkillMpCost(s);
     ins.run(
-      s.id, s.name, `job_${s.job}`, s.desc, s.mp, s.power, s.skill_type, s.element ?? null,
+      s.id, s.name, `job_${s.job}`, s.desc, mpCost, s.power, s.skill_type, s.element ?? null,
       s.break_power ?? 0, JSON.stringify({ effect_type: s.effect_type ?? null }),
       s.scaling_stat, s.secondary_scaling_stat ?? null, s.hit_bonus ?? 0, s.crit_bonus ?? 0,
       s.priority ?? 0, s.effect_type ?? null, s.status_effect ?? null, s.hits ?? 1,
@@ -64,6 +66,44 @@ export function seedBattleSkills(db: Database.Database): void {
   }
   for (const c of BATTLE_CONSUMABLES) {
     db.prepare('UPDATE items SET battle_usable = 1, battle_effect_json = ? WHERE id = ?').run(JSON.stringify(c.effect), c.id);
+  }
+  ensureLegacySkillMp(db);
+}
+
+const LEGACY_SRC_SKILLS: Array<{ id: string; power: number; type: string; breakP?: number; ultimate?: boolean }> = [
+  { id: 'skill_twilight_combo', power: 0.9, type: 'physical', breakP: 15 },
+  { id: 'skill_lamp_prayer', power: 0.4, type: 'heal' },
+  { id: 'skill_deep_pierce', power: 1.2, type: 'physical', breakP: 20 },
+  { id: 'skill_echo_shot', power: 1.2, type: 'physical' },
+  { id: 'skill_mirror_slash', power: 1.3, type: 'physical' },
+  { id: 'skill_silver_break', power: 1.0, type: 'physical', breakP: 20 },
+  { id: 'skill_silence_tune', power: 0, type: 'special' },
+  { id: 'skill_old_king_stance', power: 0, type: 'buff' },
+  { id: 'skill_star_scar', power: 1.3, type: 'physical', breakP: 15 },
+  { id: 'skill_black_fox', power: 1.4, type: 'physical' },
+  { id: 'skill_bind_light', power: 0.25, type: 'heal' },
+  { id: 'skill_revive', power: 0.3, type: 'heal' },
+  { id: 'skill_starfall', power: 1.8, type: 'magical', ultimate: true },
+];
+
+export function ensureLegacySkillMp(db: Database.Database): void {
+  const upd = db.prepare('UPDATE skills SET mp_cost = ? WHERE id = ?');
+  for (const s of LEGACY_SRC_SKILLS) {
+    const mp = designLegacySkillMpCost({
+      power: s.power,
+      type: s.type,
+      breakP: s.breakP,
+      isSrc: true,
+      isUltimate: s.ultimate,
+    });
+    upd.run(mp, s.id);
+  }
+  const updJob = db.prepare('UPDATE jobs SET mp_mod = ? WHERE name = ?');
+  const jobMp: Record<string, number> = {
+    剣士: 5, 重騎士: -8, 狩人: 8, 魔術師: 22, 祈祷師: 18, 斥候: 3, 機工師: 8, 格闘士: -5,
+  };
+  for (const [name, mp] of Object.entries(jobMp)) {
+    updJob.run(mp, name);
   }
 }
 

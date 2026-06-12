@@ -27,11 +27,27 @@ import {
 } from './equipmentDropSystem';
 import { nowIso, type BattleStatus } from '../types';
 import { formatBattleLine, type BattleLogType } from '../utils/formatters';
-import { battleButtons, battleEmbed, selectMenu } from '../utils/embeds';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { battleButtons, battleEmbed, battleEmbedMulti, selectMenu } from '../utils/embeds';
 import {
   scaleMonsterForBattle, calcPhysicalDamage, calcEnemyDamageToPlayer,
   getThreatLabel, type ScaledMonster,
 } from './combatMath';
+import {
+  buildEnemyStateFromMonsters,
+  loadEnemyState,
+  syncLegacyEnemyColumns,
+  getAliveEnemies,
+  allEnemiesDefeated,
+  getEnemyByInstanceId,
+  formatEnemyDisplayName,
+  serializeEnemyState,
+  pickEnemyHeavyFlags,
+  type EnemyStateJson,
+  type EnemyInstance,
+} from './enemyBattleState';
+import { getAreaRank } from './townLootSystem';
+import { AOE_DAMAGE_MULT } from './skillBattleCore';
 import { buildEffectiveRewardPool } from './townLootSystem';
 import {
   loadBattleStatusFromPlayer,
@@ -57,6 +73,8 @@ export interface BattleState extends BattleStatusState {
   guardStrong: boolean;
   combatScale?: ScaledMonster;
   isRematch?: boolean;
+  pendingAction?: { kind: 'attack' | 'skill'; skillId?: string };
+  enemyState?: EnemyStateJson;
 }
 
 type MonsterRow = {
@@ -68,7 +86,8 @@ type MonsterRow = {
 
 type SessionRow = {
   id: string; monster_id: string; area_id: string | null; player_hp: number; player_mp: number;
-  enemy_hp: number; enemy_break: number; status_json: string; is_boss: number; is_raid: number;
+  enemy_hp: number; enemy_break: number; enemy_state_json?: string | null; status_json: string;
+  is_boss: number; is_raid: number;
   is_event_battle: number; can_flee: number; status: BattleStatus;
 };
 
@@ -83,10 +102,26 @@ function countCompletedBattles(userId: string): number {
   return row.c;
 }
 
-export function createBattle(userId: string, monsterId: string, areaId: string | null, opts?: { isBoss?: boolean; isRaid?: boolean; isEvent?: boolean; isRematch?: boolean }): string {
+export function createBattle(
+  userId: string,
+  monsterIdOrIds: string | string[],
+  areaId: string | null,
+  opts?: { isBoss?: boolean; isRaid?: boolean; isEvent?: boolean; isRematch?: boolean },
+): string {
+  const monsterIds = Array.isArray(monsterIdOrIds) ? monsterIdOrIds : [monsterIdOrIds];
+  return createBattleInternal(userId, monsterIds, areaId, opts);
+}
+
+function createBattleInternal(
+  userId: string,
+  monsterIds: string[],
+  areaId: string | null,
+  opts?: { isBoss?: boolean; isRaid?: boolean; isEvent?: boolean; isRematch?: boolean },
+): string {
   const player = requirePlayer(userId);
   recalculatePlayerStats(userId);
   const p = requirePlayer(userId);
+  const monsterId = monsterIds[0]!;
   const monster = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(monsterId) as MonsterRow | undefined;
   if (!monster) throw new Error('Monster not found');
   if (getActiveBattle(userId)) throw new Error('既に戦闘中です。');
@@ -97,11 +132,16 @@ export function createBattle(userId: string, monsterId: string, areaId: string |
   const isRematch = opts?.isRematch ?? false;
   const canFlee = (!isBoss && !isRaid && !isEvent) ? 1 : 0;
   const tutorialBattle = monsterId === 'mon_star_slime' && countCompletedBattles(userId) === 0;
-  const scaled = scaleMonsterForBattle(
-    { ...monster, id: monsterId, area_tag: monster.area_tag ?? 'starfield' },
-    { forceBoss: isBoss, isStoryBoss: isBoss },
-  );
+  const areaRank = areaId ? getAreaRank(areaId) : 1;
+  const enemyState = buildEnemyStateFromMonsters(monsterIds, areaId, {
+    isBoss,
+    isStoryBoss: isBoss,
+    areaRank,
+  });
+  const legacy = syncLegacyEnemyColumns(enemyState);
+  const scaled = enemyState.enemies[0]!.combatScale;
   const id = uuid();
+  const names = enemyState.enemies.map((e) => `${e.label}:${e.name}`).join(' / ');
   const threatLine = getThreatLabel(scaled.threatTier, monster.name);
   const state: BattleState = {
     ...mergeStatusState(loadBattleStatusFromPlayer(userId)),
@@ -110,20 +150,22 @@ export function createBattle(userId: string, monsterId: string, areaId: string |
     fleeBonus: 0, atkBuff: 0, magBuff: 0, defBuff: 0, trapActive: false,
     hitBonus: 0, breakBonus: 0, guardStrong: false,
     combatScale: scaled,
+    enemyState,
     isRematch,
     log: tutorialBattle
-      ? [formatBattleLine('info', monster.name + 'が現れた。…最初の一歩。油断は禁物だ。')]
+      ? [formatBattleLine('info', names + 'が現れた。…最初の一歩。油断は禁物だ。')]
       : [
-        formatBattleLine('info', monster.name + 'が現れた！'),
+        formatBattleLine('info', enemyState.partySize > 1 ? `${names}が現れた！` : monster.name + 'が現れた！'),
         ...(threatLine && scaled.threatTier !== 'normal' ? [formatBattleLine('info', threatLine)] : []),
       ],
     tutorialBattle,
   };
 
   getDb().prepare(`
-    INSERT INTO battle_sessions (id, user_id, area_id, monster_id, player_hp, player_mp, enemy_hp, enemy_break, status_json, is_boss, is_raid, is_event_battle, can_flee, status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, 'active', ?, ?)
-  `).run(id, userId, areaId, monsterId, p.hp, p.mp, scaled.hp, JSON.stringify(state),
+    INSERT INTO battle_sessions (id, user_id, area_id, monster_id, player_hp, player_mp, enemy_hp, enemy_break, enemy_state_json, status_json, is_boss, is_raid, is_event_battle, can_flee, status, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
+  `).run(id, userId, areaId, legacy.monster_id, p.hp, p.mp, legacy.enemy_hp, legacy.enemy_break,
+    serializeEnemyState(enemyState), JSON.stringify(state),
     isBoss ? 1 : 0, isRaid ? 1 : 0, isEvent ? 1 : 0, canFlee, nowIso(), nowIso());
   return id;
 }
@@ -148,7 +190,42 @@ function parseState(json: string): BattleState {
     breakBonus: s.breakBonus ?? 0,
     guardStrong: s.guardStrong ?? false,
     combatScale: s.combatScale,
+    enemyState: s.enemyState,
+    pendingAction: s.pendingAction,
   };
+}
+
+function resolveEnemyState(session: SessionRow, state: BattleState): EnemyStateJson {
+  if (state.enemyState) return state.enemyState;
+  const loaded = loadEnemyState(session);
+  state.enemyState = loaded;
+  return loaded;
+}
+
+function syncStateEnemyToLegacy(state: BattleState): void {
+  if (!state.enemyState) return;
+  const legacy = syncLegacyEnemyColumns(state.enemyState);
+  void legacy;
+}
+
+function needsTargetSelection(
+  action: 'attack' | 'skill',
+  skill: SkillRow | undefined,
+  enemyState: EnemyStateJson,
+): boolean {
+  if (getAliveEnemies(enemyState).length <= 1) return false;
+  if (action === 'attack') return true;
+  if (!skill) return false;
+  const target = skill.target_type ?? 'single_enemy';
+  if (target === 'all_enemies') return false;
+  if (['self', 'ally', 'all_allies', 'cover', 'taunt'].includes(target)) return false;
+  return true;
+}
+
+function getPrimaryMonster(enemyState: EnemyStateJson, session: SessionRow): MonsterRow {
+  const primary = getAliveEnemies(enemyState)[0] ?? enemyState.enemies[0];
+  const id = primary?.monster_id ?? session.monster_id;
+  return getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(id) as MonsterRow;
 }
 
 function getCombatScale(state: BattleState, monster: MonsterRow): ScaledMonster {
@@ -260,16 +337,17 @@ export function processBattleAction(
   userId: string,
   sessionId: string,
   action: string,
-  opts?: { skillId?: string; inventoryId?: number },
-): { done: boolean; status: BattleStatus; message: string; sessionId: string; notify?: string; skillLearned?: Array<{ jobName: string; skills: string[] }>; jobLeveledUp?: string[] } {
+  opts?: { skillId?: string; inventoryId?: number; targetInstanceId?: string },
+): { done: boolean; status: BattleStatus; message: string; sessionId: string; notify?: string; needsTarget?: boolean; skillLearned?: Array<{ jobName: string; skills: string[] }>; jobLeveledUp?: string[] } {
   const session = getSession(sessionId, userId);
   if (!session || session.status !== 'active') {
     return { done: true, status: 'defeat', message: '戦闘が見つかりません。', sessionId };
   }
 
-  const monster = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(session.monster_id) as MonsterRow;
-  const player = requirePlayer(userId);
   let state = parseState(session.status_json);
+  const enemyState = resolveEnemyState(session, state);
+  const monster = getPrimaryMonster(enemyState, session);
+  const player = requirePlayer(userId);
   let pHp = session.player_hp;
   let pMp = session.player_mp;
   let eHp = session.enemy_hp;
@@ -291,11 +369,37 @@ export function processBattleAction(
       return { done: true, status: 'fled', message: '足音を消し、戦いから離れた。', sessionId };
     }
     pushLog(state, 'flee_fail', '逃げ道を塞がれた。\n　敵が追撃してくる。');
-    const er = executeEnemyTurn(monster, player, state, diff, tutorial, pHp, eHp, eBreak, session.is_boss === 1);
-    ({ pHp, eHp, eBreak, state } = er);
+    const es = resolveEnemyState(session, state);
+    const er = executeEnemiesTurn(es, player, state, diff, tutorial, pHp, session.is_boss === 1);
+    pHp = er.pHp; state = er.state;
     if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state);
-    persistBattle(sessionId, userId, pHp, pMp, eHp, eBreak, state);
+    const legacy = syncLegacyEnemyColumns(es);
+    persistBattle(sessionId, userId, pHp, pMp, legacy.enemy_hp, legacy.enemy_break, state, es);
     return { done: false, status: 'active', message: state.log[state.log.length - 1] ?? '', sessionId };
+  }
+
+  if (action === 'target' && opts?.targetInstanceId && state.pendingAction) {
+    const target = getEnemyByInstanceId(enemyState, opts.targetInstanceId);
+    if (!target || !target.is_alive || target.hp <= 0) {
+      state.pendingAction = undefined;
+      return { done: false, status: 'active', message: 'その敵はもう倒れている。', sessionId, notify: 'blocked' };
+    }
+    const pending = state.pendingAction;
+    state.pendingAction = undefined;
+    if (pending.kind === 'attack') {
+      return resolvePlayerTurn(userId, sessionId, session, monster, player, state, diff, tutorial, 'attack', pHp, pMp, eHp, eBreak, undefined, undefined, opts.targetInstanceId);
+    }
+    if (pending.kind === 'skill' && pending.skillId) {
+      const skill = getDb().prepare('SELECT * FROM skills WHERE id = ?').get(pending.skillId) as SkillRow | undefined;
+      if (!skill) return { done: false, status: 'active', message: 'その技は使えない。', sessionId };
+      return resolvePlayerTurn(userId, sessionId, session, monster, player, state, diff, tutorial, 'skill', pHp, pMp, eHp, eBreak, skill, undefined, opts.targetInstanceId);
+    }
+  }
+
+  if (action === 'attack' && needsTargetSelection('attack', undefined, enemyState)) {
+    state.pendingAction = { kind: 'attack' };
+    persistBattle(sessionId, userId, pHp, pMp, eHp, eBreak, state, enemyState);
+    return { done: false, status: 'active', message: '攻撃する敵を選んでください。', sessionId, needsTarget: true };
   }
 
   if (action === 'skill' && opts?.skillId) {
@@ -310,6 +414,11 @@ export function processBattleAction(
     }
     if (pMp < skill.mp_cost) {
       return { done: false, status: 'active', message: '魔力を巡らせる余力が足りない。', sessionId, notify: 'mp' };
+    }
+    if (needsTargetSelection('skill', skill, enemyState)) {
+      state.pendingAction = { kind: 'skill', skillId: skill.id };
+      persistBattle(sessionId, userId, pHp, pMp, eHp, eBreak, state, enemyState);
+      return { done: false, status: 'active', message: `${skill.name}の対象を選んでください。`, sessionId, needsTarget: true };
     }
     return resolvePlayerTurn(userId, sessionId, session, monster, player, state, diff, tutorial, action, pHp, pMp, eHp, eBreak, skill, opts.inventoryId);
   }
@@ -330,8 +439,9 @@ function resolvePlayerTurn(
   userId: string, sessionId: string, session: SessionRow, monster: MonsterRow,
   player: ReturnType<typeof requirePlayer>, state: BattleState, diff: ReturnType<typeof getDifficultyModifiers>,
   tutorial: boolean, action: string, pHp: number, pMp: number, eHp: number, eBreak: number,
-  skill?: SkillRow, _invId?: number,
+  skill?: SkillRow, _invId?: number, targetInstanceId?: string,
 ) {
+  const enemyState = resolveEnemyState(session, state);
   const pPriority = action === 'defend' ? 20 : action === 'item' ? 10 : skill ? skillPriority(skill) : 0;
   const pSpeed = Math.floor(player.speed * diff.playerSpeed);
   const eSpeed = Math.floor(Math.max(1, monster.speed - state.enemySlow) * diff.enemySpeed);
@@ -343,41 +453,94 @@ function resolvePlayerTurn(
         pushLog(state, 'status', '足が止まり、行動できなかった。');
         state.playerBind = Math.max(0, state.playerBind - 1);
       } else {
-        const r = executePlayerAction(action, skill, userId, player, monster, state, diff, pHp, pMp, eHp, eBreak, session.is_boss === 1);
+        const r = executePlayerAction(action, skill, userId, player, monster, state, diff, pHp, pMp, eHp, eBreak, session.is_boss === 1, targetInstanceId, enemyState);
         pHp = r.pHp; pMp = r.pMp; eHp = r.eHp; eBreak = r.eBreak; state = r.state;
       }
-      if (eHp <= 0) {
-    pushLog(state, 'info', `${monster.name}を打ち倒した。`);
-    return resolveVictory(sessionId, userId, session, monster, state);
-  }
+      const legacy = syncLegacyEnemyColumns(enemyState);
+      eHp = legacy.enemy_hp;
+      eBreak = legacy.enemy_break;
+      if (allEnemiesDefeated(enemyState)) {
+        pushLog(state, 'info', enemyState.partySize > 1 ? '敵をすべて打ち倒した。' : `${monster.name}を打ち倒した。`);
+        return resolveVictory(sessionId, userId, session, monster, state, enemyState);
+      }
       if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state);
     } else {
-      const r = executeEnemyTurn(monster, player, state, diff, tutorial, pHp, eHp, eBreak, session.is_boss === 1);
-      pHp = r.pHp; eHp = r.eHp; eBreak = r.eBreak; state = r.state;
+      const r = executeEnemiesTurn(enemyState, player, state, diff, tutorial, pHp, session.is_boss === 1);
+      pHp = r.pHp; state = r.state;
+      const legacyE = syncLegacyEnemyColumns(enemyState);
+      eHp = legacyE.enemy_hp;
+      eBreak = legacyE.enemy_break;
       if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state);
-      if (eHp <= 0) {
-    pushLog(state, 'info', `${monster.name}を打ち倒した。`);
-    return resolveVictory(sessionId, userId, session, monster, state);
-  }
+      if (allEnemiesDefeated(enemyState)) {
+        pushLog(state, 'info', enemyState.partySize > 1 ? '敵をすべて打ち倒した。' : `${monster.name}を打ち倒した。`);
+        return resolveVictory(sessionId, userId, session, monster, state, enemyState);
+      }
     }
   }
 
   const tick = tickStatusEffects(state, pHp, player.max_hp, eHp, monster.name, session.is_boss === 1);
   pHp = tick.pHp; eHp = tick.eHp;
   for (const line of tick.logs) pushLog(state, 'status', line);
-  if (eHp <= 0) {
-    pushLog(state, 'info', `${monster.name}を打ち倒した。`);
-    return resolveVictory(sessionId, userId, session, monster, state);
+  const legacyTick = syncLegacyEnemyColumns(enemyState);
+  eHp = legacyTick.enemy_hp;
+  if (allEnemiesDefeated(enemyState)) {
+    pushLog(state, 'info', enemyState.partySize > 1 ? '敵をすべて打ち倒した。' : `${monster.name}を打ち倒した。`);
+    return resolveVictory(sessionId, userId, session, monster, state, enemyState);
   }
   if (pHp <= 0) return resolveDefeat(sessionId, userId, session, state);
 
   state.defending = false;
   state.guardStrong = false;
-  persistBattle(sessionId, userId, pHp, pMp, eHp, eBreak, state);
+  persistBattle(sessionId, userId, pHp, pMp, eHp, eBreak, state, enemyState);
   return { done: false, status: 'active' as BattleStatus, message: state.log[state.log.length - 1] ?? '', sessionId };
 }
 
 function executePlayerAction(
+  action: string, skill: SkillRow | undefined, userId: string,
+  player: ReturnType<typeof requirePlayer>, monster: MonsterRow, state: BattleState,
+  diff: ReturnType<typeof getDifficultyModifiers>,
+  pHp: number, pMp: number, eHp: number, eBreak: number,
+  isBoss: boolean,
+  targetInstanceId?: string,
+  enemyState?: EnemyStateJson,
+) {
+  const es = enemyState ?? state.enemyState;
+  if (!es) {
+    return executePlayerActionLegacy(action, skill, userId, player, monster, state, diff, pHp, pMp, eHp, eBreak, isBoss);
+  }
+
+  if (action === 'defend') {
+    state.defending = true;
+    pushLog(state, 'player_attack', '構えを取り、身を固めた。');
+    return { pHp, pMp, eHp, eBreak, state };
+  }
+
+  if (action === 'attack') {
+    const target = targetInstanceId
+      ? getEnemyByInstanceId(es, targetInstanceId)
+      : getAliveEnemies(es)[0];
+    if (!target) return { pHp, pMp, eHp, eBreak, state };
+    const r = applyPhysicalAttack(userId, player, target, monster, state, diff, isBoss);
+    target.hp = r.targetHp;
+    target.break = r.targetBreak;
+    if (target.hp <= 0) target.is_alive = false;
+    const legacy = syncLegacyEnemyColumns(es);
+    return { pHp, pMp, eHp: legacy.enemy_hp, eBreak: legacy.enemy_break, state };
+  }
+
+  if (action === 'skill' && skill) {
+    pMp -= skill.mp_cost;
+    return applySkill(skill, player, monster, state, diff, pHp, pMp, eHp, eBreak, isBoss, es, targetInstanceId);
+  }
+
+  if (action === 'item') {
+    return { pHp, pMp, eHp, eBreak, state };
+  }
+
+  return { pHp, pMp, eHp, eBreak, state };
+}
+
+function executePlayerActionLegacy(
   action: string, skill: SkillRow | undefined, userId: string,
   player: ReturnType<typeof requirePlayer>, monster: MonsterRow, state: BattleState,
   diff: ReturnType<typeof getDifficultyModifiers>,
@@ -445,7 +608,20 @@ function resolveSkillStatusTarget(
   return null;
 }
 
-function applySkill(skill: SkillRow, player: ReturnType<typeof requirePlayer>, monster: MonsterRow, state: BattleState, diff: ReturnType<typeof getDifficultyModifiers>, pHp: number, pMp: number, eHp: number, eBreak: number, isBoss: boolean) {
+function applySkill(
+  skill: SkillRow,
+  player: ReturnType<typeof requirePlayer>,
+  monster: MonsterRow,
+  state: BattleState,
+  diff: ReturnType<typeof getDifficultyModifiers>,
+  pHp: number,
+  pMp: number,
+  eHp: number,
+  eBreak: number,
+  isBoss: boolean,
+  enemyState?: EnemyStateJson,
+  targetInstanceId?: string,
+) {
   const effect = skill.effect_type ?? '';
   const fx = resolveSkillEffect(skill.id, skill.effect_type, skill.status_effect);
   const statusMods = getDefensiveModifiers(state, isBoss);
@@ -504,38 +680,73 @@ function applySkill(skill: SkillRow, player: ReturnType<typeof requirePlayer>, m
 
   const hits = skill.hits ?? 1;
   const isMag = ['magic', 'divine', 'machine'].includes(skill.skill_type);
-  const def = Math.floor((isMag ? scale.spirit * statusMods.enemyMagMult : scale.defense) * statusMods.enemyDefMult);
+  const targetType = skill.target_type ?? 'single_enemy';
+  const aoe = targetType === 'all_enemies';
+  const alive = enemyState ? getAliveEnemies(enemyState) : [];
+  const targets: EnemyInstance[] = aoe
+    ? alive
+    : [targetInstanceId && enemyState
+      ? getEnemyByInstanceId(enemyState, targetInstanceId) ?? alive[0]
+      : alive[0]].filter(Boolean) as EnemyInstance[];
+
+  if (!targets.length && !aoe) {
+    return { pHp, pMp, eHp, eBreak, state };
+  }
+
   let stat = getScalingStat(player, skill.scaling_stat);
   if (skill.secondary_scaling_stat) stat = Math.floor((stat + getScalingStat(player, skill.secondary_scaling_stat)) / 2);
-  const mult = diff.playerDamage * skill.power * (1 + (isMag ? state.magBuff : state.atkBuff));
+  const buffMult = 1 + (isMag ? state.magBuff : state.atkBuff);
+  const aoeMult = aoe ? AOE_DAMAGE_MULT : 1;
 
-  for (let i = 0; i < hits; i++) {
-    const result = calcDamage(stat, def, player.crit_rate, player.crit_damage, mult / hits, diff.playerHitRate + (skill.hit_bonus ?? 0) + statusMods.hitPenalty, skill.crit_bonus ?? 0, state.hitBonus);
-    if (result.hit) {
-      let dmg = applyElementDamage(result.damage, skill.element, monster, (line) => pushLog(state, 'player_skill', line));
-      dmg = applyPlayerBreakDamage(state, dmg);
-      eHp -= dmg;
-      eBreak += (skill.break_power ?? 0) * diff.breakRate + state.breakBonus;
-      const logType: BattleLogType = skill.skill_type === 'divine' ? 'player_divine' : skill.skill_type === 'magic' ? 'player_skill' : 'player_attack';
-      pushLog(state, logType, `${skill.name}${hits > 1 ? `（${i + 1}）` : ''}。\n　${monster.name}に **${dmg}** ダメージ。`);
-    } else pushLog(state, 'player_skill', `${skill.name}。\n　外れた。`);
+  for (const target of targets.length ? targets : [{ monster_id: monster.id, combatScale: scale, hp: eHp, break: eBreak, name: monster.name, instance_id: 'enemy_1', label: 'A', max_hp: scale.hp, break_max: monster.break_max, is_alive: true, position: 0, status: {}, threatTier: scale.threatTier } as EnemyInstance]) {
+    const monRow = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(target.monster_id) as MonsterRow;
+    const tScale = target.combatScale ?? scale;
+    const def = Math.floor((isMag ? tScale.spirit * statusMods.enemyMagMult : tScale.defense) * statusMods.enemyDefMult);
+    const mult = diff.playerDamage * skill.power * buffMult * aoeMult;
+
+    for (let i = 0; i < hits; i++) {
+      const result = calcDamage(stat, def, player.crit_rate, player.crit_damage, mult / hits, diff.playerHitRate + (skill.hit_bonus ?? 0) + statusMods.hitPenalty, skill.crit_bonus ?? 0, state.hitBonus);
+      if (result.hit) {
+        let dmg = applyElementDamage(result.damage, skill.element, monRow ?? monster, (line) => pushLog(state, 'player_skill', line));
+        dmg = applyPlayerBreakDamage(state, dmg);
+        if (enemyState) {
+          target.hp -= dmg;
+          target.break += (skill.break_power ?? 0) * diff.breakRate + state.breakBonus;
+          target.break = checkBreakOnEnemy(state, monRow ?? monster, target.break, target);
+          if (target.hp <= 0) target.is_alive = false;
+        } else {
+          eHp -= dmg;
+          eBreak += (skill.break_power ?? 0) * diff.breakRate + state.breakBonus;
+        }
+        const logType: BattleLogType = skill.skill_type === 'divine' ? 'player_divine' : skill.skill_type === 'magic' ? 'player_skill' : 'player_attack';
+        const name = enemyState ? formatEnemyDisplayName(target) : monster.name;
+        pushLog(state, logType, `${skill.name}${hits > 1 ? `（${i + 1}）` : ''}。\n　${name}に **${dmg}** ダメージ。`);
+      } else pushLog(state, 'player_skill', `${skill.name}。\n　外れた。`);
+    }
+
+    if (statusTarget) {
+      const statusResult = attemptApplyEnemyStatus({
+        state,
+        effect: statusTarget.effect,
+        duration: statusTarget.duration,
+        isBoss,
+        threatTier: tScale.threatTier,
+        skillSuccessRate: statusTarget.skillRate,
+        monsterName: monRow?.name ?? monster.name,
+      });
+      for (const line of statusResult.logs) pushLog(state, 'status', line);
+      if (enemyState) target.break += statusResult.breakBonus;
+      else eBreak += statusResult.breakBonus;
+    }
   }
 
-  if (statusTarget) {
-    const statusResult = attemptApplyEnemyStatus({
-      state,
-      effect: statusTarget.effect,
-      duration: statusTarget.duration,
-      isBoss,
-      threatTier: scale.threatTier,
-      skillSuccessRate: statusTarget.skillRate,
-      monsterName: monster.name,
-    });
-    for (const line of statusResult.logs) pushLog(state, 'status', line);
-    eBreak += statusResult.breakBonus;
+  if (enemyState) {
+    const legacy = syncLegacyEnemyColumns(enemyState);
+    eHp = legacy.enemy_hp;
+    eBreak = legacy.enemy_break;
+  } else {
+    eBreak = checkBreak(state, monster, eBreak);
   }
-
-  eBreak = checkBreak(state, monster, eBreak);
 
   return { pHp, pMp, eHp, eBreak, state };
 }
@@ -547,16 +758,141 @@ function applyPlayerBreakDamage(state: BattleState, dmg: number, consumeHit = tr
   return boosted;
 }
 
-function checkBreak(state: BattleState, monster: MonsterRow, eBreak: number): number {
+function applyPhysicalAttack(
+  userId: string,
+  player: ReturnType<typeof requirePlayer>,
+  target: EnemyInstance,
+  monster: MonsterRow,
+  state: BattleState,
+  diff: ReturnType<typeof getDifficultyModifiers>,
+  isBoss: boolean,
+): { targetHp: number; targetBreak: number } {
+  const statusMods = getDefensiveModifiers(state, isBoss);
+  const scale = target.combatScale;
+  const mult = diff.playerDamage * (1 + state.atkBuff);
+  const def = Math.floor(scale.defense * statusMods.enemyDefMult);
+  const result = calcDamage(player.attack, def, player.crit_rate, player.crit_damage, mult, diff.playerHitRate + state.hitBonus + statusMods.hitPenalty, 0, state.hitBonus);
+  let hp = target.hp;
+  let br = target.break;
+  const monRow = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(target.monster_id) as MonsterRow;
+  if (result.hit) {
+    const wpnEl = getPlayerWeaponElement(userId);
+    let dmg = applyElementDamage(result.damage, wpnEl, monRow ?? monster, (line) => pushLog(state, 'player_attack', line));
+    dmg = applyPlayerBreakDamage(state, dmg);
+    hp -= dmg;
+    br += dmg * 0.3 * diff.breakRate + state.breakBonus;
+    pushLog(state, 'player_attack', `あなたの攻撃。\n　${formatEnemyDisplayName(target)}に **${dmg}** ダメージ${result.crit ? '（会心）' : ''}。`);
+    br = checkBreakOnEnemy(state, monRow ?? monster, br, target);
+  } else pushLog(state, 'player_attack', 'あなたの攻撃。\n　外れた。');
+  return { targetHp: hp, targetBreak: br };
+}
+
+function checkBreakOnEnemy(state: BattleState, monster: MonsterRow, eBreak: number, enemy?: EnemyInstance): number {
   if (eBreak >= monster.break_max) {
     state.enemyBroken = true;
     state.breakRemainingHits = randomInt(1, 2);
     state.enemyNextAtkReducePct = 0.2;
     state.enemyNextAtkReduceActive = true;
-    pushLog(state, 'break', '🟡 ブレイク！敵の体勢が崩れた！');
+    const name = enemy ? formatEnemyDisplayName(enemy) : monster.name;
+    pushLog(state, 'break', `🟡 ブレイク！${name}の体勢が崩れた！`);
     return 0;
   }
   return eBreak;
+}
+
+function checkBreak(state: BattleState, monster: MonsterRow, eBreak: number): number {
+  return checkBreakOnEnemy(state, monster, eBreak);
+}
+
+function executeEnemiesTurn(
+  enemyState: EnemyStateJson,
+  player: ReturnType<typeof requirePlayer>,
+  state: BattleState,
+  diff: ReturnType<typeof getDifficultyModifiers>,
+  tutorial: boolean,
+  pHp: number,
+  isBoss: boolean,
+): { pHp: number; state: BattleState } {
+  if (state.trapActive) {
+    const primary = getAliveEnemies(enemyState)[0];
+    if (primary) {
+      primary.break += 15 + state.breakBonus;
+      const mon = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(primary.monster_id) as MonsterRow;
+      primary.break = checkBreakOnEnemy(state, mon, primary.break, primary);
+    }
+    state.trapActive = false;
+    pushLog(state, 'break', '罠が炸裂した。\n　体勢を崩しやすくなった。');
+  }
+
+  const alive = getAliveEnemies(enemyState);
+  const heavyFlags = pickEnemyHeavyFlags(alive);
+  let hp = pHp;
+  for (let i = 0; i < alive.length; i++) {
+    const enemy = alive[i]!;
+    const monster = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(enemy.monster_id) as MonsterRow;
+    const r = executeSingleEnemyTurn(monster, enemy, player, state, diff, tutorial, hp, isBoss, heavyFlags[i] ?? false);
+    hp = r.pHp;
+    state = r.state;
+    if (hp <= 0) break;
+  }
+  return { pHp: hp, state };
+}
+
+function executeSingleEnemyTurn(
+  monster: MonsterRow,
+  enemy: EnemyInstance,
+  player: ReturnType<typeof requirePlayer>,
+  state: BattleState,
+  diff: ReturnType<typeof getDifficultyModifiers>,
+  tutorial: boolean,
+  pHp: number,
+  isBoss: boolean,
+  forceHeavy: boolean,
+): { pHp: number; state: BattleState } {
+  if (isEnemyActionBlocked(state, isBoss)) {
+    pushLog(state, 'status', `${formatEnemyDisplayName(enemy)}は動けない！`);
+    state.enemyBind = Math.max(0, state.enemyBind - 1);
+    onEnemyControlBlocked(state);
+    return { pHp, state };
+  }
+
+  const statusMods = getDefensiveModifiers(state, isBoss);
+  const scale = enemy.combatScale;
+  const ai = JSON.parse(monster.ai_pattern_json || '{}') as { poison_chance?: number; heavy_chance?: number };
+  const atk = Math.floor(scale.attack * statusMods.enemyAtkMult);
+  const heavy = forceHeavy || !!(ai.heavy_chance && roll(ai.heavy_chance)) || scale.threatTier === 'elite';
+  if (!roll(diff.enemyHitRate)) {
+    pushLog(state, 'enemy_attack', `${formatEnemyDisplayName(enemy)}の攻撃。\n　外れた。`);
+    return { pHp, state };
+  }
+
+  let dmg = calcEnemyDamageToPlayer({
+    attack: atk,
+    playerDefense: player.defense + state.defBuff * 10,
+    playerMaxHp: player.max_hp,
+    threatTier: scale.threatTier,
+    takenMult: diff.playerTaken * statusMods.playerTakenMult,
+    heavy,
+  });
+  if (tutorial) dmg = Math.max(1, Math.floor(dmg * 0.55));
+  if (state.defending) dmg = Math.floor(dmg * (state.guardStrong ? 0.40 : 0.55));
+  const atkReduce = getEnemyAttackReduceMult(state);
+  if (atkReduce < 1) {
+    dmg = Math.floor(dmg * atkReduce);
+    consumeEnemyAttackReduce(state);
+  }
+  const resists = getPlayerElementResistances(player.user_id);
+  const mit = applyPlayerElementResist(dmg, monster.element, resists);
+  dmg = mit.damage;
+  pHp -= dmg;
+  pushLog(state, 'enemy_attack', `${formatEnemyDisplayName(enemy)}の攻撃${heavy ? '（強）' : ''}。\n　あなたに **${dmg}** ダメージ。`);
+  if (mit.logText) pushLog(state, 'status', mit.logText);
+  if (ai.poison_chance && roll(ai.poison_chance + diff.statusAccBonus)) {
+    applyStatusEffect(state, 'player', 'poison', 3, false);
+    pushLog(state, 'status', '毒を受けた。');
+  }
+
+  return { pHp, state };
 }
 
 function executeEnemyTurn(monster: MonsterRow, player: ReturnType<typeof requirePlayer>, state: BattleState, diff: ReturnType<typeof getDifficultyModifiers>, tutorial: boolean, pHp: number, eHp: number, eBreak: number, isBoss: boolean) {
@@ -658,7 +994,16 @@ function hasBossFirstKill(userId: string, monsterId: string): boolean {
   return row.c === 0;
 }
 
-function resolveVictory(sessionId: string, userId: string, session: SessionRow, monster: MonsterRow, state: BattleState) {
+function resolveVictory(
+  sessionId: string,
+  userId: string,
+  session: SessionRow,
+  monster: MonsterRow,
+  state: BattleState,
+  enemyState?: EnemyStateJson,
+) {
+  const es = enemyState ?? state.enemyState ?? loadEnemyState(session);
+  const rewardMult = es.rewardMult ?? 1;
   const wasFirstKill = session.is_boss ? hasBossFirstKill(userId, session.monster_id) : false;
   syncBattleStatusToPlayer(userId, state);
   endBattle(sessionId, 'victory');
@@ -667,12 +1012,12 @@ function resolveVictory(sessionId: string, userId: string, session: SessionRow, 
   const tierExpMult = scale.threatTier === 'rare' ? 1.85 : scale.threatTier === 'elite' ? 1.9 : scale.threatTier === 'tough' ? 1.35 : 1;
   const tierGoldMult = scale.threatTier === 'rare' ? 1.75 : scale.threatTier === 'elite' ? 1.85 : scale.threatTier === 'tough' ? 1.3 : 1;
   const rematchMult = state.isRematch ? 0.55 : 1;
-  let exp = calcBattleExp(Math.floor(monster.exp_reward * tierExpMult * rematchMult), player.level, monster.level);
+  let exp = calcBattleExp(Math.floor(monster.exp_reward * tierExpMult * rematchMult * rewardMult), player.level, monster.level);
   if (session.is_boss) {
     const first = state.isRematch ? false : wasFirstKill;
-    exp = calcBossExp(calcBattleExp(Math.floor(monster.exp_reward * tierExpMult * rematchMult), player.level, monster.level), first);
+    exp = calcBossExp(calcBattleExp(Math.floor(monster.exp_reward * tierExpMult * rematchMult * rewardMult), player.level, monster.level), first);
   }
-  const gold = Math.floor(monster.gold_reward * tierGoldMult * 1.2 * rematchMult);
+  const gold = Math.floor(monster.gold_reward * tierGoldMult * 1.2 * rematchMult * rewardMult);
   const levelResult = addExp(userId, exp);
   const jobResults = grantBattleJobExp(userId, exp);
   addGold(userId, gold);
@@ -753,7 +1098,7 @@ function resolveVictory(sessionId: string, userId: string, session: SessionRow, 
   if (battleTail.length) {
     lines.push('**戦闘の終わり**', ...battleTail, '');
   }
-  lines.push('🔵 ' + monster.name + 'を倒した。');
+  lines.push('🔵 ' + (es.partySize > 1 ? '敵をすべて倒した。' : monster.name + 'を倒した。'));
   lines.push('');
   lines.push('**得たもの**');
   lines.push(`・経験値 +${exp}`);
@@ -798,9 +1143,20 @@ function resolveDefeat(sessionId: string, userId: string, session: SessionRow, s
   return { done: true, status: 'defeat' as BattleStatus, message: applyDefeat(userId, session.is_boss === 1, session.area_id), sessionId };
 }
 
-function persistBattle(sessionId: string, userId: string, pHp: number, pMp: number, eHp: number, eBreak: number, state: BattleState): void {
-  getDb().prepare(`UPDATE battle_sessions SET player_hp=?, player_mp=?, enemy_hp=?, enemy_break=?, status_json=?, turn_count=turn_count+1, updated_at=? WHERE id=?`)
-    .run(pHp, pMp, eHp, eBreak, JSON.stringify(state), nowIso(), sessionId);
+function persistBattle(
+  sessionId: string,
+  userId: string,
+  pHp: number,
+  pMp: number,
+  eHp: number,
+  eBreak: number,
+  state: BattleState,
+  enemyState?: EnemyStateJson,
+): void {
+  const es = enemyState ?? state.enemyState;
+  const legacy = es ? syncLegacyEnemyColumns(es) : { monster_id: undefined, enemy_hp: eHp, enemy_break: eBreak };
+  getDb().prepare(`UPDATE battle_sessions SET player_hp=?, player_mp=?, enemy_hp=?, enemy_break=?, enemy_state_json=?, status_json=?, turn_count=turn_count+1, updated_at=? WHERE id=?`)
+    .run(pHp, pMp, legacy.enemy_hp, legacy.enemy_break, es ? serializeEnemyState(es) : null, JSON.stringify(state), nowIso(), sessionId);
   getDb().prepare('UPDATE players SET hp=?, mp=?, updated_at=? WHERE user_id=?').run(pHp, pMp, nowIso(), userId);
   persistPlayerPoisonFromBattle(userId, state.poisonTurns);
 }
@@ -812,22 +1168,83 @@ function endBattle(sessionId: string, status: BattleStatus): void {
 export function getBattleDisplay(sessionId: string, userId: string) {
   const session = getDb().prepare('SELECT * FROM battle_sessions WHERE id = ? AND user_id = ?').get(sessionId, userId) as SessionRow | undefined;
   if (!session) return null;
-  const monster = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(session.monster_id) as MonsterRow;
-  const player = requirePlayer(userId);
   const state = parseState(session.status_json);
-  return { session, monster, player, state };
+  const enemyState = resolveEnemyState(session, state);
+  state.enemyState = enemyState;
+  const monster = getPrimaryMonster(enemyState, session);
+  const player = requirePlayer(userId);
+  return { session, monster, player, state, enemyState };
 }
 
 export function buildBattleReply(battleId: string, userId: string) {
   const display = getBattleDisplay(battleId, userId);
   if (!display) return null;
+  if (display.state.pendingAction) {
+    return buildTargetSelectReply(battleId, userId, display);
+  }
   const enemyHp = getEnemyHpDisplay(display.session, display.state, display.monster);
   const playerHp = getPlayerBattleDisplay(display.session, display.player);
+  const es = display.enemyState;
+  if (es && es.partySize > 1) {
+    return {
+      embeds: [battleEmbedMulti(
+        '戦闘',
+        playerHp.hp, display.player.max_hp, playerHp.mp, display.player.max_mp,
+        es.enemies.filter((e) => e.is_alive),
+        display.state.log,
+      )],
+      components: battleButtons(battleId, display.session.can_flee === 1),
+    };
+  }
   return {
     embeds: [battleEmbed(display.monster.name, playerHp.hp, display.player.max_hp, playerHp.mp, display.player.max_mp,
       display.monster.name, enemyHp.current, enemyHp.max, display.session.enemy_break, display.monster.break_max, display.state.log)],
     components: battleButtons(battleId, display.session.can_flee === 1),
   };
+}
+
+export function buildTargetSelectReply(
+  battleId: string,
+  userId: string,
+  display?: NonNullable<ReturnType<typeof getBattleDisplay>>,
+) {
+  const d = display ?? getBattleDisplay(battleId, userId);
+  if (!d) return null;
+  const es = d.enemyState ?? resolveEnemyState(d.session, d.state);
+  const alive = getAliveEnemies(es);
+  const playerHp = getPlayerBattleDisplay(d.session, d.player);
+  const pending = d.state.pendingAction;
+  let note = '*攻撃する敵を選ぶ*';
+  if (pending?.kind === 'skill' && pending.skillId) {
+    const sk = getDb().prepare('SELECT name FROM skills WHERE id = ?').get(pending.skillId) as { name: string } | undefined;
+    note = `*${sk?.name ?? '技'}* の対象を選ぶ`;
+  }
+  return {
+    embeds: [battleEmbedMulti(
+      '対象選択',
+      playerHp.hp, d.player.max_hp, playerHp.mp, d.player.max_mp,
+      alive,
+      d.state.log,
+      note,
+    )],
+    components: [
+      targetSelectRow(battleId, alive),
+      ...battleButtons(battleId, d.session.can_flee === 1).slice(0, 1),
+    ],
+  };
+}
+
+function targetSelectRow(battleId: string, enemies: EnemyInstance[]) {
+  const row = new ActionRowBuilder<ButtonBuilder>();
+  for (const e of enemies.slice(0, 3)) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`battle:${battleId}:target:${e.instance_id}`)
+        .setLabel(`${e.label}: ${e.name}`.slice(0, 80))
+        .setStyle(ButtonStyle.Danger),
+    );
+  }
+  return row;
 }
 
 export function buildSkillMenuReply(battleId: string, userId: string) {

@@ -6,6 +6,7 @@ import { equipItem } from './equipmentSystem';
 import { calcUpgradeStatBonuses, getPrimaryStatKey } from './enhanceSystem';
 import { getAwakeningStatFlatBonus } from './awakeningSystem';
 import { levelExpRequired, formatLevelUpMessage, expToNextLevel, type AddExpResult } from './expSystem';
+import { baseMaxMpFromLevel, scaledJobMpMod, safeClampCurrentMp } from './combatMp';
 
 export function getPlayer(userId: string): Player | null {
   return getDb().prepare('SELECT * FROM players WHERE user_id = ?').get(userId) as Player | null;
@@ -44,9 +45,10 @@ export function updatePrivateChannel(userId: string, channelId: string): void {
 export function recalculatePlayerStats(userId: string): Player {
   const db = getDb();
   const player = requirePlayer(userId);
+  const oldMaxMp = player.max_mp;
   const base = {
     max_hp: 100 + (player.level - 1) * 15,
-    max_mp: 30 + (player.level - 1) * 5,
+    max_mp: baseMaxMpFromLevel(player.level),
     attack: 10 + (player.level - 1) * 2,
     magic: 10 + (player.level - 1) * 2,
     defense: 8 + (player.level - 1) * 1,
@@ -65,7 +67,7 @@ export function recalculatePlayerStats(userId: string): Player {
     } | undefined;
     if (job) {
       base.max_hp += job.hp_mod;
-      base.max_mp += job.mp_mod;
+      base.max_mp += scaledJobMpMod(job.mp_mod, player.level);
       base.attack += job.attack_mod;
       base.magic += job.magic_mod;
       base.defense += job.defense_mod;
@@ -82,7 +84,7 @@ export function recalculatePlayerStats(userId: string): Player {
     if (sub) {
       const r = 0.4;
       base.max_hp += Math.floor(sub.hp_mod * r);
-      base.max_mp += Math.floor(sub.mp_mod * r);
+      base.max_mp += Math.floor(scaledJobMpMod(sub.mp_mod, player.level) * r);
       base.attack += Math.floor(sub.attack_mod * r);
       base.magic += Math.floor(sub.magic_mod * r);
       base.defense += Math.floor(sub.defense_mod * r);
@@ -161,8 +163,9 @@ export function recalculatePlayerStats(userId: string): Player {
   base.accuracy = Math.min(0.99, base.accuracy + mods.accuracy);
   base.evasion = Math.min(0.5, base.evasion + mods.evasion);
 
+  base.max_mp = Math.max(25, base.max_mp);
   const hp = Math.min(player.hp, base.max_hp);
-  const mp = Math.min(player.mp, base.max_mp);
+  const mp = safeClampCurrentMp(player.mp, base.max_mp, oldMaxMp);
 
   db.prepare(`
     UPDATE players SET max_hp=?, max_mp=?, attack=?, magic=?, defense=?, spirit=?, speed=?,

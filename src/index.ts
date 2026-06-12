@@ -830,6 +830,17 @@ async function handleBattleResult(
 
   }
 
+  if (result.needsTarget) {
+    const { buildTargetSelectReply } = await import('./systems/battleSystem');
+    const targetReply = buildTargetSelectReply(sessionId, interaction.user.id);
+    if (targetReply) {
+      if (interaction.isButton() || interaction.isStringSelectMenu()) {
+        await interaction.update(targetReply);
+      }
+      return;
+    }
+  }
+
   if (interaction.isButton() || interaction.isStringSelectMenu()) {
 
     await interaction.update(reply);
@@ -913,6 +924,13 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
     }
 
 
+
+    if (action === 'target') {
+      const targetId = parts.slice(3).join(':') || parts[3];
+      const result = await handleBattleAction(userId, sessionId, 'target', { targetInstanceId: targetId });
+      await handleBattleResult(interaction, sessionId, result);
+      return;
+    }
 
     const result = await handleBattleAction(userId, sessionId, action);
 
