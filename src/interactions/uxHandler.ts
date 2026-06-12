@@ -27,6 +27,7 @@ import {
   inventorySummaryEmbed,
   equipSummaryEmbed,
   townHubEmbed,
+  parseFacilityActionId,
   type UiPayload,
 } from '../utils/townUi';
 import { nextActionButtons } from '../utils/nextActionButtons';
@@ -163,9 +164,9 @@ export async function handleUxButton(interaction: ButtonInteraction): Promise<bo
   }
 
   if (base.startsWith('facility:act:')) {
-    const parts = base.split(':');
-    const facId = parts[2]!;
-    const action = parts[3]!;
+    const parsed = parseFacilityActionId(base);
+    if (!parsed) return false;
+    const { facId, action } = parsed;
     if (action === 'home') {
       await sendJourneyLog(interaction, buildTownHub(userId));
       return true;
@@ -207,9 +208,13 @@ async function handleFacilityResult(
 
   switch (result.type) {
     case 'text': {
+      const restExtras = new Set(['rest_ok', 'already_full', 'insufficient_gold', 'rest_fail']);
+      const { postRestButtons } = await import('../utils/townUi');
       await sendJourneyLog(interaction, {
         embeds: [townHubEmbed(getFacilityName(facId), result.message)],
-        components: nextActionButtons('facility', { facilityId: facId }),
+        components: restExtras.has(result.extra ?? '')
+          ? postRestButtons(facId)
+          : nextActionButtons('facility', { facilityId: facId }),
       });
       break;
     }
@@ -309,7 +314,7 @@ async function handleFacilityResult(
       const mode = result.extra === 'shrine' ? 'shrine' : 'inn';
       await sendJourneyLog(interaction, {
         embeds: [townHubEmbed(getFacilityName(facId), result.message)],
-        components: [...restConfirmButtons(facId, mode), ...nextActionButtons('facility', { facilityId: facId })],
+        components: restConfirmButtons(facId, mode),
       });
       break;
     }

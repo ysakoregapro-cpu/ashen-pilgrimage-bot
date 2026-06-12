@@ -4,9 +4,11 @@ import { calcBattleExp, calcBossExp } from './expSystem';
 import { PRE_VALHALA_BOSS_MONSTER, SRC_FORGE_MATERIAL_ID, SRC_FORGE_MATERIAL_DROP_RATE } from '../db/seedData/awakeningMaster';
 import { calcElementDamageMultiplier, applyElementToDamage, resolveAttackElement, getPlayerElementResistances, applyPlayerElementResist } from './elementSystem';
 import {
-  applyStatusEffect, tickStatusEffects, isEnemyActionBlocked, isPlayerActionBlocked,
-  getDefensiveModifiers, mergeStatusState, type BattleStatusState,
+  applyStatusEffect, attemptApplyEnemyStatus, tickStatusEffects, isEnemyActionBlocked,
+  isPlayerActionBlocked, onEnemyControlBlocked, getDefensiveModifiers, mergeStatusState,
+  getEnemyAttackReduceMult, consumeEnemyAttackReduce, type BattleStatusState,
 } from './statusEffectSystem';
+import type { StatusEffectKey } from '../db/seedData/skillEffectMaster';
 import { resolveSkillEffect } from '../db/seedData/skillEffectMaster';
 import { addExp, addGold, requirePlayer, recalculatePlayerStats } from './playerSystem';
 import { addItem } from './inventorySystem';
@@ -395,6 +397,30 @@ function executePlayerAction(
   return { pHp, pMp, eHp, eBreak, state };
 }
 
+function resolveSkillStatusTarget(
+  skill: SkillRow,
+  fx: ReturnType<typeof resolveSkillEffect>,
+  effect: string,
+): { effect: StatusEffectKey; duration: number; skillRate?: number } | null {
+  if (fx.statusEffect) {
+    return {
+      effect: fx.statusEffect,
+      duration: fx.statusDuration ?? (fx.statusEffect === 'bind' ? 1 : 2),
+      skillRate: fx.statusChance,
+    };
+  }
+  if (skill.status_effect === 'poison') {
+    return { effect: 'poison', duration: 3, skillRate: fx.statusChance };
+  }
+  if (effect === 'bind' || fx.implementationKey === 'bind') {
+    return { effect: 'bind', duration: fx.statusDuration ?? 1, skillRate: fx.statusChance };
+  }
+  if (effect === 'slow' || fx.implementationKey === 'slow') {
+    return { effect: 'slow', duration: fx.statusDuration ?? 2, skillRate: fx.statusChance };
+  }
+  return null;
+}
+
 function applySkill(skill: SkillRow, player: ReturnType<typeof requirePlayer>, monster: MonsterRow, state: BattleState, diff: ReturnType<typeof getDifficultyModifiers>, pHp: number, pMp: number, eHp: number, eBreak: number, isBoss: boolean) {
   const effect = skill.effect_type ?? '';
   const fx = resolveSkillEffect(skill.id, skill.effect_type, skill.status_effect);
@@ -434,12 +460,21 @@ function applySkill(skill: SkillRow, player: ReturnType<typeof requirePlayer>, m
   if (effect === 'trap') { state.trapActive = true; pushLog(state, 'player_skill', `${skill.name}。\n　罠を仕掛けた。`); return { pHp, pMp, eHp, eBreak, state }; }
   if (effect === 'taunt') { state.hitBonus += 0.05; pushLog(state, 'player_attack', `${skill.name}。\n　敵の視線を引いた。`); return { pHp, pMp, eHp, eBreak, state }; }
 
-  // pure support: power 0 + status-only (no damage path)
-  if (skill.power <= 0 && (effect === 'slow' || effect === 'bind' || fx.implementationKey === 'bind' || fx.implementationKey === 'slow')) {
-    const statusKey = effect === 'bind' || fx.implementationKey === 'bind' ? 'bind' : 'slow';
-    const msg = applyStatusEffect(state, 'enemy', statusKey, fx.statusDuration ?? (statusKey === 'bind' ? 1 : 2), isBoss);
-    const suffix = statusKey === 'slow' ? (msg || '敵の動きが鈍った。') : (fx.logTemplate ?? msg ?? '拘束した。');
-    pushLog(state, 'player_skill', `${skill.name}。\n　${suffix}`);
+  const statusTarget = resolveSkillStatusTarget(skill, fx, effect);
+  if (skill.power <= 0 && statusTarget) {
+    const statusResult = attemptApplyEnemyStatus({
+      state,
+      effect: statusTarget.effect,
+      duration: statusTarget.duration,
+      isBoss,
+      threatTier: scale.threatTier,
+      skillSuccessRate: statusTarget.skillRate,
+      monsterName: monster.name,
+    });
+    pushLog(state, 'player_skill', `${skill.name}。`);
+    for (const line of statusResult.logs) pushLog(state, 'status', line);
+    eBreak += statusResult.breakBonus;
+    checkBreak(state, monster, eBreak);
     return { pHp, pMp, eHp, eBreak, state };
   }
 
@@ -461,16 +496,18 @@ function applySkill(skill: SkillRow, player: ReturnType<typeof requirePlayer>, m
     } else pushLog(state, 'player_skill', `${skill.name}。\n　外れた。`);
   }
 
-  if (fx.statusEffect && roll(fx.statusChance ?? 0.65)) {
-    const msg = applyStatusEffect(state, 'enemy', fx.statusEffect, fx.statusDuration ?? 2, isBoss);
-    if (msg) pushLog(state, 'status', msg);
-  } else if (skill.status_effect === 'poison') {
-    applyStatusEffect(state, 'enemy', 'poison', 3, isBoss);
-  } else if (skill.power > 0 && (effect === 'slow' || effect === 'bind' || fx.implementationKey === 'slow' || fx.implementationKey === 'bind')) {
-    const statusKey = effect === 'bind' || fx.implementationKey === 'bind' ? 'bind' : 'slow';
-    const msg = applyStatusEffect(state, 'enemy', statusKey, fx.statusDuration ?? (statusKey === 'bind' ? 1 : 2), isBoss);
-    const suffix = statusKey === 'slow' ? (msg || '敵の動きが鈍った。') : (fx.logTemplate ?? msg ?? '拘束した。');
-    pushLog(state, 'status', suffix);
+  if (statusTarget) {
+    const statusResult = attemptApplyEnemyStatus({
+      state,
+      effect: statusTarget.effect,
+      duration: statusTarget.duration,
+      isBoss,
+      threatTier: scale.threatTier,
+      skillSuccessRate: statusTarget.skillRate,
+      monsterName: monster.name,
+    });
+    for (const line of statusResult.logs) pushLog(state, 'status', line);
+    eBreak += statusResult.breakBonus;
   }
 
   checkBreak(state, monster, eBreak);
@@ -496,6 +533,7 @@ function executeEnemyTurn(monster: MonsterRow, player: ReturnType<typeof require
   if (isEnemyActionBlocked(state, isBoss)) {
     pushLog(state, 'status', `${monster.name}は動けない！`);
     state.enemyBind = Math.max(0, state.enemyBind - 1);
+    onEnemyControlBlocked(state);
     return { pHp, eHp, eBreak, state };
   }
 
@@ -520,6 +558,11 @@ function executeEnemyTurn(monster: MonsterRow, player: ReturnType<typeof require
   if (tutorial) dmg = Math.max(1, Math.floor(dmg * 0.55));
   if (state.defending) dmg = Math.floor(dmg * (state.guardStrong ? 0.40 : 0.55));
   if (state.enemyBroken) dmg = Math.floor(dmg * 0.75);
+  const atkReduce = getEnemyAttackReduceMult(state);
+  if (atkReduce < 1) {
+    dmg = Math.floor(dmg * atkReduce);
+    consumeEnemyAttackReduce(state);
+  }
   const resists = getPlayerElementResistances(player.user_id);
   const mit = applyPlayerElementResist(dmg, monster.element, resists);
   dmg = mit.damage;

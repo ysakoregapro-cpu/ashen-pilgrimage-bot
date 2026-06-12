@@ -8,7 +8,7 @@ import { getUniqueWeapons } from './srcWeaponSystem';
 import { getJobs } from './jobSystem';
 import { formatEquipmentDisplay } from './equipmentSystem';
 import { getInventoryByCategory } from './inventorySystem';
-import { restAtInn, shrineHeal, formatRestPreview } from './innSystem';
+import { restAtInn, shrineHeal, formatRestPreview, isFullyRested } from './innSystem';
 import { formatShopCatalogForPlayer, getShopCatalog, getSellableInventory } from './shopSystem';
 import { getActiveListings, getMyListings, formatListingList } from './marketSystem';
 import { formatCurrentEquipment } from './prepSystem';
@@ -189,23 +189,29 @@ export function executeFacilityAction(userId: string, facilityId: string, action
   const npcId = facility.npc_id;
 
   if (actionId === 'rest_preview' || actionId === 'rest') {
+    if (isFullyRested(userId)) {
+      return { type: 'text', message: '今は休まなくても大丈夫そうです。', extra: 'already_full' };
+    }
     const town = getCurrentTown(userId) as { id: string } | undefined;
     return { type: 'inn_preview', message: formatRestPreview(userId, town?.id ?? 'start_starfield', '宿屋'), extra: 'inn' };
   }
   if (actionId === 'rest_confirm') {
     const town = getCurrentTown(userId) as { id: string } | undefined;
     const result = restAtInn(userId, town?.id ?? 'start_starfield');
-    return { type: 'text', message: result.message };
+    return { type: 'text', message: result.message, extra: result.ok ? 'rest_ok' : result.reason ?? 'rest_fail' };
   }
 
   if (actionId === 'heal_preview' || actionId === 'heal') {
+    if (isFullyRested(userId)) {
+      return { type: 'text', message: '今は休まなくても大丈夫そうです。', extra: 'already_full' };
+    }
     const town = getCurrentTown(userId) as { id: string } | undefined;
     return { type: 'inn_preview', message: formatRestPreview(userId, town?.id ?? 'start_starfield', '救護所'), extra: 'shrine' };
   }
   if (actionId === 'heal_confirm') {
     const town = getCurrentTown(userId) as { id: string } | undefined;
     const result = shrineHeal(userId, town?.id ?? 'start_starfield');
-    return { type: 'text', message: result.message };
+    return { type: 'text', message: result.message, extra: result.ok ? 'rest_ok' : result.reason ?? 'rest_fail' };
   }
 
   if (actionId === 'smalltalk' && npcId) {

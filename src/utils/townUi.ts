@@ -97,6 +97,21 @@ export function travelSelectMenu(towns: Array<{ id: string; name: string; requir
   );
 }
 
+export function parseFacilityActionId(base: string): { facId: string; action: string } | null {
+  const prefix = 'facility:act:';
+  if (!base.startsWith(prefix)) return null;
+  const rest = base.slice(prefix.length);
+  const idx = rest.lastIndexOf(':');
+  if (idx <= 0) return null;
+  return { facId: rest.slice(0, idx), action: rest.slice(idx + 1) };
+}
+
+export function parseFacilityViewId(base: string): string | null {
+  const prefix = 'facility:view:';
+  if (!base.startsWith(prefix)) return null;
+  return base.slice(prefix.length);
+}
+
 export function facilityActionButtons(facilityId: string, actions: Array<{ id: string; label: string }>) {
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
   const chunk = (arr: typeof actions, size: number) => {
@@ -142,6 +157,16 @@ export function restConfirmButtons(facilityId: string, mode: 'inn' | 'shrine'): 
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       btn(`facility:act:${facilityId}:${confirmId}`, '利用する', ButtonStyle.Success),
       btn(`facility:view:${facilityId}`, 'やめる', ButtonStyle.Secondary),
+    ),
+  ];
+}
+
+export function postRestButtons(facilityId: string): ActionRowBuilder<ButtonBuilder>[] {
+  return [
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      btn(`facility:view:${facilityId}`, '施設に戻る', ButtonStyle.Secondary),
+      btn('town:home', '町へ戻る', ButtonStyle.Primary),
+      btn('town:explore', '探索へ向かう', ButtonStyle.Success),
     ),
   ];
 }

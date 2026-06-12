@@ -1,12 +1,12 @@
 import { getPlayer, getUnlockedTowns } from './playerSystem';
 import {
-  getCurrentTown, getAllTowns, travelToTown, getVisitCount, recordTownVisit,
+  getCurrentTown, getAllTowns, travelToTown, getVisitCount, recordTownVisit, returnToTownHub,
 } from './townSystem';
+import { getPassiveNpcHints, formatPassiveHints } from './npcHintSystem';
 import { getFacilitiesForTown, buildFacilityGreeting, getFacility, getFacilityActions } from './facilitySystem';
 import { getTownNpcs, getDialogue, getNpcGreeting, getNpc } from './npcConversationSystem';
 import { getAreasForTown } from './explorationSystem';
 import { buildExploreAreaOptions, formatAreaDetail } from './areaDisplaySystem';
-import { returnToTownHub } from './townSystem';
 import { buildGuideSection } from './dialogueSystem';
 import { getRoadmapHints } from './progressionSystem';
 import {
@@ -86,6 +86,10 @@ export function buildTownHub(userId: string, opts?: { intro?: string; isFirstVis
 
   const facNames = facilities.slice(0, 8).map((f) => f.name);
   const npcNames = npcs.slice(0, 6).map((n) => n.name);
+
+  if (!opts?.intro?.includes('町の便り')) {
+    intro += formatPassiveHints(getPassiveNpcHints(userId, 'town_arrival'));
+  }
 
   const embed = townMenuEmbed(town.name, formatTownIntro(intro || town.description), [
     { label: 'この町でできること', items: ['町を歩く', '町の人と話す', '探索へ向かう', '別の町へ向かう'] },

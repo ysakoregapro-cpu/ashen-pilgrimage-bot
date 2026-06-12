@@ -27,27 +27,27 @@ export const EFFECT_TYPE_MAP: Record<string, SkillEffectDef> = {
   def_buff: { implementationKey: 'def_buff', statusEffect: 'guard_up', statusDuration: 2, implemented: true },
   scan: { implementationKey: 'scan', implemented: true },
   trap: { implementationKey: 'trap', implemented: true },
-  slow: { implementationKey: 'slow', statusEffect: 'slow', statusDuration: 2, statusChance: 0.85, implemented: true, logTemplate: '足が止まった。' },
-  bind: { implementationKey: 'bind', statusEffect: 'bind', statusDuration: 1, statusChance: 0.75, bossConversion: 'weaken', implemented: true, logTemplate: '拘束した！' },
+  slow: { implementationKey: 'slow', statusEffect: 'slow', statusDuration: 2, implemented: true, logTemplate: '足が止まった。' },
+  bind: { implementationKey: 'bind', statusEffect: 'bind', statusDuration: 1, bossConversion: 'weaken', implemented: true, logTemplate: '拘束した！' },
   taunt: { implementationKey: 'taunt', implemented: true },
 };
 
 /** status_effect column → implementation when no effect_type */
 export const STATUS_EFFECT_MAP: Record<string, SkillEffectDef> = {
-  poison: { implementationKey: 'poison', statusEffect: 'poison', statusDuration: 3, statusChance: 0.7, implemented: true, logTemplate: '毒を付与した。' },
-  burn: { implementationKey: 'burn', statusEffect: 'burn', statusDuration: 3, statusChance: 0.65, implemented: true },
-  silence: { implementationKey: 'silence', statusEffect: 'silence', statusDuration: 2, statusChance: 0.6, bossConversion: 'weaken', implemented: true },
-  blind: { implementationKey: 'blind', statusEffect: 'blind', statusDuration: 2, statusChance: 0.7, implemented: true },
+  poison: { implementationKey: 'poison', statusEffect: 'poison', statusDuration: 3, implemented: true, logTemplate: '毒を付与した。' },
+  burn: { implementationKey: 'burn', statusEffect: 'burn', statusDuration: 3, implemented: true },
+  silence: { implementationKey: 'silence', statusEffect: 'silence', statusDuration: 2, bossConversion: 'weaken', implemented: true },
+  blind: { implementationKey: 'blind', statusEffect: 'blind', statusDuration: 2, implemented: true },
 };
 
 /** Per-skill overrides where desc differs from effect_type */
 export const SKILL_OVERRIDES: Record<string, Partial<SkillEffectDef>> = {
-  bs_bind_arrow: { implementationKey: 'bind', statusEffect: 'bind', statusDuration: 1, statusChance: 0.8, bossConversion: 'weaken', implemented: true, logTemplate: '足止め矢が敵の足を縛った。' },
-  bs_binding_light: { implementationKey: 'bind', statusEffect: 'bind', statusDuration: 1, statusChance: 0.7, bossConversion: 'weaken', implemented: true, logTemplate: '光の繋ぎが敵を弱らせた。' },
-  bs_shadow_stitch: { implementationKey: 'slow', statusEffect: 'slow', statusDuration: 2, statusChance: 0.85, implemented: true },
-  bs_arc_jam: { implementationKey: 'slow', statusEffect: 'slow', statusDuration: 2, statusChance: 0.8, implemented: true },
+  bs_bind_arrow: { implementationKey: 'bind', statusEffect: 'bind', statusDuration: 1, bossConversion: 'weaken', implemented: true, logTemplate: '足止め矢が敵の足を縛った。' },
+  bs_binding_light: { implementationKey: 'bind', statusEffect: 'bind', statusDuration: 1, bossConversion: 'weaken', implemented: true, logTemplate: '光の繋ぎが敵を弱らせた。' },
+  bs_shadow_stitch: { implementationKey: 'slow', statusEffect: 'slow', statusDuration: 2, implemented: true },
+  bs_arc_jam: { implementationKey: 'slow', statusEffect: 'slow', statusDuration: 2, implemented: true },
   bs_ice_needle: { implementationKey: 'slow', statusEffect: 'slow', statusDuration: 1, statusChance: 0.6, implemented: true },
-  bs_poison_blade: { implementationKey: 'poison', statusEffect: 'poison', statusDuration: 3, statusChance: 0.75, implemented: true },
+  bs_poison_blade: { implementationKey: 'poison', statusEffect: 'poison', statusDuration: 3, implemented: true },
 };
 
 export function resolveSkillEffect(skillId: string, effectType: string | null, statusEffect: string | null): SkillEffectDef {

@@ -2,6 +2,14 @@ import { getDb } from '../db/database';
 import { requirePlayer, spendGold } from './playerSystem';
 import { nowIso } from '../types';
 
+export type RestOutcome = {
+  ok: boolean;
+  reason?: 'already_full' | 'insufficient_gold';
+  paid: boolean;
+  cost: number;
+  message: string;
+};
+
 export function calcInnCost(userId: string, townId: string): number {
   const player = requirePlayer(userId);
   const town = getDb().prepare('SELECT required_level FROM towns WHERE id = ?').get(townId) as { required_level: number } | undefined;
@@ -25,9 +33,17 @@ export function calcRestCost(userId: string, townId: string): number {
   return calcInnCost(userId, townId);
 }
 
+export function isFullyRested(userId: string): boolean {
+  const player = requirePlayer(userId);
+  return player.hp >= player.max_hp && player.mp >= player.max_mp;
+}
+
 export function formatRestPreview(userId: string, townId: string, label: '宿屋' | '救護所'): string {
   const player = requirePlayer(userId);
   const cost = calcRestCost(userId, townId);
+  if (isFullyRested(userId)) {
+    return ['**' + label + '**', '', '今は休まなくても大丈夫そうです。'].join('\n');
+  }
   const canAfford = player.gold >= cost;
   const lines = [
     `**${label}**`,
@@ -37,91 +53,77 @@ export function formatRestPreview(userId: string, townId: string, label: '宿屋
     `所持金: **${player.gold}G**`,
   ];
   if (canAfford) lines.push(`利用後: **${player.gold - cost}G**`);
-  else lines.push(`不足: **${cost - player.gold}G**`);
+  else {
+    lines.push(`不足: **${cost - player.gold}G**`);
+    lines.push('', '手持ちのGが足りないようです。', 'もう少し探索してから戻ってきてください。');
+  }
   return lines.join('\n');
 }
 
-export function restAtInn(userId: string, townId: string, freeHeal = false): {
-  paid: boolean;
-  relief: boolean;
-  cost: number;
-  message: string;
-} {
+export function restAtInn(userId: string, townId: string, freeHeal = false): RestOutcome {
   const player = requirePlayer(userId);
   const cost = calcRestCost(userId, townId);
 
-  if (freeHeal) {
-    getDb().prepare('UPDATE players SET hp=max_hp, mp=max_mp, updated_at=? WHERE user_id=?').run(nowIso(), userId);
-    return { paid: false, relief: false, cost: 0, message: '深く息を吐くと、体の芯まで温かさが戻ってきた。\nHPとMPが全回復した。' };
+  if (isFullyRested(userId)) {
+    return { ok: false, reason: 'already_full', paid: false, cost: 0, message: '今は休まなくても大丈夫そうです。' };
   }
 
-  if (player.gold >= cost && spendGold(userId, cost)) {
+  if (freeHeal) {
     getDb().prepare('UPDATE players SET hp=max_hp, mp=max_mp, updated_at=? WHERE user_id=?').run(nowIso(), userId);
     return {
-      paid: true,
-      relief: false,
+      ok: true, paid: false, cost: 0,
+      message: '深く息を吐くと、体の芯まで温かさが戻ってきた。\nHPとMPが全回復した。',
+    };
+  }
+
+  if (player.gold < cost) {
+    return {
+      ok: false,
+      reason: 'insufficient_gold',
+      paid: false,
       cost,
       message: [
         `利用料: **${cost}G**`,
-        '回復: HP/MP 全回復',
-        `所持金: **${player.gold - cost}G**`,
+        `所持金: **${player.gold}G**`,
         '',
-        '深く眠り、傷と疲れを癒した。',
+        '手持ちのGが足りないようです。',
+        'もう少し探索してから戻ってきてください。',
       ].join('\n'),
     };
   }
 
-  const reliefHp = Math.floor(player.max_hp * 0.4);
-  const reliefMp = Math.floor(player.max_mp * 0.2);
-  getDb().prepare('UPDATE players SET hp=?, mp=?, updated_at=? WHERE user_id=?').run(reliefHp, reliefMp, nowIso(), userId);
+  if (!spendGold(userId, cost)) {
+    return {
+      ok: false,
+      reason: 'insufficient_gold',
+      paid: false,
+      cost,
+      message: '手持ちのGが足りないようです。\nもう少し探索してから戻ってきてください。',
+    };
+  }
+
+  getDb().prepare('UPDATE players SET hp=max_hp, mp=max_mp, updated_at=? WHERE user_id=?').run(nowIso(), userId);
+  const after = requirePlayer(userId);
   return {
-    paid: false,
-    relief: true,
+    ok: true,
+    paid: true,
     cost,
     message: [
       `利用料: **${cost}G**`,
-      `所持金: **${player.gold}G**`,
-      `不足: **${cost - player.gold}G**`,
+      '回復: HP/MP 全回復',
+      `所持金: **${after.gold}G**`,
       '',
-      '十分なゴールドがありません。',
-      '宿泊はできませんが、最低限の手当てを受けます。',
-      '',
-      `HPが40%（${reliefHp}）まで回復しました。`,
+      '深く眠り、傷と疲れを癒した。',
     ].join('\n'),
   };
 }
 
-export function shrineHeal(userId: string, townId: string): { message: string; cost: number; paid: boolean } {
-  const cost = calcRestCost(userId, townId);
-  const player = requirePlayer(userId);
-  if (player.gold >= cost && spendGold(userId, cost)) {
-    getDb().prepare('UPDATE players SET hp=max_hp, mp=max_mp, updated_at=? WHERE user_id=?').run(nowIso(), userId);
-    return {
-      paid: true,
-      cost,
-      message: [
-        `利用料: **${cost}G**`,
-        '回復: HP/MP 全回復',
-        `所持金: **${player.gold - cost}G**`,
-        '',
-        '救護の手当てを受け、HP/MPが全回復した。',
-      ].join('\n'),
-    };
-  }
-  const reliefHp = Math.floor(player.max_hp * 0.4);
-  const reliefMp = Math.floor(player.max_mp * 0.2);
-  getDb().prepare('UPDATE players SET hp=?, mp=?, updated_at=? WHERE user_id=?').run(reliefHp, reliefMp, nowIso(), userId);
+export function shrineHeal(userId: string, townId: string): RestOutcome {
+  const result = restAtInn(userId, townId);
+  if (!result.ok) return result;
   return {
-    paid: false,
-    cost,
-    message: [
-      `利用料: **${cost}G**`,
-      `所持金: **${player.gold}G**`,
-      `不足: **${cost - player.gold}G**`,
-      '',
-      '寄付が足りないが、最低限の手当てだけは受けられた。',
-      `HP ${reliefHp} / MP ${reliefMp} まで回復。`,
-    ].join('\n'),
+    ...result,
+    message: result.message.replace('深く眠り、傷と疲れを癒した。', '救護の手当てを受け、HP/MPが全回復した。'),
   };
 }
 

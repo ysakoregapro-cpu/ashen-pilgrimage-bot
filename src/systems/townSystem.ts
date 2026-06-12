@@ -102,7 +102,8 @@ export function returnToTownHub(userId: string): string {
   const loot = finalizeExplorationLoot(userId);
   const exploreBonus = grantExploreReturnBonus(userId, player.current_town_id);
   const parts = [exploreBonus, loot.message].filter(Boolean);
-  const hints = formatPassiveHints(getPassiveNpcHints(userId, 'explore_return'));
+  const hintTrigger = parts.length ? 'explore_return' : null;
+  const hints = hintTrigger ? formatPassiveHints(getPassiveNpcHints(userId, hintTrigger)) : '';
   return parts.join('\n\n') + hints;
 }
 
