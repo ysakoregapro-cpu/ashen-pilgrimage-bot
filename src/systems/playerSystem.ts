@@ -5,6 +5,7 @@ import { getActiveSetEffectLinesCompat } from './setBonusDisplaySystem';
 import { addItem } from './inventorySystem';
 import { equipItem } from './equipmentSystem';
 import { calcUpgradeStatBonuses, getPrimaryStatKey } from './enhanceSystem';
+import { resolveEquipmentEnhanceLevels } from './equipmentEffectiveStats';
 import { getAwakeningStatFlatBonus } from './awakeningSystem';
 import {
   aggregateAffixStatPercents, applyStatRollMultiplier, loadEquipmentRollFromRow,
@@ -80,14 +81,19 @@ export function recalculatePlayerStats(userId: string): Player {
     const durPenalty = eq.durability_state === '破損' ? 0.7 : eq.durability_state === '損傷' ? 0.85 : eq.durability_state === '摩耗' ? 0.95 : 1;
     const roll = loadEquipmentRollFromRow(eq);
     const mults = roll?.statRoll?.multipliers ?? {};
+    const levels = resolveEquipmentEnhanceLevels({
+      rarity: eq.rarity,
+      upgrade_level: eq.upgrade_level,
+      src_level: eq.src_level,
+    });
     const stats = calcUpgradeStatBonuses(
       {
         attack_bonus: eq.attack_bonus, magic_bonus: eq.magic_bonus, defense_bonus: eq.defense_bonus,
         spirit_bonus: eq.spirit_bonus, speed_bonus: eq.speed_bonus, hp_bonus: eq.hp_bonus,
         slot: eq.slot, weapon_type: eq.weapon_type,
       },
-      eq.upgrade_level,
-      eq.src_level,
+      levels.upgrade_level,
+      levels.src_level,
       durPenalty,
       eq.rarity,
     );

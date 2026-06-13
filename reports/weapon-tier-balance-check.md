@@ -1,6 +1,6 @@
 # weapon-tier-balance-check
 
-Generated: 2026-06-13T11:14:31.950Z
+Generated: 2026-06-13T11:44:34.637Z
 
 ## 設計方針
 

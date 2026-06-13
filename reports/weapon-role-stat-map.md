@@ -1,6 +1,6 @@
 # weapon-role-stat-map
 
-Generated: 2026-06-13T11:18:24.936Z
+Generated: 2026-06-13T11:31:11.423Z
 
 ## 武器種ロールマップ
 

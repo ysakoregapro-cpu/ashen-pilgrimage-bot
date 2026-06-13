@@ -93,6 +93,7 @@ export const VALHALLA_REPEAT_MATERIAL_POOL: Array<{ itemId: string; weight: numb
   { itemId: 'raid_deep_core', weight: 12 },
   { itemId: 'raid_sky_core', weight: 10 },
   { itemId: 'upg_rare_stone', weight: 8 },
+  { itemId: 'cons_mana_valhalla', weight: 3 },
 ];
 
 export type ValhallaRewardRow = {

@@ -1,6 +1,12 @@
 metric,value,status,notes
-db,SKIP,WARN,"The module '\\?\C:\Users\natan\projects\ashen-pilgrimage-bot\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
-was compiled against a different Node.js version using
-NODE_MODULE_VERSION 127. This version of Node.js requires
-NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
-the module (for instance, using `npm rebuild` or `npm install`)."
+inn_cost_lv80_valhalla,1440,OK,宿代
+shrine_half,720,OK,救護所半額
+early_gold_bandit,14,OK,序盤1戦
+valhalla_normal_avg_gold_base,98,OK,seed基礎
+valhalla_normal_avg_gold_effective,197,OK,180-320目安（戦闘倍率込）
+valhalla_normal_avg_exp,292,OK,250-450目安
+ur_plus15_gold,22500,OK,UR強化費
+valhalla_boss_gold,2500-5000,OK,再戦
+valhalla_boss_emblem,4-8,OK,再戦
+fights_per_inn_valhalla,8,OK,6-10戦目安
+inn_per_boss_rematch,19,OK,ボス1回で数回宿泊

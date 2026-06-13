@@ -29,8 +29,12 @@ function main() {
   assert(emblem?.category === 'currency_material', 'valhalla_emblem category must be currency_material');
   assert(VALHALLA_EXCHANGE_TABLE.length >= 9, 'exchange table too short');
 
-  const minCost = Math.min(...VALHALLA_EXCHANGE_TABLE.map((e) => e.cost_valhalla_emblem));
-  assert(minCost >= 10, 'exchange costs too cheap');
+  const minCost = Math.min(...VALHALLA_EXCHANGE_TABLE.filter((e) => e.currently_available).map((e) => e.cost_valhalla_emblem));
+  assert(minCost >= 8, 'exchange costs too cheap');
+  assert(
+    VALHALLA_EXCHANGE_TABLE.some((e) => e.exchange_id === 'vex_mana_valhalla' && e.cost_valhalla_emblem === 8),
+    'mana valhalla exchange 8 emblem',
+  );
 
   const silentPageExchanges = VALHALLA_EXCHANGE_TABLE.filter((e) => e.cost_silent_page > 0);
   assert(silentPageExchanges.length >= 2, 'need silent page premium exchanges');
@@ -45,8 +49,8 @@ function main() {
 
   const unimplemented = VALHALLA_EXCHANGE_TABLE.filter((e) => e.ui_implemented);
   const uiCount = unimplemented.length;
-  if (uiCount !== 6) {
-    warns.push(`expected 6 ui_implemented exchanges, got ${uiCount}`);
+  if (uiCount !== 7) {
+    warns.push(`expected 7 ui_implemented exchanges, got ${uiCount}`);
   }
   const futureInUi = VALHALLA_EXCHANGE_TABLE.filter((e) => e.ui_implemented && !e.currently_available);
   if (futureInUi.length > 0) warns.push('some ui_implemented entries not currently_available');

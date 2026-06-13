@@ -3,6 +3,7 @@ import { getDifficultyModifiers } from './difficultySystem';
 import { calcBattleExp, calcBossExp } from './expSystem';
 import { SRC_FORGE_MATERIAL_ID, SRC_FORGE_MATERIAL_DROP_RATE } from '../db/seedData/awakeningMaster';
 import { BOSS_VICTORY_MATERIAL_DROPS } from '../db/seedData/dropBalanceMaster';
+import { rollManaConsumableDrop } from '../db/seedData/manaConsumables';
 import {
   REMATCH_MATERIAL_BOSSES, UNI_FORGE_DROP_RATE, SRC_FARM_MONSTER_IDS, PHASE2_UNI_MATERIAL_DROPS,
 } from '../db/seedData/forgeMaster';
@@ -924,6 +925,8 @@ function executeSingleEnemyTurn(
     attack: atk,
     playerDefense: player.defense + state.defBuff * 10,
     playerMaxHp: player.max_hp,
+    playerLevel: player.level,
+    monsterLevel: monster.level ?? 1,
     threatTier: scale.threatTier,
     takenMult: diff.playerTaken * statusMods.playerTakenMult,
     heavy,
@@ -978,6 +981,8 @@ function executeEnemyTurn(monster: MonsterRow, player: ReturnType<typeof require
     attack: atk,
     playerDefense: player.defense + state.defBuff * 10,
     playerMaxHp: player.max_hp,
+    playerLevel: player.level,
+    monsterLevel: monster.level ?? 1,
     threatTier: scale.threatTier,
     takenMult: diff.playerTaken * statusMods.playerTakenMult,
     heavy,
@@ -1022,6 +1027,10 @@ function useBattleItem(userId: string, inventoryId: number, state: BattleState, 
     const heal = effect.value ?? 50;
     pHp = Math.min(player.max_hp, pHp + heal);
     pushLog(state, 'player_heal', `${row.name}。\n　HPを **${heal}** 回復。`);
+  } else if (effect.type === 'heal_mp' || effect.type === 'restore_mp') {
+    const heal = effect.value ?? 30;
+    pMp = Math.min(player.max_mp, pMp + heal);
+    pushLog(state, 'player_heal', `${row.name}。\n　MPを **${heal}** 回復。`);
   } else if (effect.type === 'cure_poison') {
     state.poisonTurns = 0;
     pushLog(state, 'player_heal', `${row.name}。\n　毒が治った。`);
@@ -1257,6 +1266,19 @@ function resolveVictory(
     addItem(userId, SRC_FORGE_MATERIAL_ID, 1, { pending: true });
     const mat = getDb().prepare('SELECT name FROM items WHERE id = ?').get(SRC_FORGE_MATERIAL_ID) as { name: string };
     dropMsgs.push(mat.name);
+  }
+  const manaDropId = rollManaConsumableDrop({
+    id: monster.id,
+    level: monster.level ?? 1,
+    magic: monster.magic,
+    attack: monster.attack,
+    area_tag: monster.area_tag ?? 'starfield',
+    spirit: monster.spirit ?? monster.magic,
+    is_boss: session.is_boss,
+  }, !!session.is_boss);
+  if (manaDropId) {
+    addItem(userId, manaDropId, 1, { pending: true });
+    dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(manaDropId) as { name: string }).name);
   }
   if (areaRow?.town_id === 'valhalla_fortress' && session.area_id
     && !(session.is_boss && isValhallaBossMonster(session.monster_id))) {

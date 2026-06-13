@@ -1,6 +1,6 @@
 # equipment-effective-stat-display-check
 
-Generated: 2026-06-13T11:18:22.912Z
+Generated: 2026-06-13T11:46:38.376Z
 
 ## DB
 

@@ -25,18 +25,18 @@ const SHOP_ADDITIONS: Record<string, string[]> = {
 };
 
 const TOWN_SHOP_CATALOG: Record<string, string[]> = {
-  start_starfield: ['cons_heal_potion', 'cons_antidote', 'cons_smoke_bomb', 'upg_rough_stone', 'rep_patch', 'wpn_traveler_sword', 'arm_set_starfield_body', ...SHOP_ADDITIONS.start_starfield!],
-  old_road_village: ['cons_heal_potion', 'cons_antidote', 'upg_rough_stone', 'rep_patch', 'wpn_old_road_knife', 'arm_set_old_road_head', ...SHOP_ADDITIONS.old_road_village!],
-  twilight_port: ['cons_heal_potion', 'cons_heal_medium', 'cons_antidote', 'cons_smoke_bomb', 'cons_lamp_bottle', 'upg_rough_stone', 'upg_stone', 'rep_patch', 'wpn_twilight_bow', 'arm_set_twilight_head'],
-  silver_mine: ['cons_heal_medium', 'cons_antidote', 'upg_stone', 'rep_oil', 'rep_silver_clip', 'wpn_silver_hammer', 'arm_set_silver_head', 'mat_silver_ore', ...SHOP_ADDITIONS.silver_mine!],
-  mist_forest: ['cons_heal_medium', 'cons_antidote', 'cons_status_cure', 'upg_stone', 'rep_patch', 'acc_traveler_ring', 'acc_mist_talisman', ...SHOP_ADDITIONS.mist_forest!],
-  moon_library: ['cons_heal_medium', 'cons_heal_large', 'cons_status_cure', 'upg_fine_stone', 'rep_silver_clip'],
-  forgotten_market: ['cons_heal_large', 'cons_status_cure', 'upg_fine_stone', 'rep_oil', 'acc_silver_bracelet', 'acc_moon_pendant'],
-  hourglass_city: ['cons_heal_large', 'cons_status_cure', 'upg_fine_stone', 'rep_silver_clip'],
-  ash_capital: ['cons_heal_large', 'cons_status_cure', 'upg_fine_stone', 'upg_rare_stone', 'rep_deep_repair'],
-  deep_furnace_outpost: ['cons_heal_large', 'cons_lamp_bottle', 'upg_rare_stone', 'upg_deep_core_stone', 'rep_deep_repair', 'cons_status_cure', ...SHOP_ADDITIONS.deep_furnace_outpost!],
-  valhalla_fortress: ['cons_heal_large', 'cons_lamp_bottle', 'cons_status_cure', 'upg_rare_stone', 'upg_deep_core_stone', 'rep_deep_repair', ...SHOP_ADDITIONS.valhalla_fortress!],
-  rain_ruins: ['cons_heal_potion', 'cons_heal_medium', 'cons_antidote', 'upg_rough_stone', 'wpn_rain_bow'],
+  start_starfield: ['cons_heal_potion', 'cons_antidote', 'cons_smoke_bomb', 'cons_mana_drop', 'upg_rough_stone', 'rep_patch', 'wpn_traveler_sword', 'arm_set_starfield_body', ...SHOP_ADDITIONS.start_starfield!],
+  old_road_village: ['cons_heal_potion', 'cons_antidote', 'cons_mana_drop', 'upg_rough_stone', 'rep_patch', 'wpn_old_road_knife', 'arm_set_old_road_head', ...SHOP_ADDITIONS.old_road_village!],
+  twilight_port: ['cons_heal_potion', 'cons_heal_medium', 'cons_antidote', 'cons_smoke_bomb', 'cons_lamp_bottle', 'cons_mana_drop', 'cons_mana_vial', 'upg_rough_stone', 'upg_stone', 'rep_patch', 'wpn_twilight_bow', 'arm_set_twilight_head'],
+  silver_mine: ['cons_heal_medium', 'cons_antidote', 'cons_mana_drop', 'cons_mana_vial', 'upg_stone', 'rep_oil', 'rep_silver_clip', 'wpn_silver_hammer', 'arm_set_silver_head', 'mat_silver_ore', ...SHOP_ADDITIONS.silver_mine!],
+  mist_forest: ['cons_heal_medium', 'cons_antidote', 'cons_status_cure', 'cons_mana_drop', 'cons_mana_vial', 'upg_stone', 'rep_patch', 'acc_traveler_ring', 'acc_mist_talisman', ...SHOP_ADDITIONS.mist_forest!],
+  moon_library: ['cons_heal_medium', 'cons_heal_large', 'cons_status_cure', 'cons_mana_drop', 'cons_mana_vial', 'upg_fine_stone', 'rep_silver_clip'],
+  forgotten_market: ['cons_heal_large', 'cons_status_cure', 'cons_mana_vial', 'cons_mana_flask', 'upg_fine_stone', 'rep_oil', 'acc_silver_bracelet', 'acc_moon_pendant'],
+  hourglass_city: ['cons_heal_large', 'cons_status_cure', 'cons_mana_vial', 'cons_mana_flask', 'upg_fine_stone', 'rep_silver_clip'],
+  ash_capital: ['cons_heal_large', 'cons_status_cure', 'cons_mana_vial', 'cons_mana_flask', 'upg_fine_stone', 'upg_rare_stone', 'rep_deep_repair'],
+  deep_furnace_outpost: ['cons_heal_large', 'cons_lamp_bottle', 'cons_mana_vial', 'cons_mana_flask', 'upg_rare_stone', 'upg_deep_core_stone', 'rep_deep_repair', 'cons_status_cure', ...SHOP_ADDITIONS.deep_furnace_outpost!],
+  valhalla_fortress: ['cons_heal_large', 'cons_lamp_bottle', 'cons_status_cure', 'cons_mana_flask', 'cons_mana_valhalla', 'upg_rare_stone', 'upg_deep_core_stone', 'rep_deep_repair', ...SHOP_ADDITIONS.valhalla_fortress!],
+  rain_ruins: ['cons_heal_potion', 'cons_heal_medium', 'cons_antidote', 'cons_mana_drop', 'upg_rough_stone', 'wpn_rain_bow'],
 };
 
 export function getShopCatalog(townId: string): ShopItem[] {

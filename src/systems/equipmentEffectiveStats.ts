@@ -42,6 +42,18 @@ export type EquipmentStatsInput = {
   slot: string;
 };
 
+/** Src武器は src_level が正。旧データで upgrade_level のみ入っている場合を正規化 */
+export function resolveEquipmentEnhanceLevels(input: Pick<EquipmentStatsInput, 'rarity' | 'upgrade_level' | 'src_level'>): {
+  upgrade_level: number;
+  src_level: number;
+} {
+  if (input.rarity !== 'Src') {
+    return { upgrade_level: input.upgrade_level ?? 0, src_level: input.src_level ?? 0 };
+  }
+  const srcLv = Math.max(input.src_level ?? 0, input.upgrade_level ?? 0);
+  return { upgrade_level: 0, src_level: srcLv };
+}
+
 function durPenalty(state: string): number {
   return DURABILITY_PENALTY[(state as DurabilityState) ?? '良好'] ?? 1;
 }
@@ -49,6 +61,7 @@ function durPenalty(state: string): number {
 /** 装備単体の実効ステータス（職業補正・セット補正は含めない） */
 export function getEquipmentEffectiveStats(input: EquipmentStatsInput): EquipmentEffectiveStats {
   const pen = durPenalty(input.durability_state);
+  const levels = resolveEquipmentEnhanceLevels(input);
   const eqRow: EquipStatRow = {
     attack_bonus: input.attack_bonus,
     magic_bonus: input.magic_bonus,
@@ -61,8 +74,8 @@ export function getEquipmentEffectiveStats(input: EquipmentStatsInput): Equipmen
   };
   const upgraded = calcUpgradeStatBonuses(
     eqRow,
-    input.upgrade_level,
-    input.src_level,
+    levels.upgrade_level,
+    levels.src_level,
     pen,
     input.rarity,
   );
@@ -93,9 +106,10 @@ export function getEquipmentEffectiveStats(input: EquipmentStatsInput): Equipmen
 
 /** 【性能】行末の注記 */
 export function getEffectiveStatSuffix(input: Pick<EquipmentStatsInput, 'rarity' | 'upgrade_level' | 'src_level' | 'awakening_level'>): string {
-  if (input.rarity === 'Src' && input.src_level > 0) return '（Src強化込み）';
-  if (input.upgrade_level > 0 && (input.awakening_level ?? 0) > 0) return '（強化・覚醒込み）';
-  if (input.upgrade_level > 0) return '（強化込み）';
+  const levels = resolveEquipmentEnhanceLevels(input);
+  if (input.rarity === 'Src' && levels.src_level > 0) return '（Src強化込み）';
+  if (levels.upgrade_level > 0 && (input.awakening_level ?? 0) > 0) return '（強化・覚醒込み）';
+  if (levels.upgrade_level > 0) return '（強化込み）';
   return '';
 }
 

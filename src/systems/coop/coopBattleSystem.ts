@@ -674,6 +674,10 @@ function applyCoopItem(
     const heal = effect.value ?? 50;
     ally.hp = Math.min(ally.max_hp, ally.hp + heal);
     pushLog(meta, 'player_heal', `<@${user.user_id}> → <@${ally.user_id}> ${row.name} **+${heal}**`);
+  } else if (effect.type === 'heal_mp' || effect.type === 'restore_mp') {
+    const heal = effect.value ?? 30;
+    ally.mp = Math.min(ally.max_mp, ally.mp + heal);
+    pushLog(meta, 'player_heal', `<@${user.user_id}> → <@${ally.user_id}> ${row.name} MP **+${heal}**`);
   } else if (effect.type === 'cure_poison') {
     ally.poisonTurns = 0;
     pushLog(meta, 'player_heal', `<@${ally.user_id}> の毒が治った。`);

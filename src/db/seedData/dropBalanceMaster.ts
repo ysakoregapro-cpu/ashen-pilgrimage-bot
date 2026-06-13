@@ -55,6 +55,8 @@ export const AREA_REWARD_WEIGHTS: Record<string, Record<string, number>> = {
 };
 
 /** town loot builder 用 — base_weight / rank 範囲の上書き */
+import { MANA_TOWN_LOOT_OVERRIDES } from './manaConsumables';
+
 export const TOWN_LOOT_ITEM_OVERRIDES: Record<string, {
   base_weight?: number;
   min_area_rank?: number;
@@ -87,6 +89,7 @@ export const TOWN_LOOT_ITEM_OVERRIDES: Record<string, {
   mat_deep_soot: { base_weight: 8, value_tier: 5 },
   mat_starfall_shard: { base_weight: 8, value_tier: 5 },
   mat_valhalla_plate: { base_weight: 6, value_tier: 5 },
+  ...MANA_TOWN_LOOT_OVERRIDES,
 };
 
 /** @deprecated prefer itemPurposeMaster — kept for dropEconomyIndex compat */

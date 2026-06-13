@@ -10,6 +10,7 @@ import { buildEffectiveRewardPool } from '../../systems/townLootSystem';
 import { TOWN_POOL_MARKER } from './townLootPools';
 import { ensureDropBalanceSeed } from './dropBalanceSeed';
 import { ensureSrcWeaponLevel15 } from './srcWeapons';
+import { ensureManaConsumablesSeed } from './manaConsumables';
 
 const STORY_BOSS_MONSTER_IDS = new Set(Object.values(STORY_BOSS_MONSTERS));
 
@@ -204,6 +205,15 @@ function ensureTownLootMigration(db: Database.Database): void {
     const pool = buildEffectiveRewardPool(area.town_id, area.id);
     upd.run(JSON.stringify(pool.length ? pool : [{ item_id: TOWN_POOL_MARKER, weight: 1 }]), area.id);
   }
+}
+
+function backfillSrcWeaponInventoryLevels(db: Database.Database): void {
+  db.prepare(`
+    UPDATE player_inventory
+    SET src_level = upgrade_level, upgrade_level = 0, updated_at = ?
+    WHERE src_level = 0 AND upgrade_level > 0
+      AND item_id IN (SELECT id FROM items WHERE rarity = 'Src')
+  `).run(nowIso());
 }
 
 export function ensurePhase2Seed(db: Database.Database): void {
@@ -446,6 +456,8 @@ function ensureForgeProgressionSeed(db: Database.Database, ts: string): void {
   applySrcWeaponBalance(db);
   ensureSrcWeaponLevel15(db);
   ensureDropBalanceSeed(db);
+  ensureManaConsumablesSeed(db);
+  backfillSrcWeaponInventoryLevels(db);
 
   const areasWithCinder = db.prepare(`
     SELECT id, reward_pool_json FROM exploration_areas WHERE reward_pool_json LIKE ?

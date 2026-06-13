@@ -39,7 +39,7 @@ function main() {
   console.log('## valhalla-emblem-exchange-ui-check\n');
 
   const uiEntries = getUiAvailableExchanges();
-  assert(uiEntries.length === 6, `UI entries should be 6, got ${uiEntries.length}`);
+  assert(uiEntries.length === 7, `UI entries should be 7, got ${uiEntries.length}`);
   assert(!uiEntries.some((e) => e.exchange_id === 'vex_ur_lottery'), 'UR lottery must not appear in UI');
   assert(!uiEntries.some((e) => e.exchange_id === 'vex_affix_reroll'), 'affix reroll must not appear in UI');
   assert(!uiEntries.some((e) => e.exchange_id === 'vex_affix_protect'), 'affix protect must not appear in UI');

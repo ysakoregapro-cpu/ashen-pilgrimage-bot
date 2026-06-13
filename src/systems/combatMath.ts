@@ -124,6 +124,13 @@ export function calcPhysicalDamage(
   return Math.max(1, Math.floor(mitigated * varMult));
 }
 
+export function calcLevelGapHpMitigation(playerLevel: number, monsterLevel: number): number {
+  const gap = Math.max(0, playerLevel - monsterLevel);
+  if (gap <= 15) return 1;
+  if (gap >= 55) return 0.06;
+  return 1 - ((gap - 15) / 40) * 0.94;
+}
+
 export function calcEnemyDamageToPlayer(opts: {
   attack: number;
   playerDefense: number;
@@ -132,12 +139,15 @@ export function calcEnemyDamageToPlayer(opts: {
   threatTier: ThreatTier;
   takenMult: number;
   heavy?: boolean;
+  playerLevel?: number;
+  monsterLevel?: number;
 }): number {
   const mult = opts.multiplier ?? 1;
   const pct = ENEMY_HIT_PCT_V2[opts.threatTier];
   const heavyMult = opts.heavy ? 1.45 : 1;
+  const gapMit = calcLevelGapHpMitigation(opts.playerLevel ?? 1, opts.monsterLevel ?? 1);
   const hpRoll = pct.min + Math.random() * (pct.max - pct.min);
-  const hpBased = Math.floor(opts.playerMaxHp * hpRoll * heavyMult * opts.takenMult);
+  const hpBased = Math.floor(opts.playerMaxHp * hpRoll * heavyMult * opts.takenMult * gapMit);
   const statBased = Math.floor(
     calcPhysicalDamage(opts.attack, opts.playerDefense, mult * heavyMult) * opts.takenMult,
   );

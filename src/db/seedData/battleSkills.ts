@@ -11,6 +11,10 @@ export const BATTLE_CONSUMABLES: Array<{ id: string; effect: object }> = [
   { id: 'cons_antidote', effect: { type: 'cure_poison' } },
   { id: 'cons_grind_powder', effect: { type: 'break_boost', value: 15 } },
   { id: 'cons_smoke_bomb', effect: { type: 'flee_boost', value: 0.25 } },
+  { id: 'cons_mana_drop', effect: { type: 'heal_mp', value: 25 } },
+  { id: 'cons_mana_vial', effect: { type: 'heal_mp', value: 60 } },
+  { id: 'cons_mana_flask', effect: { type: 'heal_mp', value: 110 } },
+  { id: 'cons_mana_valhalla', effect: { type: 'heal_mp', value: 170 } },
 ];
 
 export function seedBattleSkills(db: Database.Database): void {

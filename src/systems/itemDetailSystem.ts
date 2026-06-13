@@ -10,7 +10,7 @@ import {
 import { getInventorySellPrice, resolveShopBuyPrice, resolveShopSellPrice, getItemPricing } from './itemValueSystem';
 import { getEnhanceRequirement, getMaxUpgradeLevel, formatEnhancePreview, getPrimaryStatKey, formatEnhanceDiff } from './enhanceSystem';
 import {
-  formatEffectiveStatLines, getEquipmentEffectiveStats, type EquipmentStatsInput,
+  formatEffectiveStatLines, getEquipmentEffectiveStats, resolveEquipmentEnhanceLevels, type EquipmentStatsInput,
 } from './equipmentEffectiveStats';
 import { buildInventoryPickView } from '../utils/inventoryUi';
 import { getUnlockedTowns } from './playerSystem';
@@ -451,8 +451,8 @@ function buildEquipmentDetail(userId: string, inventoryId: number): string {
         weapon_type: wtype, slot,
       }, upg + 1, srcLv, rarity)}`;
     }
-  } else if (isSrcStageEquipment({ rarity, src_level: srcLv })) {
-    enhanceBlock += `\nSrc +${srcLv}`;
+  } else if (isSrcStageEquipment({ rarity, src_level: srcLv, upgrade_level: upg })) {
+    enhanceBlock += `\nSrc +${resolveEquipmentEnhanceLevels({ rarity, src_level: srcLv, upgrade_level: upg }).src_level}`;
   }
 
   const awLv = (row.awakening_level as number) ?? 0;
@@ -587,6 +587,7 @@ export function buildCatalogItemDetail(userId: string, itemId: string, opts?: {
     try {
       const fx = JSON.parse(item.battle_effect_json) as { type: string; value?: number };
       if (fx.type === 'heal_hp') effectLine = `HPを${fx.value ?? '?'}回復`;
+      else if (fx.type === 'heal_mp' || fx.type === 'restore_mp') effectLine = `MPを${fx.value ?? '?'}回復`;
       else if (fx.type === 'cure_poison') effectLine = '状態異常を治す';
       else if (fx.type === 'flee_boost') effectLine = '逃走成功率上昇';
       else effectLine = fx.type;

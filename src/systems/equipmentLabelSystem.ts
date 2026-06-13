@@ -1,4 +1,5 @@
 import { awakeningLabel } from './awakeningSystem';
+import { resolveEquipmentEnhanceLevels } from './equipmentEffectiveStats';
 import { formatAffixSummary, loadEquipmentRollFromRow } from './equipmentAffixSystem';
 import { SLOT_LABELS, type DurabilityState, type EquipmentSlot } from '../types';
 
@@ -21,12 +22,16 @@ export type OwnedEquipmentSelectRow = {
 export const EQUIP_NONE_VALUE = 'none';
 
 /** Src段階表示はレア度 Src のみ（upgrade_level と混同しない） */
-export function isSrcStageEquipment(row: Pick<OwnedEquipmentSelectRow, 'rarity' | 'src_level'>): boolean {
-  return row.rarity === 'Src' && (row.src_level ?? 0) > 0;
+export function isSrcStageEquipment(row: Pick<OwnedEquipmentSelectRow, 'rarity' | 'src_level' | 'upgrade_level'>): boolean {
+  if (row.rarity !== 'Src') return false;
+  return resolveEquipmentEnhanceLevels(row).src_level > 0;
 }
 
 export function formatUpgradeTag(row: Pick<OwnedEquipmentSelectRow, 'upgrade_level' | 'src_level' | 'rarity'>): string {
-  if (isSrcStageEquipment(row)) return `Src+${row.src_level}`;
+  if (row.rarity === 'Src') {
+    const srcLv = resolveEquipmentEnhanceLevels(row).src_level;
+    return srcLv > 0 ? `Src+${srcLv}` : '+0';
+  }
   return `+${row.upgrade_level ?? 0}`;
 }
 
