@@ -1,5 +1,8 @@
 /** high-rarity-supply-check — npx tsx scripts/high-rarity-supply-check.ts */
-import { buildDropEconomyRows, getMoonBodySupplyCheck, initDropEconomyAuditDb, NORMAL_EXPLORE_POOL_EXCLUDED } from './audit/dropEconomyIndex';
+import {
+  buildDropEconomyRows, getMoonBodySupplyCheck, getNamedHighRarityAudits, getBossSilentPageCheck,
+  initDropEconomyAuditDb, NORMAL_EXPLORE_POOL_EXCLUDED, NAMED_HIGH_RARITY_AUDIT_TARGETS,
+} from './audit/dropEconomyIndex';
 import { buildEffectiveRewardPool } from '../src/systems/townLootSystem';
 import { AREAS } from '../src/db/seedData/areas';
 
@@ -27,6 +30,25 @@ function main() {
   const moon = getMoonBodySupplyCheck();
   if (moon.rateBand.includes('HIGH')) fails.push(`moon body oversupply: ${moon.rateBand}`);
   console.log(`moon body check: ${moon.name} weight=${moon.totalWeight} rate=${moon.rateBand} areas=${moon.areas.join(',')}`);
+
+  const silentPage = getBossSilentPageCheck();
+  if (silentPage.inExplorePool) fails.push(`boss_silent_page in explore pool: ${silentPage.moonAreas.join(',')}`);
+  console.log(`boss_silent_page: explore=${silentPage.inExplorePool ? 'YES' : 'NO'} boss=${silentPage.bossDrop}`);
+
+  for (const itemId of NAMED_HIGH_RARITY_AUDIT_TARGETS) {
+    const audit = getNamedHighRarityAudits().find((n) => n.item_id === itemId);
+    if (!audit) continue;
+    if (itemId === 'boss_silent_page') {
+      if (audit.sources.includes('area:')) fails.push('boss_silent_page still has area source');
+      if (parseFloat(audit.estimated_rate_per_100) > 2.5) warns.push(`boss_silent_page rematch rate high: ${audit.estimated_rate_per_100}`);
+    }
+    if (itemId === 'wpn_black_iron_blade') {
+      if (audit.estimated_rate_per_100.includes('HIGH') || audit.estimated_rate_per_100.includes('/100 mid')) {
+        fails.push(`wpn_black_iron_blade SSR oversupply: ${audit.estimated_rate_per_100}`);
+      }
+    }
+    console.log(`named ${itemId}: rate=${audit.estimated_rate_per_100} risk=${audit.risk} action=${audit.final_action}`);
+  }
 
   for (const ex of NORMAL_EXPLORE_POOL_EXCLUDED) {
     for (const area of AREAS) {

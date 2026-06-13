@@ -124,7 +124,7 @@ export function awakenEquipment(userId: string, inventoryId: number): { success:
   const row = loadAwakenable(userId, inventoryId);
   if (!row) return { success: false, message: '覚醒できない装備です。' };
   if (!AWAKENING_ELIGIBLE_RARITIES.has(row.rarity)) {
-    return { success: false, message: 'Src武器は覚醒できません。N/R/SR/URのみ覚醒可能です。' };
+    return { success: false, message: 'Src武器は覚醒できません。N/R/SR/SSR/URのみ覚醒可能です。' };
   }
   const cur = row.awakening_level;
   if (cur >= MAX_AWAKENING_LEVEL) return { success: false, message: 'すでに最大覚醒です。' };

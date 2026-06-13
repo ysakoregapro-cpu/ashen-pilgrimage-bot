@@ -11,6 +11,7 @@ import {
   cancelCoopRecruit,
   setCoopRecruitMessage,
   getCoopRecruit,
+  resolveCoopRecruitIdForJoin,
 } from './coop/coopRecruitSystem';
 import type { CoopContext } from './coop/coopTypes';
 
@@ -55,9 +56,12 @@ export function getRaid(raidId: string) {
 }
 
 export function joinRaid(raidId: string, userId: string): string {
-  if (getCoopRecruit(raidId)) return joinCoopRecruit(raidId, userId);
+  const coopId = resolveCoopRecruitIdForJoin('raid', raidId);
+  if (coopId) return joinCoopRecruit(coopId, userId);
   const raid = getRaid(raidId) as { participants_json: string; status: string } | undefined;
-  if (!raid || raid.status !== 'recruiting') return 'レイドが見つかりません。';
+  if (!raid || raid.status !== 'recruiting') {
+    return 'この募集は見つかりません。古い形式の募集の場合は、再度レイド募集を出してください。';
+  }
   const participants = JSON.parse(raid.participants_json) as string[];
   if (participants.includes(userId)) return '既に参加しています。';
   if (participants.length >= MAX_RAID) return '定員（4人）に達しています。';

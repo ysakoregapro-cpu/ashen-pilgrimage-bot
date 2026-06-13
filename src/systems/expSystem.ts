@@ -12,6 +12,14 @@ export function expToNextLevel(level: number, currentExp: number): number {
   return Math.max(0, levelExpRequired(level) - currentExp);
 }
 
+/** Cumulative EXP earned to reach `targetLevel` with exp=0 at that level (levels 1..targetLevel-1). */
+export function totalExpToReachLevel(targetLevel: number): number {
+  if (targetLevel <= 1) return 0;
+  let total = 0;
+  for (let lv = 1; lv < targetLevel; lv++) total += levelExpRequired(lv);
+  return total;
+}
+
 /** Player vs enemy level difference multiplier */
 export function getLevelDiffExpMultiplier(playerLevel: number, enemyLevel: number): number {
   const diff = enemyLevel - playerLevel;

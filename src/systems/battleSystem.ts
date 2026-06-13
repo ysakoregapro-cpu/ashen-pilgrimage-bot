@@ -2,6 +2,7 @@ import { getDb } from '../db/database';
 import { getDifficultyModifiers } from './difficultySystem';
 import { calcBattleExp, calcBossExp } from './expSystem';
 import { SRC_FORGE_MATERIAL_ID, SRC_FORGE_MATERIAL_DROP_RATE } from '../db/seedData/awakeningMaster';
+import { BOSS_VICTORY_MATERIAL_DROPS } from '../db/seedData/dropBalanceMaster';
 import {
   REMATCH_MATERIAL_BOSSES, UNI_FORGE_DROP_RATE, SRC_FARM_MONSTER_IDS, PHASE2_UNI_MATERIAL_DROPS,
 } from '../db/seedData/forgeMaster';
@@ -1132,6 +1133,17 @@ function resolveVictory(
       const pick = weightedChoice(matPool.length ? matPool : rewardPool);
       addItem(userId, pick.item_id, 1, { pending: true });
       dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(pick.item_id) as { name: string }).name);
+    }
+  }
+  if (session.is_boss || threat === 'boss') {
+    for (const drop of BOSS_VICTORY_MATERIAL_DROPS) {
+      if (drop.monsterId !== session.monster_id) continue;
+      const isFirst = wasFirstKill && !state.isRematch;
+      const rate = isFirst ? drop.firstKillRate : drop.rematchRate;
+      if (roll(rate)) {
+        addItem(userId, drop.itemId, 1, { pending: true });
+        dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(drop.itemId) as { name: string }).name);
+      }
     }
   }
   if ((state.isRematch || !wasFirstKill) && SRC_FARM_MONSTER_IDS.includes(session.monster_id as typeof SRC_FARM_MONSTER_IDS[number]) && roll(SRC_FORGE_MATERIAL_DROP_RATE)) {

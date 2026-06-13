@@ -36,7 +36,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
     const msg = await raidChannel.send({
       embeds: [buildCoopRecruitEmbed(raidId)],
-      components: buildCoopRecruitButtons(raidId, userId),
+      components: buildCoopRecruitButtons(raidId, { forPublicChannel: true }),
     });
     setRaidMessage(raidId, msg.id, raidChannel.id);
     await safeEdit(interaction, { embeds: [successEmbed(`レイド募集を <#${raidChannel.id}> に投稿しました。\nID: \`${raidId}\``)] });

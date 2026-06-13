@@ -33,7 +33,8 @@ export const AWAKENING_LABELS: Record<number, string> = {
   5: '覚醒V',
 };
 
-export const AWAKENING_ELIGIBLE_RARITIES = new Set(['N', 'R', 'SR', 'UR']);
+/** N/R/SR/SSR/UR — SSR uses SR duplicate cost table (getAwakeningDupCost) */
+export const AWAKENING_ELIGIBLE_RARITIES = new Set(['N', 'R', 'SR', 'SSR', 'UR']);
 
 export function getAwakeningDupCost(rarity: string, level: number): number {
   if (rarity === 'Src') return 0;

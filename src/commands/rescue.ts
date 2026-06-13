@@ -41,7 +41,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
     const msg = await rescueChannel.send({
       embeds: [buildCoopRecruitEmbed(rescueId)],
-      components: buildCoopRecruitButtons(rescueId, userId),
+      components: buildCoopRecruitButtons(rescueId, { forPublicChannel: true }),
     });
     setRescueMessage(rescueId, msg.id, rescueChannel.id);
     await safeEdit(interaction, { embeds: [successEmbed(`救難要請を <#${rescueChannel.id}> に投稿しました。\nID: \`${rescueId}\``)] });
@@ -54,7 +54,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 
     const msg = await rescueChannel.send({
       embeds: [buildCoopRecruitEmbed(rescueId)],
-      components: buildCoopRecruitButtons(rescueId, userId),
+      components: buildCoopRecruitButtons(rescueId, { forPublicChannel: true }),
     });
     setRescueMessage(rescueId, msg.id, rescueChannel.id);
     await safeEdit(interaction, { embeds: [successEmbed(`事前救難募集を <#${rescueChannel.id}> に投稿しました。`)] });

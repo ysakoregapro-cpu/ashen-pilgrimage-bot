@@ -2,13 +2,41 @@
  * Phase2.4 — 探索ドロップ・経済バランス調整マスタ
  * area_pool / town loot pool の weight・出現範囲を集中管理
  */
+import type { ItemPurposeKind } from './itemPurposeMaster';
 
-/** 通常探索 town pool から除外（legacy・reserved）— boss素材は専用weightで極低頻度 */
+export type { ItemPurposeKind } from './itemPurposeMaster';
+export { FORMAL_ITEM_PURPOSE_KINDS } from './itemPurposeMaster';
+
+/** 通常探索 town pool から除外（legacy・reserved・boss専用） */
 export const NORMAL_EXPLORE_POOL_EXCLUDED = new Set([
+  'boss_silent_page',
   'mat_starfall_obsidian',
   'mat_black_lantern_cinder',
   'wpn_unique_silence',
 ]);
+
+/** 探索宝箱/素材イベントではなく、ボス戦勝利時のみドロップ */
+export const BOSS_VICTORY_MATERIAL_DROPS: Array<{
+  itemId: string;
+  monsterId: string;
+  firstKillRate: number;
+  rematchRate: number;
+  label: string;
+}> = [
+  {
+    itemId: 'boss_silent_page',
+    monsterId: 'mon_silent_guardian',
+    firstKillRate: 1,
+    rematchRate: 0.04,
+    label: '無答の守護者',
+  },
+];
+
+/** 監査で名指し確認する高レア品 */
+export const NAMED_HIGH_RARITY_AUDIT_TARGETS = [
+  'boss_silent_page',
+  'wpn_black_iron_blade',
+] as const;
 
 /** area seed / DB patch 用 — item_id → weight（未指定は 10） */
 export const AREA_REWARD_WEIGHTS: Record<string, Record<string, number>> = {
@@ -16,7 +44,8 @@ export const AREA_REWARD_WEIGHTS: Record<string, Record<string, number>> = {
   area_bookworm_corridor: { mat_moon_ink: 14, wpn_moon_rod: 8, arm_set_moon_legs: 4 },
   area_record_terminal: { wpn_moon_staff_sr: 5, arm_set_moon_head: 4 },
   area_shadow_reading: { mat_moon_ink: 12, arm_set_moon_body: 3 },
-  area_unanswered_archive: { boss_silent_page: 1, wpn_moon_spell_staff: 2, arm_set_moon_feet: 4 },
+  area_unanswered_archive: { wpn_moon_spell_staff: 2, arm_set_moon_feet: 4 },
+  area_black_iron_vein: { wpn_black_iron_blade: 2, mat_silver_ore: 12, wpn_iron_scrap_barrel: 6, arm_set_silver_feet: 4 },
   area_hourglass_ruins: { mat_hourglass_shard: 12 },
   area_memory_vault: { mat_hourglass_shard: 12 },
 };
@@ -37,7 +66,7 @@ export const TOWN_LOOT_ITEM_OVERRIDES: Record<string, {
   wpn_moon_rod: { base_weight: 6 },
   wpn_moon_staff_sr: { base_weight: 4, min_area_rank: 3, max_area_rank: 3 },
   wpn_moon_spell_staff: { base_weight: 2, min_area_rank: 5, max_area_rank: 5, value_tier: 5 },
-  boss_silent_page: { base_weight: 1, min_area_rank: 5, max_area_rank: 5, value_tier: 5 },
+  wpn_black_iron_blade: { base_weight: 2, min_area_rank: 5, max_area_rank: 5, value_tier: 5 },
   mat_starfall_obsidian: { base_weight: 0 },
   mat_black_lantern_cinder: { base_weight: 0 },
   wpn_unique_silence: { base_weight: 0 },
@@ -56,26 +85,7 @@ export const TOWN_LOOT_ITEM_OVERRIDES: Record<string, {
   mat_valhalla_plate: { base_weight: 6, value_tier: 5 },
 };
 
-/** アイテム用途分類（監査・表示用） */
-export type ItemPurposeKind =
-  | 'consumable'
-  | 'enhance_material'
-  | 'repair_material'
-  | 'awaken_material'
-  | 'kai_material'
-  | 'src_material'
-  | 'set_material'
-  | 'job_material'
-  | 'trial_material'
-  | 'raid_material'
-  | 'currency_like'
-  | 'vendor_item'
-  | 'collection'
-  | 'reserved_future'
-  | 'legacy'
-  | 'playable_gear'
-  | 'unknown';
-
+/** @deprecated prefer itemPurposeMaster — kept for dropEconomyIndex compat */
 export const ITEM_PURPOSE_OVERRIDES: Record<string, ItemPurposeKind> = {
   mat_starfall_obsidian: 'legacy',
   mat_black_lantern_cinder: 'legacy',

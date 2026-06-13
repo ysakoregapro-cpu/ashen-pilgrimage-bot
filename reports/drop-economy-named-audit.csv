@@ -1,0 +1,3 @@
+item_id,name,rarity,sell_price,sources,weight,estimated_rate_per_100,risk,recommendation,final_action
+boss_silent_page,無答の守護者の頁,UR,500,boss_victory:mon_silent_guardian(初回100%/再戦4%),0 (boss only),1.6/100 low,ok,maintain,exclude_from_explore_pool; boss_victory_only
+wpn_black_iron_blade,黒鉄の処刑刃,SSR,50,area:黒鉄鉱脈(silver_mine),3.92,0.11/100 trace,ok,maintain,rank5_only; weight2; minLv28

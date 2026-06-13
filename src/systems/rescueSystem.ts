@@ -11,6 +11,7 @@ import {
   setCoopRecruitMessage,
   getCoopRecruit,
   getCoopMembers,
+  resolveCoopRecruitIdForJoin,
 } from './coop/coopRecruitSystem';
 import type { CoopContext } from './coop/coopTypes';
 
@@ -71,9 +72,12 @@ export function getRescue(rescueId: string) {
 }
 
 export function joinRescue(rescueId: string, userId: string): string {
-  if (getCoopRecruit(rescueId)) return joinCoopRecruit(rescueId, userId);
+  const coopId = resolveCoopRecruitIdForJoin('rescue', rescueId);
+  if (coopId) return joinCoopRecruit(coopId, userId);
   const req = getRescue(rescueId) as { participants_json: string; status: string; requester_id: string } | undefined;
-  if (!req || req.status !== 'open') return '救難要請が見つかりません。';
+  if (!req || req.status !== 'open') {
+    return 'この募集は見つかりません。古い形式の募集の場合は、再度救難要請を出してください。';
+  }
   if (req.requester_id === userId) return '自分の要請には参加できません。';
   const participants = JSON.parse(req.participants_json) as string[];
   if (participants.includes(userId)) return '既に参加しています。';

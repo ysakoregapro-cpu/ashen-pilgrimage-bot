@@ -1,13 +1,22 @@
 # Drop Economy Audit
 
-Generated: 2026-06-12T23:30:54.321Z
+Generated: 2026-06-13T07:37:10.987Z
 
 ## Summary
 - Items audited: 287
 - balance_risk / over_supplied: 18
 
-## 月下鎧 (arm_set_moon_body)
-- rate: 0.30/100 trace | risk: ok | areas: 影写しの閲覧室(moon_library)
+## 名指し高レア品
+| item_id | name | rarity | sell_price | sources | weight | estimated_rate_per_100 | risk | recommendation | final_action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| boss_silent_page | 無答の守護者の頁 | UR | 500 | boss_victory:mon_silent_guardian(初回100%/再戦4%) | 0 (boss only) | 1.6/100 low | ok | maintain | exclude_from_explore_pool; boss_victory_only |
+| wpn_black_iron_blade | 黒鉄の処刑刃 | SSR | 50 | area:黒鉄鉱脈(silver_mine) | 3.92 | 0.11/100 trace | ok | maintain | rank5_only; weight2; minLv28 |
+
+## SSR武器 — エリア別（rate≥1/100 上位）
+(該当なし — すべて trace/low)
+
+## UR素材 — 探索pool内
+(探索poolにUR素材なし — boss/valhalla/raid寄り)
 
 ## High risk items (top 20)
 | item_id | name | rarity | rate | risk | action |

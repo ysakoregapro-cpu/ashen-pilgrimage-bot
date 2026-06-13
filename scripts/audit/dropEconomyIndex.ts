@@ -9,6 +9,7 @@ import {
 } from '../../src/systems/equipmentDropSystem';
 import {
   ITEM_PURPOSE_OVERRIDES, NORMAL_EXPLORE_POOL_EXCLUDED, progressionTierForAreaMin,
+  BOSS_VICTORY_MATERIAL_DROPS, NAMED_HIGH_RARITY_AUDIT_TARGETS,
 } from '../../src/db/seedData/dropBalanceMaster';
 import { UNI_JOB_MATERIALS, PHASE2_UNI_MATERIAL_DROPS } from '../../src/db/seedData/jobProgressionMaster';
 import { SRC_FORGE_MATERIAL_ID } from '../../src/db/seedData/forgeMaster';
@@ -145,6 +146,56 @@ function buildSourceIndex(db: ReturnType<typeof getDb>) {
   return { areaByItem, weightByItem, shopByItem, monsterByItem };
 }
 
+export type NamedItemAudit = {
+  item_id: string;
+  name: string;
+  rarity: string;
+  sell_price: string;
+  sources: string;
+  weight: string;
+  estimated_rate_per_100: string;
+  risk: string;
+  recommendation: string;
+  final_action: string;
+};
+
+function estimateRatePer100(
+  itemId: string,
+  category: string,
+  rarity: string,
+  poolWeight: number,
+  poolTotal: number,
+  slot: string | null,
+): number {
+  if (NORMAL_EXPLORE_POOL_EXCLUDED.has(itemId) || poolWeight <= 0) return 0;
+  const share = poolWeight / Math.max(poolTotal, 1);
+  if (category === 'equipment') {
+    const chest = CHEST_LOOT_TABLES.mid;
+    const equipW = chest.filter((c) => c.kind === 'equip').reduce((s, c) => s + c.weight, 0);
+    const chestTotal = chest.reduce((s, c) => s + c.weight, 0);
+    const rarityW = chest.find((c) => c.rarity === rarity)?.weight ?? 0;
+    const slotW = (slot === 'weapon' ? EQUIP_SLOT_WEIGHTS.weapon : EQUIP_SLOT_WEIGHTS.body) / 100;
+    const treasure = (EVENT_WEIGHTS.treasure / 100) * (equipW / chestTotal) * (rarityW / Math.max(equipW, 1)) * slotW;
+    const battle = (EVENT_WEIGHTS.battle / 100) * 0.06 * share * slotW;
+    return (treasure + battle) * 100;
+  }
+  return ((EVENT_WEIGHTS.material / 100) + (EVENT_WEIGHTS.treasure / 100) * 0.45 + (EVENT_WEIGHTS.battle / 100) * 0.35) * share * 100;
+}
+
+function estimateBossVictoryRatePer100(itemId: string, battleShare = 0.4): number {
+  const drop = BOSS_VICTORY_MATERIAL_DROPS.find((d) => d.itemId === itemId);
+  if (!drop) return 0;
+  return battleShare * drop.rematchRate * 100;
+}
+
+function formatRateBand(per100: number): string {
+  if (per100 >= 15) return `${per100.toFixed(1)}/100 HIGH`;
+  if (per100 >= 6) return `${per100.toFixed(1)}/100 mid`;
+  if (per100 >= 1) return `${per100.toFixed(1)}/100 low`;
+  if (per100 > 0) return `${per100.toFixed(2)}/100 trace`;
+  return '0/none';
+}
+
 function estimateRateBand(
   itemId: string,
   category: string,
@@ -153,26 +204,27 @@ function estimateRateBand(
   areaCount: number,
 ): string {
   if (NORMAL_EXPLORE_POOL_EXCLUDED.has(itemId)) return '0/excluded';
-  if (!totalWeight) return '0/none';
+  if (!totalWeight) {
+    const bossRate = estimateBossVictoryRatePer100(itemId);
+    if (bossRate > 0) return formatRateBand(bossRate);
+    return '0/none';
+  }
   const avgPool = 80;
   const share = totalWeight / (avgPool * Math.max(areaCount, 1));
   let per100 = 0;
   if (category === 'equipment') {
-    const tier = 'mid';
-    const chest = CHEST_LOOT_TABLES[tier];
+    const chest = CHEST_LOOT_TABLES.mid;
     const equipW = chest.filter((c) => c.kind === 'equip').reduce((s, c) => s + c.weight, 0);
     const chestTotal = chest.reduce((s, c) => s + c.weight, 0);
-    const srShare = chest.find((c) => c.rarity === rarity)?.weight ?? 0;
-    const treasureRate = (EVENT_WEIGHTS.treasure / 100) * (equipW / chestTotal) * (srShare / equipW || 0.2);
-    const battleRate = (EVENT_WEIGHTS.battle / 100) * 0.08 * share;
-    per100 = (treasureRate + battleRate) * 100 * (EQUIP_SLOT_WEIGHTS.body / 100);
+    const rarityW = chest.find((c) => c.rarity === rarity)?.weight ?? 0;
+    const slotW = itemId.startsWith('wpn_') ? EQUIP_SLOT_WEIGHTS.weapon / 100 : EQUIP_SLOT_WEIGHTS.body / 100;
+    const treasureRate = (EVENT_WEIGHTS.treasure / 100) * (equipW / chestTotal) * (rarityW / Math.max(equipW, 1)) * slotW;
+    const battleRate = (EVENT_WEIGHTS.battle / 100) * 0.06 * share * slotW;
+    per100 = (treasureRate + battleRate) * 100;
   } else {
     per100 = ((EVENT_WEIGHTS.material / 100) + (EVENT_WEIGHTS.treasure / 100) * 0.45 + (EVENT_WEIGHTS.battle / 100) * 0.35) * share * 100;
   }
-  if (per100 >= 15) return `${per100.toFixed(1)}/100 HIGH`;
-  if (per100 >= 6) return `${per100.toFixed(1)}/100 mid`;
-  if (per100 >= 1) return `${per100.toFixed(1)}/100 low`;
-  return `${per100.toFixed(2)}/100 trace`;
+  return formatRateBand(per100);
 }
 
 function classifyRisk(
@@ -265,7 +317,9 @@ export function buildDropEconomyRows(): DropEconomyRow[] {
       area_sources: areas.join('; ') || '—',
       monster_sources: (monsterByItem.get(item.id) ?? []).join('; ') || '—',
       shop_sources: (shopByItem.get(item.id) ?? []).join('; ') || '—',
-      boss_sources: item.id.startsWith('boss_') ? 'boss_pool' : '—',
+      boss_sources: BOSS_VICTORY_MATERIAL_DROPS.some((d) => d.itemId === item.id)
+        ? `boss_victory:${BOSS_VICTORY_MATERIAL_DROPS.find((d) => d.itemId === item.id)!.monsterId}`
+        : item.id.startsWith('boss_') ? 'area_pool_legacy' : '—',
       rematch_sources: purposeMap.kaiUni.has(item.id) ? 'rematch' : '—',
       valhalla_sources: areas.some((a) => a.includes('valhalla')) ? 'YES' : '—',
       raid_sources: item.id.startsWith('raid_') ? 'YES' : '—',
@@ -360,4 +414,147 @@ export function getMoonBodySupplyCheck(): { itemId: string; name: string; areas:
   return { itemId, name: item.name, areas, totalWeight, rateBand };
 }
 
-export { EVENT_WEIGHTS, CHEST_LOOT_TABLES, BATTLE_EQUIP_TABLES, RARITY_SCORE, NORMAL_EXPLORE_POOL_EXCLUDED };
+export function getNamedHighRarityAudits(): NamedItemAudit[] {
+  const db = initDropEconomyAuditDb();
+  const rows = buildDropEconomyRows();
+  const out: NamedItemAudit[] = [];
+
+  for (const itemId of NAMED_HIGH_RARITY_AUDIT_TARGETS) {
+    const row = rows.find((r) => r.item_id === itemId);
+    const item = db.prepare(`
+      SELECT i.name, i.rarity, i.sell_price, i.shop_sell_price, i.category, e.slot
+      FROM items i LEFT JOIN equipment e ON i.id = e.item_id WHERE i.id = ?
+    `).get(itemId) as { name: string; rarity: string; sell_price: number; shop_sell_price: number | null; category: string; slot: string | null } | undefined;
+    if (!item || !row) continue;
+
+    const bossDrop = BOSS_VICTORY_MATERIAL_DROPS.find((d) => d.itemId === itemId);
+    let sources = row.area_sources !== '—' ? `area:${row.area_sources}` : '';
+    if (bossDrop) sources = `boss_victory:${bossDrop.monsterId}(初回${bossDrop.firstKillRate * 100}%/再戦${bossDrop.rematchRate * 100}%)`;
+    if (row.monster_sources !== '—') sources += `; monster:${row.monster_sources}`;
+
+    let finalAction = 'maintain';
+    if (itemId === 'boss_silent_page') finalAction = 'exclude_from_explore_pool; boss_victory_only';
+    if (itemId === 'wpn_black_iron_blade') finalAction = 'rank5_only; weight2; minLv28';
+
+    const poolAreas = AREAS.filter((a) => a.rewards.includes(itemId));
+    let weight = row.estimated_weight;
+    let ratePer100 = row.estimated_rate_band;
+    if (poolAreas.length) {
+      const area = poolAreas[0]!;
+      const pool = buildEffectiveRewardPool(area.town, area.id);
+      const total = pool.reduce((s, p) => s + p.weight, 0);
+      const entry = pool.find((p) => p.item_id === itemId);
+      const per100 = estimateRatePer100(itemId, item.category, item.rarity, entry?.weight ?? 0, total, item.slot);
+      ratePer100 = formatRateBand(per100);
+      weight = String(entry?.weight ?? 0);
+    } else if (bossDrop) {
+      ratePer100 = formatRateBand(estimateBossVictoryRatePer100(itemId));
+      weight = '0 (boss only)';
+    }
+
+    out.push({
+      item_id: itemId,
+      name: item.name,
+      rarity: item.rarity,
+      sell_price: String(item.shop_sell_price ?? item.sell_price ?? 0),
+      sources: sources || '—',
+      weight,
+      estimated_rate_per_100: ratePer100,
+      risk: row.risk,
+      recommendation: row.recommendation,
+      final_action: finalAction,
+    });
+  }
+  return out;
+}
+
+export function getSsrGearRateByArea(kind: 'weapon' | 'armor'): Array<{ area_id: string; item_id: string; name: string; weight: number; rate_per_100: string }> {
+  initDropEconomyAuditDb();
+  const db = getDb();
+  const slotFilter = kind === 'weapon' ? "e.slot = 'weapon'" : "e.slot IN ('head','body','arms','legs','feet')";
+  const items = db.prepare(`
+    SELECT i.id, i.name, i.rarity FROM items i JOIN equipment e ON i.id = e.item_id
+    WHERE i.rarity IN ('SSR','UR') AND ${slotFilter}
+  `).all() as Array<{ id: string; name: string; rarity: string }>;
+  const out: Array<{ area_id: string; item_id: string; name: string; weight: number; rate_per_100: string }> = [];
+  for (const area of AREAS) {
+    const pool = buildEffectiveRewardPool(area.town, area.id);
+    const total = pool.reduce((s, p) => s + p.weight, 0);
+    for (const item of items) {
+      const entry = pool.find((p) => p.item_id === item.id);
+      if (!entry) continue;
+      const slot = kind === 'weapon' ? 'weapon' : 'body';
+      const per100 = estimateRatePer100(item.id, 'equipment', item.rarity, entry.weight, total, slot);
+      out.push({ area_id: area.id, item_id: item.id, name: item.name, weight: entry.weight, rate_per_100: formatRateBand(per100) });
+    }
+  }
+  return out.sort((a, b) => parseFloat(b.rate_per_100) - parseFloat(a.rate_per_100));
+}
+
+export function getUrMaterialRateByArea(): Array<{ area_id: string; item_id: string; name: string; weight: number; rate_per_100: string }> {
+  initDropEconomyAuditDb();
+  const db = getDb();
+  const mats = db.prepare(`SELECT id, name FROM items WHERE rarity = 'UR' AND category = 'material'`).all() as Array<{ id: string; name: string }>;
+  const out: Array<{ area_id: string; item_id: string; name: string; weight: number; rate_per_100: string }> = [];
+  for (const area of AREAS) {
+    const pool = buildEffectiveRewardPool(area.town, area.id);
+    const total = pool.reduce((s, p) => s + p.weight, 0);
+    for (const mat of mats) {
+      const entry = pool.find((p) => p.item_id === mat.id);
+      if (!entry) continue;
+      const per100 = estimateRatePer100(mat.id, 'material', 'UR', entry.weight, total, null);
+      out.push({ area_id: area.id, item_id: mat.id, name: mat.name, weight: entry.weight, rate_per_100: formatRateBand(per100) });
+    }
+  }
+  return out;
+}
+
+export function getBossSilentPageDropPathAudit(): {
+  exploreAreas: string[];
+  townLoot: boolean;
+  monsterDrops: string[];
+  shop: boolean;
+  duplicateBossEntries: number;
+  allowedOnly: boolean;
+} {
+  const itemId = 'boss_silent_page';
+  const exploreAreas: string[] = [];
+  for (const area of AREAS) {
+    const pool = buildEffectiveRewardPool(area.town, area.id);
+    if (pool.some((p) => p.item_id === itemId)) exploreAreas.push(area.id);
+    if (area.rewards.includes(itemId) && !exploreAreas.includes(area.id)) exploreAreas.push(`${area.id}(seed)`);
+  }
+  const db = getDb();
+  const monsterDrops: string[] = [];
+  for (const m of db.prepare('SELECT id, name, drop_pool_json FROM monsters').all() as Array<{ id: string; name: string; drop_pool_json: string }>) {
+    try {
+      const drops = JSON.parse(m.drop_pool_json || '[]') as Array<{ item_id: string }>;
+      if (drops.some((d) => d.item_id === itemId)) monsterDrops.push(m.id);
+    } catch { /* ignore */ }
+  }
+  const bossEntries = BOSS_VICTORY_MATERIAL_DROPS.filter((d) => d.itemId === itemId);
+  return {
+    exploreAreas,
+    townLoot: exploreAreas.length > 0,
+    monsterDrops,
+    shop: false,
+    duplicateBossEntries: bossEntries.length,
+    allowedOnly: exploreAreas.length === 0 && monsterDrops.length === 0 && bossEntries.length === 1,
+  };
+}
+
+export function getBossSilentPageCheck(): { inExplorePool: boolean; moonAreas: string[]; bossDrop: string } {
+  const moonAreas: string[] = [];
+  for (const area of AREAS.filter((a) => a.town === 'moon_library')) {
+    const pool = buildEffectiveRewardPool(area.town, area.id);
+    if (pool.some((p) => p.item_id === 'boss_silent_page')) moonAreas.push(area.id);
+  }
+  const drop = BOSS_VICTORY_MATERIAL_DROPS.find((d) => d.itemId === 'boss_silent_page');
+  return {
+    inExplorePool: moonAreas.length > 0,
+    moonAreas,
+    bossDrop: drop ? `${drop.monsterId} first=${drop.firstKillRate} rematch=${drop.rematchRate}` : 'none',
+  };
+}
+
+export { EVENT_WEIGHTS, CHEST_LOOT_TABLES, BATTLE_EQUIP_TABLES, RARITY_SCORE, NORMAL_EXPLORE_POOL_EXCLUDED, NAMED_HIGH_RARITY_AUDIT_TARGETS };

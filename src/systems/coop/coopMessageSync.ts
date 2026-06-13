@@ -55,7 +55,7 @@ export async function syncRecruitChannelMessage(recruitId: string, viewerId?: st
   if (!recruit?.channel_id || !recruit.message_id) return;
   await safeEditMessage(recruit.channel_id, recruit.message_id, {
     embeds: [buildCoopRecruitEmbed(recruitId)],
-    components: buildCoopRecruitButtons(recruitId, viewerId),
+    components: buildCoopRecruitButtons(recruitId, { forPublicChannel: true }),
   });
 }
 

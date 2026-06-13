@@ -57,22 +57,45 @@ export function buildCoopRecruitEmbed(recruitId: string): EmbedBuilder {
     ].join('\n'));
 }
 
-export function buildCoopRecruitButtons(recruitId: string, viewerId?: string): ActionRowBuilder<ButtonBuilder>[] {
+export type CoopRecruitButtonOptions = {
+  /** Shared guild-channel recruit post — one button state for all viewers. */
+  forPublicChannel?: boolean;
+  viewerId?: string;
+};
+
+function parseCoopRecruitButtonOptions(viewerIdOrOptions?: string | CoopRecruitButtonOptions): CoopRecruitButtonOptions {
+  if (typeof viewerIdOrOptions === 'string') return { viewerId: viewerIdOrOptions };
+  return viewerIdOrOptions ?? {};
+}
+
+export function buildCoopRecruitButtons(
+  recruitId: string,
+  viewerIdOrOptions?: string | CoopRecruitButtonOptions,
+): ActionRowBuilder<ButtonBuilder>[] {
   const recruit = getCoopRecruit(recruitId);
   if (!recruit || ['expired', 'cancelled', 'completed', 'started'].includes(recruit.status) || isRecruitExpired(recruit)) {
     return [];
   }
 
+  const { viewerId, forPublicChannel = true } = parseCoopRecruitButtonOptions(viewerIdOrOptions);
+  const count = getActiveMemberCount(recruitId);
+  const isFull = count >= recruit.max_players;
   const isLeader = viewerId === recruit.leader_id;
-  const isMember = getCoopMembers(recruitId).some((m) => m.user_id === viewerId);
+  const isMember = viewerId ? getCoopMembers(recruitId).some((m) => m.user_id === viewerId) : false;
+
+  // Public channel messages show a single disabled state to everyone — never bake in the leader's membership.
+  const joinDisabled = forPublicChannel ? isFull : (isMember || isFull);
+  const leaveDisabled = forPublicChannel ? false : (!isMember || isLeader);
+  const startDisabled = forPublicChannel ? false : !isLeader;
+  const cancelDisabled = forPublicChannel ? false : !isLeader;
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`coop:join:${recruitId}`).setLabel('参加する').setStyle(ButtonStyle.Primary).setDisabled(!!isMember),
-    new ButtonBuilder().setCustomId(`coop:leave:${recruitId}`).setLabel('参加取消').setStyle(ButtonStyle.Secondary).setDisabled(!isMember || isLeader),
+    new ButtonBuilder().setCustomId(`coop:join:${recruitId}`).setLabel('参加する').setStyle(ButtonStyle.Primary).setDisabled(joinDisabled),
+    new ButtonBuilder().setCustomId(`coop:leave:${recruitId}`).setLabel('参加取消').setStyle(ButtonStyle.Secondary).setDisabled(leaveDisabled),
   );
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`coop:start:${recruitId}`).setLabel('開始').setStyle(ButtonStyle.Success).setDisabled(!isLeader),
-    new ButtonBuilder().setCustomId(`coop:cancel:${recruitId}`).setLabel('解散').setStyle(ButtonStyle.Danger).setDisabled(!isLeader),
+    new ButtonBuilder().setCustomId(`coop:start:${recruitId}`).setLabel('開始').setStyle(ButtonStyle.Success).setDisabled(startDisabled),
+    new ButtonBuilder().setCustomId(`coop:cancel:${recruitId}`).setLabel('解散').setStyle(ButtonStyle.Danger).setDisabled(cancelDisabled),
   );
   return [row1, row2];
 }

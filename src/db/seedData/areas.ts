@@ -26,7 +26,7 @@ export const AREAS: AreaDef[] = [
   { id: 'area_old_mine', town: 'silver_mine', name: '旧採掘路', desc: '使われなくなった採掘路。', min: 12, max: 20, monsters: ['mon_rust_miner', 'mon_mine_bat'], rewards: ['mat_silver_ore', 'upg_stone', 'arm_set_silver_legs'] },
   { id: 'area_crystal_shaft', town: 'silver_mine', name: '結晶の縦穴', desc: '結晶が光る縦穴。', min: 16, max: 24, monsters: ['mon_crystal_spider', 'mon_silver_golem'], rewards: ['arm_set_silver_head', 'mat_small_mana'] },
   { id: 'area_collapsed_site', town: 'silver_mine', name: '崩落した作業場', desc: '崩落した作業場。', min: 18, max: 26, monsters: ['mon_cave_in_bug', 'mon_ore_eater'], rewards: ['arm_set_silver_body', 'upg_stone'] },
-  { id: 'area_black_iron_vein', town: 'silver_mine', name: '黒鉄鉱脈', desc: '黒鉄の鉱脈。', min: 20, max: 28, monsters: ['mon_black_iron_guard', 'mon_silver_golem'], rewards: ['wpn_iron_scrap_barrel', 'mat_silver_ore', 'wpn_black_iron_blade', 'arm_set_silver_feet'] },
+  { id: 'area_black_iron_vein', town: 'silver_mine', name: '黒鉄鉱脈', desc: '黒鉄の鉱脈。', min: 28, max: 32, monsters: ['mon_black_iron_guard', 'mon_silver_golem'], rewards: ['wpn_iron_scrap_barrel', 'mat_silver_ore', 'wpn_black_iron_blade', 'arm_set_silver_feet'] },
   // 霧深き森
   { id: 'area_mist_beast_path', town: 'mist_forest', name: '霧深き獣道', desc: '霧に覆われた獣道。', min: 14, max: 22, monsters: ['mon_mist_deer', 'mon_forest_wolf'], rewards: ['mat_mist_leaf', 'wpn_mist_staff', 'arm_set_mist_arms'] },
   { id: 'area_poison_path', town: 'mist_forest', name: '毒蔦の小径', desc: '毒蔦が這う小径。', min: 16, max: 24, monsters: ['mon_poison_vine_slime', 'mon_lost_mushroom'], rewards: ['mat_mist_leaf', 'mat_dry_herb', 'arm_set_mist_legs'] },
@@ -44,7 +44,7 @@ export const AREAS: AreaDef[] = [
   { id: 'area_bookworm_corridor', town: 'moon_library', name: '紙魚の回廊', desc: '紙魚の回廊。', min: 22, max: 32, monsters: ['mon_bookworm_swarm', 'mon_ink_beast'], rewards: ['mat_moon_ink', 'wpn_moon_rod', 'arm_set_moon_legs'] },
   { id: 'area_record_terminal', town: 'moon_library', name: '記録端末室', desc: '記録端末の室。', min: 26, max: 34, monsters: ['mon_broken_terminal', 'mon_shadow_librarian'], rewards: ['wpn_moon_staff_sr', 'arm_set_moon_head'] },
   { id: 'area_shadow_reading', town: 'moon_library', name: '影写しの閲覧室', desc: '影写しの閲覧室。', min: 28, max: 36, monsters: ['mon_shadow_librarian', 'mon_moon_observer'], rewards: ['arm_set_moon_body', 'mat_moon_ink'] },
-  { id: 'area_unanswered_archive', town: 'moon_library', name: '無答の書庫', desc: '答えのない書庫。', min: 34, max: 42, monsters: ['mon_silent_guardian', 'mon_moon_observer'], rewards: ['boss_silent_page', 'wpn_moon_spell_staff', 'arm_set_moon_feet'] },
+  { id: 'area_unanswered_archive', town: 'moon_library', name: '無答の書庫', desc: '答えのない書庫。', min: 34, max: 42, monsters: ['mon_silent_guardian', 'mon_moon_observer'], rewards: ['wpn_moon_spell_staff', 'arm_set_moon_feet'] },
   // 忘却地下市
   { id: 'area_under_path', town: 'forgotten_market', name: '忘却の地下路', desc: '忘却の地下路。', min: 24, max: 34, monsters: ['mon_black_market_thug', 'mon_market_hound'], rewards: ['mat_forgotten_sand', 'wpn_black_lamp_twin', 'arm_set_black_lamp_arms'] },
   { id: 'area_black_alley', town: 'forgotten_market', name: '黒市の裏通り', desc: '黒市の裏通り。', min: 26, max: 36, monsters: ['mon_masked_thief', 'mon_deserter'], rewards: ['mat_forgotten_sand', 'wpn_glass_blade', 'arm_set_black_lamp_legs'] },

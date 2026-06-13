@@ -46,7 +46,7 @@ export async function postCoopRecruitToGuild(
   const channel = await getOrCreatePublicChannel(guild, channelName);
   const msg = await channel.send({
     embeds: [buildCoopRecruitEmbed(result.recruitId)],
-    components: buildCoopRecruitButtons(result.recruitId, userId),
+    components: buildCoopRecruitButtons(result.recruitId, { forPublicChannel: true }),
   });
   setCoopRecruitMessage(result.recruitId, msg.id, channel.id);
   return { ok: true, message: `募集を <#${channel.id}> に投稿しました。`, recruitId: result.recruitId, channelId: channel.id };
@@ -84,7 +84,7 @@ export async function handleCoopRecruitButton(interaction: ButtonInteraction, op
     try {
       await interaction.message.edit({
         embeds: [buildCoopRecruitEmbed(recruitId)],
-        components: buildCoopRecruitButtons(recruitId, userId),
+        components: buildCoopRecruitButtons(recruitId, { forPublicChannel: true }),
       });
     } catch { /* interaction message fallback */ }
   }

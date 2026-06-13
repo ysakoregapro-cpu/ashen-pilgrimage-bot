@@ -114,6 +114,20 @@ export function validateRecruitOperation(
   return { ok: true, message: '', recruit };
 }
 
+/** Resolve coop recruit id from recruit id or legacy rescue/raid table id. */
+export function resolveCoopRecruitIdForJoin(mode: CoopMode, idOrLegacy: string): string | null {
+  if (getCoopRecruit(idOrLegacy)) return idOrLegacy;
+  const legacyKey = mode === 'rescue' ? 'legacy_rescue_id' : 'legacy_raid_id';
+  const rows = getDb().prepare('SELECT id, context_json FROM coop_recruits WHERE mode = ?').all(mode) as Array<{
+    id: string; context_json: string;
+  }>;
+  for (const row of rows) {
+    const ctx = parseCoopContext(row.context_json);
+    if (ctx[legacyKey as keyof CoopContext] === idOrLegacy) return row.id;
+  }
+  return null;
+}
+
 export function createCoopRecruit(
   guildId: string,
   leaderId: string,

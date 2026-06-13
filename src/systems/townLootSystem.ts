@@ -16,7 +16,7 @@ function isAllowedForAreaMinLv(itemId: string, areaMinLv: number, townId: string
     if (rank >= 5 && areaMinLv < 50 && townId !== 'valhalla_fortress') return false;
     if (rank >= 4 && areaMinLv < 28) return false;
   }
-  if (itemId.startsWith('boss_') && areaMinLv < 30) return false;
+  if (itemId.startsWith('boss_') && areaMinLv < 34) return false;
   if ((itemId.startsWith('src_') || itemId.startsWith('raid_')) && areaMinLv < 40 && townId !== 'valhalla_fortress') {
     if (!itemId.startsWith('src_echo') && !itemId.startsWith('src_lamp') && !itemId.startsWith('src_bind')) return false;
   }

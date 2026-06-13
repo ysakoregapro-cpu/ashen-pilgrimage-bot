@@ -1,5 +1,5 @@
 /** drop-economy-audit — npx tsx scripts/drop-economy-audit.ts */
-import { buildDropEconomyRows } from './audit/dropEconomyIndex';
+import { buildDropEconomyRows, getNamedHighRarityAudits, getSsrGearRateByArea, getUrMaterialRateByArea } from './audit/dropEconomyIndex';
 import { writeReport, writeCsv, mdTable } from './audit/reportWriter';
 import { runPhase21AcquisitionFailures } from './audit/phase21Checks';
 
@@ -11,10 +11,14 @@ const HEADERS = [
   'gold_farming_risk', 'is_key_material', 'is_direct_gear_drop', 'risk', 'recommendation',
 ];
 
+const NAMED_HEADERS = ['item_id', 'name', 'rarity', 'sell_price', 'sources', 'weight', 'estimated_rate_per_100', 'risk', 'recommendation', 'final_action'];
+
 function main() {
   const rows = buildDropEconomyRows();
+  const named = getNamedHighRarityAudits();
   const highRisk = rows.filter((r) => r.risk === 'balance_risk' || r.risk === 'over_supplied');
-  const moonBody = rows.find((r) => r.item_id === 'arm_set_moon_body');
+  const ssrWeapons = getSsrGearRateByArea('weapon').filter((r) => parseFloat(r.rate_per_100) >= 1).slice(0, 15);
+  const urMats = getUrMaterialRateByArea().filter((r) => !r.rate_per_100.startsWith('0/')).slice(0, 10);
 
   const md = [
     '# Drop Economy Audit',
@@ -25,8 +29,18 @@ function main() {
     `- Items audited: ${rows.length}`,
     `- balance_risk / over_supplied: ${highRisk.length}`,
     '',
-    '## 月下鎧 (arm_set_moon_body)',
-    moonBody ? `- rate: ${moonBody.estimated_rate_band} | risk: ${moonBody.risk} | areas: ${moonBody.area_sources}` : '- not found',
+    '## 名指し高レア品',
+    mdTable(NAMED_HEADERS, named.map((n) => NAMED_HEADERS.map((h) => (n as Record<string, string>)[h] ?? ''))),
+    '',
+    '## SSR武器 — エリア別（rate≥1/100 上位）',
+    ssrWeapons.length
+      ? mdTable(['area', 'item', 'weight', 'rate/100'], ssrWeapons.map((r) => [r.area_id, r.name, String(r.weight), r.rate_per_100]))
+      : '(該当なし — すべて trace/low)',
+    '',
+    '## UR素材 — 探索pool内',
+    urMats.length
+      ? mdTable(['area', 'item', 'weight', 'rate/100'], urMats.map((r) => [r.area_id, r.name, String(r.weight), r.rate_per_100]))
+      : '(探索poolにUR素材なし — boss/valhalla/raid寄り)',
     '',
     '## High risk items (top 20)',
     mdTable(['item_id', 'name', 'rarity', 'rate', 'risk', 'action'],
@@ -35,8 +49,12 @@ function main() {
 
   writeReport('drop-economy-audit.md', md);
   writeCsv('drop-economy-audit.csv', HEADERS, rows.map((r) => HEADERS.map((h) => (r as Record<string, string>)[h] ?? '')));
+  writeCsv('drop-economy-named-audit.csv', NAMED_HEADERS, named.map((n) => NAMED_HEADERS.map((h) => (n as Record<string, string>)[h] ?? '')));
 
   console.log(`✅ drop-economy-audit → ${rows.length} rows, ${highRisk.length} high-risk`);
+  for (const n of named) {
+    console.log(`   ${n.item_id}: rate=${n.estimated_rate_per_100} action=${n.final_action}`);
+  }
   const p21 = runPhase21AcquisitionFailures();
   if (p21.length) {
     console.error('❌ Phase2.1 obtainable check failed after drop rebalance');

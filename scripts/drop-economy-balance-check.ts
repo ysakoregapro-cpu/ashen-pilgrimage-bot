@@ -1,7 +1,11 @@
 /** drop-economy-balance-check — npx tsx scripts/drop-economy-balance-check.ts */
 import { AREAS } from '../src/db/seedData/areas';
 import { buildEffectiveRewardPool } from '../src/systems/townLootSystem';
-import { buildDropEconomyRows, getMoonBodySupplyCheck, initDropEconomyAuditDb, NORMAL_EXPLORE_POOL_EXCLUDED } from './audit/dropEconomyIndex';
+import {
+  buildDropEconomyRows, getMoonBodySupplyCheck, getNamedHighRarityAudits, getBossSilentPageCheck,
+  getBossSilentPageDropPathAudit,
+  initDropEconomyAuditDb, NORMAL_EXPLORE_POOL_EXCLUDED,
+} from './audit/dropEconomyIndex';
 import { buildWeaponAuditRows, buildArmorAuditRows } from './audit/acquisitionIndex';
 import { runPhase21AcquisitionFailures } from './audit/phase21Checks';
 
@@ -38,12 +42,44 @@ function main() {
     warns.push(`arm_set_moon_body appears in ${moon.areas.length} moon areas (expected 1): ${moon.areas.join(', ')}`);
   }
 
-  // unknown用途の高レアが通常ドロップしない
-  for (const r of buildDropEconomyRows()) {
-    if (!['SSR', 'UR'].includes(r.rarity)) continue;
-    if (r.current_purpose.includes('unknown') && r.area_sources !== '—') {
-      fails.push(`unknown high-rarity in area pool: ${r.item_id}`);
+  // unknown / non-playable_gear equipment in normal pool
+  for (const r of buildDropEconomyRows().filter((x) => x.is_equipment === 'YES' && x.area_sources !== '—')) {
+    if (r.current_purpose.includes('unknown')) {
+      fails.push(`equipment with unknown purpose in pool: ${r.item_id}`);
     }
+    if (!r.current_purpose.includes('playable_gear') && !r.current_purpose.includes('legacy')) {
+      fails.push(`equipment without playable_gear purpose in pool: ${r.item_id} (${r.current_purpose})`);
+    }
+  }
+
+  // 名指し: 無答の守護者の頁 — 通常探索poolに入らない
+  const silentPaths = getBossSilentPageDropPathAudit();
+  if (silentPaths.exploreAreas.length) {
+    fails.push(`boss_silent_page in explore/town pools: ${silentPaths.exploreAreas.join(', ')}`);
+  }
+  if (silentPaths.monsterDrops.length) {
+    fails.push(`boss_silent_page in monster drop pools: ${silentPaths.monsterDrops.join(', ')}`);
+  }
+  if (silentPaths.duplicateBossEntries !== 1) {
+    fails.push(`boss_silent_page BOSS_VICTORY entries: ${silentPaths.duplicateBossEntries} (expected 1)`);
+  }
+
+  // 名指し: 黒鉄の処刑刃 — SSR武器として出すぎない
+  const named = getNamedHighRarityAudits();
+  const ironBlade = named.find((n) => n.item_id === 'wpn_black_iron_blade');
+  if (ironBlade) {
+    if (ironBlade.estimated_rate_per_100.includes('HIGH') || ironBlade.estimated_rate_per_100.includes('/100 mid')) {
+      fails.push(`wpn_black_iron_blade oversupplied: ${ironBlade.estimated_rate_per_100}`);
+    }
+    console.log(`black iron blade: rate=${ironBlade.estimated_rate_per_100} weight=${ironBlade.weight} sources=${ironBlade.sources}`);
+  }
+  const silentPage = getBossSilentPageCheck();
+  const silentRow = named.find((n) => n.item_id === 'boss_silent_page');
+  if (silentRow) {
+    if (silentRow.estimated_rate_per_100.includes('HIGH') || silentRow.estimated_rate_per_100.includes('/100 mid')) {
+      fails.push(`boss_silent_page oversupplied: ${silentRow.estimated_rate_per_100}`);
+    }
+    console.log(`silent page: rate=${silentRow.estimated_rate_per_100} boss=${silentPage.bossDrop} paths=${JSON.stringify(silentPaths)}`);
   }
 
   // legacy/reserved が通常poolに入っていない
