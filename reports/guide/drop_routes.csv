@@ -228,13 +228,9 @@ arm_set_valhalla_arms,ヴァルハラ篭手,equipment,UR,playable_gear,explore_p
 arm_set_iron_snow_arms,鉄雪篭手,equipment,SSR,playable_gear,explore_pool,area_experiment_zone,実験区画,空中要塞ヴァルハラ,62,62,,,area:area_experiment_zone,8.16,,0.07/100 trace,,YES,
 raid_old_king_film,旧王の影片,raid_material,UR,raid_material,explore_pool,area_old_throne,旧王の玉座,空中要塞ヴァルハラ,64,64,,,area:area_old_throne,14.64,,8.4/100 mid,,YES,
 src_old_king_echo,旧王の残響核,src_upgrade_material,Src,src_material,explore_pool,area_old_throne,旧王の玉座,空中要塞ヴァルハラ,64,64,,,area:area_old_throne,4.88,,2.8/100 low,,YES,
-arm_set_old_king_head,旧王兜,equipment,UR,playable_gear,explore_pool,area_old_throne,旧王の玉座,空中要塞ヴァルハラ,64,64,,,area:area_old_throne,6.24,,0.03/100 trace,,YES,
 wpn_old_king_staff,旧王の魔杖,equipment,UR,playable_gear,explore_pool,area_old_throne,旧王の玉座,空中要塞ヴァルハラ,64,64,,,area:area_old_throne,12.48,,0.11/100 trace,,YES,
-acc_old_king_seal,旧王の印章,equipment,UR,playable_gear,explore_pool,area_old_throne,旧王の玉座,空中要塞ヴァルハラ,64,64,,,area:area_old_throne,12.48,,0.07/100 trace,,YES,
-arm_set_old_king_arms,旧王篭手,equipment,UR,playable_gear,explore_pool,area_old_throne,旧王の玉座,空中要塞ヴァルハラ,64,64,,,area:area_old_throne,12.48,,0.07/100 trace,,YES,
 raid_deep_core,深層炉心核片,raid_material,UR,raid_material,explore_pool,area_deep_core,深層炉心,空中要塞ヴァルハラ,66,66,,,area:area_deep_core,17.52,,10.0/100 mid,,YES,
 src_valhalla_core,ヴァルハラ炉心核,src_upgrade_material,Src,src_material,explore_pool,area_deep_core,深層炉心,空中要塞ヴァルハラ,66,66,,,area:area_deep_core,5.84,,3.3/100 low,,YES,
-arm_set_old_king_legs,旧王腿当て,equipment,UR,playable_gear,explore_pool,area_deep_core,深層炉心,空中要塞ヴァルハラ,66,66,,,area:area_deep_core,14.64,,0.08/100 trace,,YES,
 wpn_iron_snow_king_shield,鉄雪王盾,equipment,UR,playable_gear,explore_pool,area_deep_core,深層炉心,空中要塞ヴァルハラ,66,66,,,area:area_deep_core,14.64,,0.13/100 trace,,YES,
 wpn_sky_bow_fress,空塞弓フレス,equipment,UR,playable_gear,explore_pool,area_sky_lift,空塞昇降路,空中要塞ヴァルハラ,60,60,,,area:area_sky_lift,6,,0.05/100 trace,,YES,
 raid_sky_core,空塞機兵の中枢,raid_material,UR,raid_material,explore_pool,area_sky_lift,空塞昇降路,空中要塞ヴァルハラ,60,60,,,area:area_sky_lift,12,,3.4/100 low,,YES,
@@ -245,8 +241,6 @@ wpn_zero_shield,統治軍制式大盾・零式,equipment,UR,playable_gear,explor
 arm_set_valhalla_legs,ヴァルハラ腿当て,equipment,UR,playable_gear,explore_pool,area_control_room,統治軍制御室,空中要塞ヴァルハラ,62,62,,,area:area_control_room,10.32,,0.06/100 trace,,YES,
 raid_machina_echo,マキナの残響片,raid_material,UR,raid_material,explore_pool,area_machina_zone,マキナの残響区画,空中要塞ヴァルハラ,66,66,,,area:area_machina_zone,20.4,,11.7/100 mid,,YES,
 src_machina_core,マキナ残響核,src_upgrade_material,Src,src_material,explore_pool,area_machina_zone,マキナの残響区画,空中要塞ヴァルハラ,66,66,,,area:area_machina_zone,6.8,,3.9/100 low,,YES,
-arm_set_old_king_body,旧王鎧,equipment,UR,playable_gear,explore_pool,area_machina_zone,マキナの残響区画,空中要塞ヴァルハラ,66,66,,,area:area_machina_zone,8.399999999999999,,0.05/100 trace,,YES,
-arm_set_old_king_feet,旧王靴,equipment,UR,playable_gear,explore_pool,area_machina_zone,マキナの残響区画,空中要塞ヴァルハラ,66,66,,,area:area_machina_zone,16.799999999999997,,0.09/100 trace,,YES,
 acc_raid_random,残響の指輪,equipment,SSR,collection; playable_gear,explore_pool,area_machina_zone,マキナの残響区画,空中要塞ヴァルハラ,66,66,,,area:area_machina_zone,6.8,,0.06/100 trace,,YES,
 mat_forgotten_sand,忘却の黒砂,area_material,SR,enhance_material; src_material,explore_pool,area_black_lantern_alley,黒灯りの路地,黒灯りの路地,50,50,,,area:area_black_lantern_alley,83.52000000000001,,6.8/100 mid,,YES,
 wpn_black_lamp_twin,黒灯りの双刃,equipment,R,playable_gear,explore_pool,area_black_lantern_alley,黒灯りの路地,黒灯りの路地,50,50,,,area:area_black_lantern_alley,14.64,,1.3/100 low,,YES,
@@ -254,3 +248,15 @@ arm_set_black_lamp_head,黒灯兜,equipment,SSR,playable_gear,explore_pool,area_
 mat_forgotten_sand,忘却の黒砂,area_material,SR,enhance_material; src_material,explore_pool,area_cinder_passage,煤煙の抜け道,黒灯りの路地,52,52,,,area:area_cinder_passage,83.52000000000001,,6.8/100 mid,,YES,
 acc_black_lamp_ring,黒灯の指輪,equipment,SR,playable_gear,explore_pool,area_cinder_passage,煤煙の抜け道,黒灯りの路地,52,52,,,area:area_cinder_passage,6,,0.31/100 trace,,YES,
 arm_set_black_lamp_body,黒灯鎧,equipment,SSR,playable_gear,explore_pool,area_cinder_passage,煤煙の抜け道,黒灯りの路地,52,52,,,area:area_cinder_passage,6,,0.06/100 trace,,YES,
+arm_set_valhalla_head,ヴァルハラ兜,equipment,UR,playable_gear,valhalla_boss_repeat,,,valhalla_fortress,valhalla,58,mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss,ヴァルハラ3ボス,valhalla_boss_armor,,15-25%,0.15-0.25,NO,YES,Phase2.5 affix・本命厳選
+arm_set_valhalla_body,ヴァルハラ鎧,equipment,UR,playable_gear,valhalla_boss_repeat,,,valhalla_fortress,valhalla,58,mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss,ヴァルハラ3ボス,valhalla_boss_armor,,15-25%,0.15-0.25,NO,YES,Phase2.5 affix・本命厳選
+arm_set_valhalla_arms,ヴァルハラ篭手,equipment,UR,playable_gear,valhalla_boss_repeat,,,valhalla_fortress,valhalla,58,mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss,ヴァルハラ3ボス,valhalla_boss_armor,,15-25%,0.15-0.25,NO,YES,Phase2.5 affix・本命厳選
+arm_set_valhalla_legs,ヴァルハラ腿当て,equipment,UR,playable_gear,valhalla_boss_repeat,,,valhalla_fortress,valhalla,58,mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss,ヴァルハラ3ボス,valhalla_boss_armor,,15-25%,0.15-0.25,NO,YES,Phase2.5 affix・本命厳選
+arm_set_valhalla_feet,ヴァルハラ靴,equipment,UR,playable_gear,valhalla_boss_repeat,,,valhalla_fortress,valhalla,58,mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss,ヴァルハラ3ボス,valhalla_boss_armor,,15-25%,0.15-0.25,NO,YES,Phase2.5 affix・本命厳選
+acc_valhalla_necklace,ヴァルハラの首飾り,equipment,UR,playable_gear,valhalla_boss_repeat,,,valhalla_fortress,valhalla,58,mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss,ヴァルハラ3ボス,valhalla_boss_accessory,,8-15%,0.08-0.15,NO,YES,Phase2.5 affix
+arm_set_old_king_head,旧王兜,equipment,UR,playable_gear,valhalla_boss_repeat,,,valhalla_fortress,valhalla,64,mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss,ヴァルハラ3ボス,old_king_boss_armor,,3-6%,0.03-0.06,NO,YES,希少上振れ・Phase2.5 affix
+arm_set_old_king_body,旧王鎧,equipment,UR,playable_gear,valhalla_boss_repeat,,,valhalla_fortress,valhalla,64,mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss,ヴァルハラ3ボス,old_king_boss_armor,,3-6%,0.03-0.06,NO,YES,希少上振れ・Phase2.5 affix
+arm_set_old_king_arms,旧王篭手,equipment,UR,playable_gear,valhalla_boss_repeat,,,valhalla_fortress,valhalla,64,mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss,ヴァルハラ3ボス,old_king_boss_armor,,3-6%,0.03-0.06,NO,YES,希少上振れ・Phase2.5 affix
+arm_set_old_king_legs,旧王腿当て,equipment,UR,playable_gear,valhalla_boss_repeat,,,valhalla_fortress,valhalla,64,mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss,ヴァルハラ3ボス,old_king_boss_armor,,3-6%,0.03-0.06,NO,YES,希少上振れ・Phase2.5 affix
+arm_set_old_king_feet,旧王靴,equipment,UR,playable_gear,valhalla_boss_repeat,,,valhalla_fortress,valhalla,64,mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss,ヴァルハラ3ボス,old_king_boss_armor,,3-6%,0.03-0.06,NO,YES,希少上振れ・Phase2.5 affix
+acc_old_king_seal,旧王の印章,equipment,UR,playable_gear,valhalla_boss_repeat,,,valhalla_fortress,valhalla,64,mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss,ヴァルハラ3ボス,old_king_boss_accessory,,1-3%,0.01-0.03,NO,YES,希少上振れ・Phase2.5 affix

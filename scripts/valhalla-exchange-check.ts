@@ -44,9 +44,12 @@ function main() {
   );
 
   const unimplemented = VALHALLA_EXCHANGE_TABLE.filter((e) => e.ui_implemented);
-  if (unimplemented.length > 0) {
-    warns.push(`${unimplemented.length} exchange entries marked ui_implemented=true (expected all false for Phase2.6)`);
+  const uiCount = unimplemented.length;
+  if (uiCount !== 6) {
+    warns.push(`expected 6 ui_implemented exchanges, got ${uiCount}`);
   }
+  const futureInUi = VALHALLA_EXCHANGE_TABLE.filter((e) => e.ui_implemented && !e.currently_available);
+  if (futureInUi.length > 0) warns.push('some ui_implemented entries not currently_available');
 
   assert(fs.existsSync(path.join(GUIDE_DIR, 'valhalla_exchange.csv')), 'valhalla_exchange.csv missing');
   const csv = fs.readFileSync(path.join(GUIDE_DIR, 'valhalla_exchange.csv'), 'utf8');

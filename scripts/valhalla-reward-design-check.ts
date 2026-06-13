@@ -60,6 +60,7 @@ function main() {
   assert(rows.some((r) => r.item_id === '(old_king_armor)'), 'audit: old king armor in repeat');
   assert(rows.some((r) => r.item_id === UR_LOTTERY_SHARD_ID), 'audit: UR lottery shard');
   assert(rows.some((r) => r.item_id === AFFIX_REROLL_ASSIST_ID), 'audit: affix reroll assist');
+  assert(rows.some((r) => r.reward_context === 'valhalla_coop_boss'), 'audit: valhalla_coop_boss context rows');
 
   for (const id of [VALHALLA_EMBLEM_ID, SILENT_PAGE_ID, UR_LOTTERY_SHARD_ID, AFFIX_REROLL_ASSIST_ID]) {
     const item = db.prepare('SELECT id FROM items WHERE id = ?').get(id);

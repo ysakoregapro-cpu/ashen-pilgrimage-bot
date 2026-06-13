@@ -110,7 +110,7 @@ export type ValhallaRewardRow = {
 export function buildValhallaRewardAuditRows(): ValhallaRewardRow[] {
   const fc = VALHALLA_FIRST_CLEAR_REWARDS;
   const rp = VALHALLA_REPEAT_REWARDS;
-  return [
+  const soloRows: ValhallaRewardRow[] = [
     { reward_context: 'valhalla_boss', first_clear_or_repeat: 'first_clear', reward_type: 'currency', item_id: VALHALLA_EMBLEM_ID, item_name: 'ヴァルハラ徽章', amount_min: fc.emblem, amount_max: fc.emblem, drop_rate: '100%', notes: '確定' },
     { reward_context: 'valhalla_boss', first_clear_or_repeat: 'first_clear', reward_type: 'boss_material', item_id: SILENT_PAGE_ID, item_name: '無答の守護者の頁', amount_min: fc.silentPage, amount_max: fc.silentPage, drop_rate: '100%', notes: '確定' },
     { reward_context: 'valhalla_boss', first_clear_or_repeat: 'first_clear', reward_type: 'equipment', item_id: 'valhalla_armor_or_accessory', item_name: 'ヴァルハラ防具/アクセ', amount_min: 1, amount_max: 1, drop_rate: '100%', notes: 'ランダム1件・Phase2.5 affix' },
@@ -132,6 +132,14 @@ export function buildValhallaRewardAuditRows(): ValhallaRewardRow[] {
     { reward_context: 'silent_guardian', first_clear_or_repeat: 'first_clear', reward_type: 'boss_material', item_id: SILENT_PAGE_ID, item_name: '無答の守護者の頁', amount_min: 1, amount_max: 1, drop_rate: '100%', notes: 'dropBalanceMaster BOSS_VICTORY' },
     { reward_context: 'silent_guardian', first_clear_or_repeat: 'repeat', reward_type: 'boss_material', item_id: SILENT_PAGE_ID, item_name: '無答の守護者の頁', amount_min: 1, amount_max: 1, drop_rate: '4%', notes: 'dropBalanceMaster rematchRate' },
   ];
+  const coopRows = soloRows
+    .filter((r) => r.reward_context === 'valhalla_boss')
+    .map((r) => ({
+      ...r,
+      reward_context: 'valhalla_coop_boss',
+      notes: r.notes ? `${r.notes} / 共闘個別報酬` : '共闘個別報酬',
+    }));
+  return [...soloRows, ...coopRows];
 }
 
 export function isValhallaBossMonster(monsterId: string): monsterId is ValhallaBossId {

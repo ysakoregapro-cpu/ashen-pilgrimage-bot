@@ -20,6 +20,7 @@ import { formatShopCatalogForPlayer, getShopCatalog, getSellableInventory } from
 import { getActiveListings, getMyListings, formatListingList } from './marketSystem';
 import { formatCurrentEquipment } from './prepSystem';
 import { getCurrentTown } from './townSystem';
+import { canEnterValhalla } from './progressionGates';
 
 export interface FacilityRow {
   id: string;
@@ -134,6 +135,16 @@ export function getFacilityActions(facility: FacilityRow): FacAction[] {
         home,
       ];
     case 'raid_terminal':
+      if (facility.town_id === 'valhalla_fortress') {
+        return [
+          { id: 'boss_rematch', label: 'ボス再戦' },
+          { id: 'emblem_exchange', label: '徽章交換所' },
+          { id: 'raid_recruit', label: '要塞探索を募集する' },
+          talk,
+          { id: 'explain', label: '端末の説明を聞く' },
+          home,
+        ];
+      }
       return [
         { id: 'raid_recruit', label: '要塞探索を募集する' },
         talk,
@@ -195,7 +206,7 @@ function getExplainLabel(type: string): string {
 
 export function executeFacilityAction(userId: string, facilityId: string, actionId: string): {
   type: 'text' | 'upgrade_select' | 'job_select' | 'travel' | 'profile' | 'inventory' | 'equip' | 'src_select' | 'rescue_hint' | 'raid_hint' | 'coop_recruit'
-    | 'shop_browse' | 'shop_buy' | 'shop_sell' | 'market_browse' | 'market_sell' | 'market_my' | 'prep_equip' | 'prep_menu' | 'inn_preview' | 'boss_rematch_select';
+    | 'shop_browse' | 'shop_buy' | 'shop_sell' | 'market_browse' | 'market_sell' | 'market_my' | 'prep_equip' | 'prep_menu' | 'inn_preview' | 'boss_rematch_select' | 'emblem_exchange';
   message: string;
   extra?: string;
 } {
@@ -313,6 +324,13 @@ export function executeFacilityAction(userId: string, facilityId: string, action
   }
   if (actionId === 'rescue_info') {
     return { type: 'coop_recruit', message: '救難要請を掲示板へ出します。', extra: 'rescue:explore' };
+  }
+  if (actionId === 'emblem_exchange') {
+    const gate = canEnterValhalla(userId);
+    if (!gate.ok) {
+      return { type: 'text', message: gate.reason ?? '徽章交換所はまだ利用できません。' };
+    }
+    return { type: 'emblem_exchange', message: '', extra: facilityId };
   }
   if (actionId === 'raid_recruit') {
     return { type: 'coop_recruit', message: 'ヴァルハラレイド募集を掲示板へ出します。', extra: 'raid' };

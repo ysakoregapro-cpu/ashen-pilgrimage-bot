@@ -1,10 +1,10 @@
-exchange_id,cost_valhalla_emblem,cost_silent_page,receive_type,receive_item_id,receive_item_name,receive_amount,notes,ui_implemented
-vex_repair_premium,10,0,material,rep_deep_repair,深層修復材,1,高級修復,NO
-vex_awaken_mat,20,0,material,src_upg_core,Src強化核,1,覚醒素材,NO
-vex_armor_random,30,0,equipment_box,box_valhalla_armor_random,ヴァルハラ防具ランダム箱,1,Phase2.5 affix付き,NO
-vex_accessory_random,40,0,equipment_box,box_valhalla_accessory_random,ヴァルハラアクセランダム箱,1,Phase2.5 affix付き,NO
-vex_armor_select,80,0,equipment_box,box_valhalla_armor_select,ヴァルハラ防具選択箱,1,部位選択,NO
-vex_accessory_select,120,0,equipment_box,box_valhalla_accessory_select,ヴァルハラアクセ選択箱,1,部位選択,NO
-vex_ur_lottery,150,3,future_feature,mat_ur_lottery_shard,UR抽選素材,1,無答の頁3枚追加,NO
-vex_affix_reroll,200,0,future_feature,mat_affix_reroll_assist,特性再抽選補助素材,1,将来再抽選UI,NO
-vex_affix_protect,300,1,future_feature,mat_affix_slot_protect,特性1枠保護素材,1,無答の頁1枚追加,NO
+exchange_id,cost_valhalla_emblem,cost_silent_page,receive_type,receive_item_id,receive_item_name,receive_amount,notes,ui_implemented,currently_available
+vex_repair_premium,10,0,material,rep_deep_repair,深層修復材,1,高級修復,YES,YES
+vex_awaken_mat,20,0,material,src_upg_core,Src強化核,1,覚醒素材,YES,YES
+vex_armor_random,30,0,equipment_box,box_valhalla_armor_random,ヴァルハラ防具ランダム,1,Phase2.5 affix付き・直接抽選,YES,YES
+vex_accessory_random,40,0,equipment_box,box_valhalla_accessory_random,ヴァルハラアクセランダム,1,Phase2.5 affix付き・直接抽選,YES,YES
+vex_armor_select,80,0,equipment_box,box_valhalla_armor_select,ヴァルハラ防具選択,1,部位選択・直接付与,YES,YES
+vex_accessory_select,120,0,equipment_box,box_valhalla_accessory_select,ヴァルハラアクセ選択,1,部位選択・直接付与,YES,YES
+vex_ur_lottery,150,3,future_feature,mat_ur_lottery_shard,UR抽選素材,1,無答の頁3枚追加,NO,NO
+vex_affix_reroll,200,0,future_feature,mat_affix_reroll_assist,特性再抽選補助素材,1,将来再抽選UI,NO,NO
+vex_affix_protect,300,1,future_feature,mat_affix_slot_protect,特性1枠保護素材,1,無答の頁1枚追加,NO,NO

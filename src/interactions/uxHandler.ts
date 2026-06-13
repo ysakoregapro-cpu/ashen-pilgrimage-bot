@@ -176,6 +176,69 @@ export async function handleUxButton(interaction: ButtonInteraction): Promise<bo
     return true;
   }
 
+  if (base.startsWith('rematch:solo:')) {
+    const monsterId = base.slice('rematch:solo:'.length);
+    const { startBossRematch } = await import('../systems/bossRematchSystem');
+    const { buildBattleReply } = await import('../systems/battleSystem');
+    const { findFacilityInTown } = await import('../systems/facilitySystem');
+    const guildFac = findFacilityInTown(userId, 'raid_terminal') ?? findFacilityInTown(userId, 'guild_board');
+    const r = startBossRematch(userId, monsterId);
+    if (!r.ok || !r.battleId) {
+      await sendJourneyLog(interaction, {
+        embeds: [errorEmbed(r.message)],
+        components: nextActionButtons('boss_rematch_done', { facilityId: guildFac, monsterId }),
+      });
+      return true;
+    }
+    const reply = buildBattleReply(r.battleId, userId);
+    if (reply) await sendJourneyLog(interaction, reply);
+    else {
+      await sendJourneyLog(interaction, {
+        embeds: [errorEmbed('戦闘の開始に失敗しました。')],
+        components: nextActionButtons('boss_rematch_done', { facilityId: guildFac, monsterId }),
+      });
+    }
+    return true;
+  }
+
+  if (base.startsWith('rematch:coop:')) {
+    const parts = base.split(':');
+    const monsterId = parts[2]!;
+    const facId = parts[3] ?? '';
+    const guild = interaction.guild;
+    if (!guild) {
+      await sendJourneyLog(interaction, {
+        embeds: [errorEmbed('サーバー内でのみ共闘募集を出せます。')],
+        components: nextActionButtons('facility', { facilityId: facId }),
+      });
+      return true;
+    }
+    const { canCreateValhallaCoopRecruit, getValhallaBossAreaId } = await import('../systems/valhallaCoopSystem');
+    const check = canCreateValhallaCoopRecruit(userId, monsterId);
+    if (!check.ok) {
+      await sendJourneyLog(interaction, {
+        embeds: [errorEmbed(check.reason ?? '募集を作成できません。')],
+        components: nextActionButtons('boss_rematch_done', { facilityId: facId, monsterId }),
+      });
+      return true;
+    }
+    const { postCoopRecruitToGuild } = await import('../systems/coop/coopHandlers');
+    const posted = await postCoopRecruitToGuild(guild, userId, 'valhalla_coop', {
+      monster_id: monsterId,
+      area_id: getValhallaBossAreaId(monsterId) ?? undefined,
+    });
+    await sendJourneyLog(interaction, {
+      embeds: [townHubEmbed('ヴァルハラ共闘', posted.message)],
+      components: nextActionButtons('facility', { facilityId: facId }),
+    });
+    return true;
+  }
+
+  if (base.startsWith('vex:')) {
+    await handleVexButton(interaction, userId, base);
+    return true;
+  }
+
   if (base.startsWith('rematch:repeat:')) {
     const monsterId = base.slice('rematch:repeat:'.length);
     const { startBossRematch } = await import('../systems/bossRematchSystem');
@@ -504,6 +567,17 @@ async function handleFacilityResult(
       });
       break;
     }
+    case 'emblem_exchange': {
+      const {
+        buildValhallaExchangeEmbed,
+        buildValhallaExchangeButtons,
+      } = await import('../systems/valhallaExchangeUi');
+      await sendPanelAfterAction(interaction, userId, {
+        embeds: [buildValhallaExchangeEmbed(userId)],
+        components: buildValhallaExchangeButtons(userId, facId),
+      });
+      break;
+    }
     case 'inn_preview': {
       const { restConfirmButtons } = await import('../utils/townUi');
       const mode = result.extra === 'shrine' ? 'shrine' : 'inn';
@@ -651,6 +725,63 @@ async function handleShopMarketPrep(
   }
 }
 
+async function handleVexButton(interaction: ButtonInteraction, userId: string, base: string): Promise<void> {
+  const parts = base.split(':');
+  const op = parts[1];
+  const { getExchangeById } = await import('../db/seedData/valhallaExchangeMaster');
+  const {
+    buildValhallaExchangeEmbed,
+    buildValhallaExchangeButtons,
+    buildValhallaExchangeConfirmEmbed,
+    buildValhallaExchangeConfirmButtons,
+    buildValhallaExchangeSelectMenu,
+  } = await import('../systems/valhallaExchangeUi');
+  const { executeValhallaExchange } = await import('../systems/valhallaExchangeSystem');
+
+  if (op === 'cancel') {
+    const facId = parts[2] ?? '';
+    await sendJourneyLog(interaction, {
+      embeds: [buildValhallaExchangeEmbed(userId)],
+      components: buildValhallaExchangeButtons(userId, facId),
+    });
+    return;
+  }
+
+  const exchangeId = parts[2] ?? '';
+  const facId = parts[3] ?? '';
+  const entry = getExchangeById(exchangeId);
+  if (!entry) {
+    await sendJourneyLog(interaction, { embeds: [errorEmbed('不明な交換です。')], components: [] });
+    return;
+  }
+
+  if (op === 'pick') {
+    if (entry.exchange_id === 'vex_armor_select' || entry.exchange_id === 'vex_accessory_select') {
+      await sendPanelAfterAction(interaction, userId, {
+        embeds: [buildValhallaExchangeConfirmEmbed(userId, exchangeId)],
+        components: [buildValhallaExchangeSelectMenu(exchangeId, facId)],
+      });
+      return;
+    }
+    await sendJourneyLog(interaction, {
+      embeds: [buildValhallaExchangeConfirmEmbed(userId, exchangeId)],
+      components: buildValhallaExchangeConfirmButtons(exchangeId, facId, userId),
+    });
+    return;
+  }
+
+  if (op === 'confirm') {
+    const selectedItemId = parts.length > 4 ? parts.slice(4).join(':') : undefined;
+    const result = executeValhallaExchange(userId, exchangeId, selectedItemId);
+    await sendJourneyLog(interaction, {
+      embeds: [townHubEmbed('徽章交換所', result.message)],
+      components: result.ok
+        ? buildValhallaExchangeButtons(userId, facId)
+        : buildValhallaExchangeConfirmButtons(exchangeId, facId, userId),
+    });
+  }
+}
+
 async function handleFlowButton(interaction: ButtonInteraction, flow: string): Promise<void> {
   const userId = interaction.user.id;
   if (flow.startsWith('explore:')) {
@@ -692,6 +823,19 @@ async function handleFlowButton(interaction: ButtonInteraction, flow: string): P
       embeds: [townHubEmbed('救難', posted.ok ? posted.message : posted.message)],
       components: nextActionButtons('defeat'),
     });
+    return;
+  }
+  if (flow === 'valhalla_menu') {
+    const { findFacilityInTown } = await import('../systems/facilitySystem');
+    const facId = findFacilityInTown(userId, 'raid_terminal');
+    if (!facId) {
+      await sendJourneyLog(interaction, {
+        embeds: [townHubEmbed('ヴァルハラ', '要塞探索端末が見つかりません。')],
+        components: nextActionButtons('facility'),
+      });
+      return;
+    }
+    await sendJourneyLog(interaction, buildFacilityView(userId, facId));
     return;
   }
   if (flow === 'raid') {
@@ -745,6 +889,21 @@ export async function handleUxSelect(interaction: StringSelectMenuInteraction): 
   }
   if (base === 'guide:section' || base.startsWith('guide:section:')) {
     await sendJourneyLogAfterSelect(interaction, buildGuideView(value));
+    return true;
+  }
+
+  if (base.startsWith('vex:sel:')) {
+    const parts = base.split(':');
+    const exchangeId = parts[2] ?? '';
+    const facId = parts[3] ?? '';
+    const {
+      buildValhallaExchangeConfirmEmbed,
+      buildValhallaExchangeConfirmButtons,
+    } = await import('../systems/valhallaExchangeUi');
+    await sendJourneyLogAfterSelect(interaction, {
+      embeds: [buildValhallaExchangeConfirmEmbed(userId, exchangeId)],
+      components: buildValhallaExchangeConfirmButtons(exchangeId, facId, userId, value),
+    });
     return true;
   }
 

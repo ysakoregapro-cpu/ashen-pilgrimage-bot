@@ -721,6 +721,24 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
   }
 
   if (prefix === 'rematch' && action === 'boss') {
+    const { isValhallaCoopBossId } = await import('./systems/valhallaCoopSystem');
+    const { findFacilityInTown } = await import('./systems/facilitySystem');
+    const { getDb } = await import('./db/database');
+    const facId = findFacilityInTown(userId, 'raid_terminal') ?? findFacilityInTown(userId, 'guild_board') ?? 'unknown';
+
+    if (isValhallaCoopBossId(value)) {
+      const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(value) as { name: string } | undefined;
+      const {
+        buildValhallaRematchModeEmbed,
+        buildValhallaRematchModeButtons,
+      } = await import('./systems/valhallaExchangeUi');
+      await sendSelectResultLog(interaction, {
+        embeds: [buildValhallaRematchModeEmbed(value, mon?.name ?? value)],
+        components: buildValhallaRematchModeButtons(value, facId),
+      });
+      return;
+    }
+
     const { startBossRematch } = await import('./systems/bossRematchSystem');
     const r = startBossRematch(userId, value);
     if (!r.ok || !r.battleId) {

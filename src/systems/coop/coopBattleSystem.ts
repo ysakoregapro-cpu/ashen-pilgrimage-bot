@@ -18,6 +18,8 @@ import {
   COOP_RESOLVE_LOCK_STALE_MS,
   RESCUE_HP_MULT,
   RAID_HP_MULT,
+  VALHALLA_COOP_HP_MULT,
+  VALHALLA_COOP_BREAK_BONUS,
   RAID_BOSS_ID,
   type CoopActionTarget,
   type CoopActionType,
@@ -58,8 +60,15 @@ type StoredAction = {
 };
 
 function hpMult(mode: CoopMode, count: number): number {
+  if (mode === 'valhalla_coop') return VALHALLA_COOP_HP_MULT[count] ?? VALHALLA_COOP_HP_MULT[2] ?? 1.8;
   const table = mode === 'raid' ? RAID_HP_MULT : RESCUE_HP_MULT;
   return table[count] ?? table[2] ?? 1.6;
+}
+
+function breakMaxForMode(mode: CoopMode, baseBreak: number, playerCount: number): number {
+  if (mode !== 'valhalla_coop') return baseBreak || 100;
+  const bonus = VALHALLA_COOP_BREAK_BONUS[playerCount] ?? 0;
+  return Math.floor((baseBreak || 100) * (1 + bonus));
 }
 
 function defaultMeta(leaderId: string): CoopBattleMeta {
@@ -128,7 +137,8 @@ export function createCoopBattleFromRecruit(recruitId: string): { ok: boolean; m
   if (!monster) return { ok: false, message: '敵データが見つかりません。' };
 
   const mult = hpMult(recruit.mode, count);
-  const enemyMaxHp = Math.floor(monster.hp * mult * (recruit.mode === 'raid' ? 1.15 : 1));
+  const hpExtra = recruit.mode === 'raid' ? 1.15 : recruit.mode === 'valhalla_coop' ? 1.0 : 1;
+  const enemyMaxHp = Math.floor(monster.hp * mult * hpExtra);
   const participants: CoopParticipantState[] = [];
 
   for (const m of members) {
@@ -155,17 +165,19 @@ export function createCoopBattleFromRecruit(recruitId: string): { ok: boolean; m
       atkBuff: 0,
       magBuff: 0,
       defBuff: 0,
+      actionsTaken: 0,
     });
   }
 
+  const atkMult = recruit.mode === 'raid' ? 1.15 : recruit.mode === 'valhalla_coop' ? 1.08 : 1.05;
   const enemy: CoopEnemyState = {
     monster_id: monster.id,
     name: monster.name,
     hp: enemyMaxHp,
     max_hp: enemyMaxHp,
     break: 0,
-    break_max: monster.break_max || 100,
-    attack: Math.floor(monster.attack * (recruit.mode === 'raid' ? 1.15 : 1.05)),
+    break_max: breakMaxForMode(recruit.mode, monster.break_max, count),
+    attack: Math.floor(monster.attack * atkMult),
     magic: monster.magic,
     defense: monster.defense,
     spirit: monster.spirit,
@@ -423,7 +435,9 @@ function resolveCoopTurnLocked(battleId: string): { ok: boolean; message: string
     finished = true;
     message = mode === 'rescue'
       ? '救難失敗…灯火に導かれ、町へ戻された。'
-      : 'レイド敗北…要塞の休息所へ戻された。';
+      : mode === 'valhalla_coop'
+        ? '共闘敗北…休息所へ戻された。'
+        : 'レイド敗北…要塞の休息所へ戻された。';
   } else {
     const nextTurn = turn + 1;
     if (mode === 'raid' && nextTurn % 3 === 0) {

@@ -13,6 +13,14 @@ import {
   type CoopRecruitStatus,
 } from './coopTypes';
 import { canEnterValhalla } from '../progressionGates';
+import {
+  canCreateValhallaCoopRecruit,
+  canJoinValhallaCoopRecruit,
+  getUserActiveCoopRecruitId,
+  getValhallaBossAreaId,
+} from '../valhallaCoopSystem';
+import { getActiveBattle } from '../battleSystem';
+import { isValhallaBossMonster } from '../valhallaRewardSystem';
 
 export type CoopRecruitRow = {
   id: string;
@@ -138,13 +146,26 @@ export function createCoopRecruit(
     const gate = canEnterValhalla(leaderId);
     if (!gate.ok) return { ok: false, message: gate.reason ?? 'レイド参加条件を満たしていません。' };
   }
+  if (mode === 'valhalla_coop') {
+    const monsterId = context.monster_id;
+    if (!monsterId || !isValhallaBossMonster(monsterId)) {
+      return { ok: false, message: 'ヴァルハラ共闘対象のボスが指定されていません。' };
+    }
+    const check = canCreateValhallaCoopRecruit(leaderId, monsterId);
+    if (!check.ok) return { ok: false, message: check.reason ?? '募集を作成できません。' };
+  }
+  if (getActiveBattle(leaderId)) return { ok: false, message: '既に戦闘中です。' };
+  if (getUserActiveCoopRecruitId(leaderId)) return { ok: false, message: '既に別の共闘募集に参加中です。' };
 
   const id = uuid();
   const expiresAt = new Date(Date.now() + COOP_RECRUIT_TTL_MS).toISOString();
+  const bossAreaId = mode === 'valhalla_coop' && context.monster_id
+    ? getValhallaBossAreaId(context.monster_id)
+    : null;
   const ctx: CoopContext = {
     ...context,
     monster_id: context.monster_id ?? (mode === 'raid' ? RAID_BOSS_ID : context.monster_id),
-    area_id: context.area_id ?? (mode === 'raid' ? 'area_deep_core' : context.area_id),
+    area_id: context.area_id ?? (mode === 'raid' ? 'area_deep_core' : bossAreaId ?? context.area_id),
   };
 
   const db = getDb();
@@ -167,6 +188,16 @@ export function joinCoopRecruit(recruitId: string, userId: string): string {
   const recruit = check.recruit;
 
   if (!['recruiting', 'full'].includes(recruit.status)) return '参加できない状態です。';
+
+  if (recruit.mode === 'valhalla_coop') {
+    const joinCheck = canJoinValhallaCoopRecruit(userId);
+    if (!joinCheck.ok) return joinCheck.reason ?? '参加できません。';
+  }
+
+  if (getActiveBattle(userId)) return '戦闘中は参加できません。';
+  const otherRecruit = getUserActiveCoopRecruitId(userId, recruitId);
+  if (otherRecruit) return '既に別の共闘募集に参加中です。';
+
   const existing = getDb().prepare('SELECT * FROM coop_members WHERE recruit_id = ? AND user_id = ?')
     .get(recruitId, userId) as CoopMemberRow | undefined;
   if (existing && existing.status !== 'left') return '既に参加しています。';
@@ -188,7 +219,12 @@ export function joinCoopRecruit(recruitId: string, userId: string): string {
 
   syncRecruitPlayerStatus(recruitId);
   const newCount = getActiveMemberCount(recruitId);
-  return `参加しました。（${newCount}/${recruit.max_players}）`;
+  let msg = `参加しました。（${newCount}/${recruit.max_players}）`;
+  if (recruit.mode === 'valhalla_coop') {
+    const joinCheck = canJoinValhallaCoopRecruit(userId);
+    if (joinCheck.warn) msg += `\n※${joinCheck.warn}`;
+  }
+  return msg;
 }
 
 export function leaveCoopRecruit(recruitId: string, userId: string): string {
@@ -283,7 +319,7 @@ export function completeCoopRecruit(recruitId: string): void {
 }
 
 export function getRecommendedLevel(mode: CoopMode, context: CoopContext): number {
-  if (mode === 'raid') return 80;
+  if (mode === 'raid' || mode === 'valhalla_coop') return 80;
   const monsterId = context.monster_id ?? 'mon_bandit';
   const mon = getDb().prepare('SELECT level FROM monsters WHERE id = ?').get(monsterId) as { level: number } | undefined;
   return mon?.level ?? 10;
@@ -292,6 +328,7 @@ export function getRecommendedLevel(mode: CoopMode, context: CoopContext): numbe
 export function getRecruitTargetLabel(mode: CoopMode, context: CoopContext): string {
   const monsterId = context.monster_id ?? (mode === 'raid' ? RAID_BOSS_ID : 'mon_bandit');
   const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(monsterId) as { name: string } | undefined;
+  if (mode === 'valhalla_coop') return `ヴァルハラ共闘: ${mon?.name ?? monsterId}`;
   if (mode === 'raid') return `レイド: ${mon?.name ?? '深層炉心'}`;
   if (context.area_label) return `救難: ${context.area_label} — ${mon?.name ?? '敵'}`;
   return `救難: ${mon?.name ?? '敵'}`;

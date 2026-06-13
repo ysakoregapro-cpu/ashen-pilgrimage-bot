@@ -8,6 +8,11 @@ import { generateRaidAccessoryMetadata } from '../../db/seedData/phase2Seed';
 import { roll, randomInt } from '../../utils/random';
 import { RAID_BOSS_ID, type CoopEnemyState, type CoopMode, type CoopParticipantState } from './coopTypes';
 import { getCoopBattle } from './coopBattleSystem';
+import { grantValhallaBossRewards } from '../valhallaRewardSystem';
+import { hasStoryFlag } from '../storySystem';
+import { VALHALLA_FIRST_CLEAR_REWARDS } from '../../db/seedData/valhallaRewardMaster';
+import { grantDirectBattleJobExp } from '../jobLevelSystem';
+import { afterJobExpGranted } from '../jobProgressionSystem';
 
 const RESCUE_HELPER_DAILY_CAP = 5;
 const RESCUE_SAME_LEADER_DAILY_CAP = 2;
@@ -15,14 +20,60 @@ const RESCUE_SAME_LEADER_DAILY_CAP = 2;
 export type CoopRewardPayload = {
   exp: number;
   gold: number;
+  jobExp?: number;
   items: Array<{ itemId: string; qty: number; label?: string }>;
   survived: boolean;
   role: string;
+  dropLabels?: string[];
+  skipped?: boolean;
+  skipReason?: string;
 };
 
 function hasGrantedReward(battleId: string, userId: string): boolean {
   const row = getDb().prepare('SELECT 1 FROM coop_rewards WHERE battle_id = ? AND user_id = ?').get(battleId, userId);
   return !!row;
+}
+
+function countCoopActions(battleId: string, userId: string): number {
+  const row = getDb().prepare(`
+    SELECT COUNT(*) AS c FROM coop_battle_actions WHERE battle_id = ? AND user_id = ?
+  `).get(battleId, userId) as { c: number };
+  return row.c;
+}
+
+function computeValhallaCoopReward(
+  battleId: string,
+  participant: CoopParticipantState,
+  enemy: CoopEnemyState,
+): CoopRewardPayload {
+  const actions = countCoopActions(battleId, participant.user_id);
+  const survived = !participant.defeated && participant.hp > 0;
+  if (actions < 1) {
+    return {
+      exp: 0,
+      gold: 0,
+      jobExp: 0,
+      items: [],
+      survived,
+      role: 'no_contribution',
+      skipped: true,
+      skipReason: '行動記録なし（監査ログ）',
+    };
+  }
+
+  const firstClear = !hasStoryFlag(
+    participant.user_id,
+    `${VALHALLA_FIRST_CLEAR_REWARDS.storyFlagPrefix}:${enemy.monster_id}`,
+  );
+  return {
+    exp: 0,
+    gold: 0,
+    jobExp: 0,
+    items: [],
+    survived,
+    role: firstClear ? 'first_clear' : 'repeat',
+    dropLabels: [`valhalla_grant:${enemy.monster_id}:${firstClear ? 'fc' : 'rp'}`],
+  };
 }
 
 function rescueHelperRewardAllowed(helperId: string, leaderId: string): boolean {
@@ -91,8 +142,31 @@ function computeRewards(
 }
 
 function applyReward(userId: string, reward: CoopRewardPayload, mode: CoopMode, monsterId: string): void {
+  if (reward.skipped) return;
   if (reward.exp > 0) addExp(userId, reward.exp);
   if (reward.gold > 0) addGold(userId, reward.gold);
+  if (reward.jobExp && reward.jobExp > 0) {
+    const jobResults = grantDirectBattleJobExp(userId, reward.jobExp);
+    for (const jr of jobResults) afterJobExpGranted(userId, jr.jobName);
+  }
+  if (mode === 'valhalla_coop') {
+    const firstClear = reward.role === 'first_clear';
+    const sessionLike = { monster_id: monsterId, is_boss: 1, area_id: null };
+    const vr = grantValhallaBossRewards(userId, sessionLike, { isRematch: !firstClear }, { firstClear });
+    if (vr.exp > 0) addExp(userId, vr.exp);
+    if (vr.gold > 0) addGold(userId, vr.gold);
+    if (vr.jobExp > 0) {
+      const jobResults = grantDirectBattleJobExp(userId, vr.jobExp);
+      for (const jr of jobResults) afterJobExpGranted(userId, jr.jobName);
+    }
+    reward.exp = vr.exp;
+    reward.gold = vr.gold;
+    reward.jobExp = vr.jobExp;
+    reward.dropLabels = vr.dropLabels;
+    incrementWeeklyProgress(userId, 'boss_kills');
+    incrementWeeklyProgress(userId, 'raid_joins');
+    return;
+  }
   for (const item of reward.items) {
     if (item.itemId === 'acc_raid_random') {
       addItem(userId, item.itemId, item.qty, { metadata: generateRaidAccessoryMetadata(), rollSource: 'raid_reward', valhallaOrRaid: true });
@@ -124,7 +198,9 @@ export function grantCoopBattleRewards(
       continue;
     }
 
-    const reward = computeRewards(mode, p, enemy, leaderId, playerCount);
+    const reward = mode === 'valhalla_coop'
+      ? computeValhallaCoopReward(battleId, p, enemy)
+      : computeRewards(mode, p, enemy, leaderId, playerCount);
     const db = getDb();
     const inserted = db.transaction(() => {
       const r = db.prepare(`
@@ -133,6 +209,9 @@ export function grantCoopBattleRewards(
       `).run(battleId, p.user_id, JSON.stringify(reward), nowIso());
       if (r.changes === 0) return false;
       applyReward(p.user_id, reward, mode, enemy.monster_id);
+      db.prepare(`
+        UPDATE coop_rewards SET reward_json = ? WHERE battle_id = ? AND user_id = ?
+      `).run(JSON.stringify(reward), battleId, p.user_id);
       db.prepare("UPDATE coop_members SET status = 'reward_granted' WHERE recruit_id = ? AND user_id = ?")
         .run(battle?.recruit_id, p.user_id);
       return true;
@@ -143,8 +222,14 @@ export function grantCoopBattleRewards(
       continue;
     }
 
-    const surv = reward.survived ? '生存+10%' : '戦闘不能';
-    const itemText = reward.items.map((i) => i.label ?? i.itemId).join(', ');
+    const surv = reward.survived ? '生存' : '戦闘不能';
+    if (reward.skipped) {
+      lines.push(`<@${p.user_id}> (${surv}) — ${reward.skipReason ?? '報酬なし'}`);
+      continue;
+    }
+    const itemText = reward.dropLabels?.length
+      ? reward.dropLabels.join('、')
+      : reward.items.map((i) => i.label ?? i.itemId).join(', ');
     lines.push(`<@${p.user_id}> (${surv}) EXP+${reward.exp} / ${reward.gold}G${itemText ? ` / ${itemText}` : ''}`);
     if (reward.role === 'helper_capped') lines.push('  ※本日の救難報酬上限');
   }

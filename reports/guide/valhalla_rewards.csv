@@ -12,8 +12,28 @@ valhalla_boss,repeat,gold,(gold),ゴールド,2500,5000,100%,
 valhalla_boss,repeat,material,(pool),高級素材,1,3,100%,rep/upg/valhalla素材
 valhalla_boss,repeat,equipment,(valhalla_armor),ヴァルハラ防具,1,1,15-25%,Phase2.5 affix
 valhalla_boss,repeat,equipment,(valhalla_accessory),ヴァルハラアクセ,1,1,8-15%,Phase2.5 affix
+valhalla_boss,repeat,equipment,(old_king_armor),旧王防具,1,1,3-6%,希少上振れ・Phase2.5 affix
+valhalla_boss,repeat,equipment,(old_king_accessory),旧王アクセ,1,1,1-3%,希少上振れ・Phase2.5 affix
 valhalla_boss,repeat,boss_material,boss_silent_page,無答の守護者の頁,1,1,4%,再戦4%設計
 valhalla_boss,repeat,boss_material,mat_ur_lottery_shard,UR抽選の欠片,1,1,1-3%,将来UR抽選
 valhalla_boss,repeat,boss_material,mat_affix_reroll_assist,特性再抽選の触媒,1,1,0.5-1.5%,将来再抽選
 silent_guardian,first_clear,boss_material,boss_silent_page,無答の守護者の頁,1,1,100%,dropBalanceMaster BOSS_VICTORY
 silent_guardian,repeat,boss_material,boss_silent_page,無答の守護者の頁,1,1,4%,dropBalanceMaster rematchRate
+valhalla_coop_boss,first_clear,currency,valhalla_emblem,ヴァルハラ徽章,10,10,100%,確定 / 共闘個別報酬
+valhalla_coop_boss,first_clear,boss_material,boss_silent_page,無答の守護者の頁,1,1,100%,確定 / 共闘個別報酬
+valhalla_coop_boss,first_clear,equipment,valhalla_armor_or_accessory,ヴァルハラ防具/アクセ,1,1,100%,ランダム1件・Phase2.5 affix / 共闘個別報酬
+valhalla_coop_boss,first_clear,exp,(player_exp),経験値,5000,8000,100%,共闘個別報酬
+valhalla_coop_boss,first_clear,job_exp,(job_exp),Job経験値,2500,4000,100%,共闘個別報酬
+valhalla_coop_boss,first_clear,gold,(gold),ゴールド,5000,8000,100%,共闘個別報酬
+valhalla_coop_boss,repeat,currency,valhalla_emblem,ヴァルハラ徽章,4,8,100%,確定 / 共闘個別報酬
+valhalla_coop_boss,repeat,exp,(player_exp),経験値,2500,4000,100%,共闘個別報酬
+valhalla_coop_boss,repeat,job_exp,(job_exp),Job経験値,1200,2000,100%,共闘個別報酬
+valhalla_coop_boss,repeat,gold,(gold),ゴールド,2500,5000,100%,共闘個別報酬
+valhalla_coop_boss,repeat,material,(pool),高級素材,1,3,100%,rep/upg/valhalla素材 / 共闘個別報酬
+valhalla_coop_boss,repeat,equipment,(valhalla_armor),ヴァルハラ防具,1,1,15-25%,Phase2.5 affix / 共闘個別報酬
+valhalla_coop_boss,repeat,equipment,(valhalla_accessory),ヴァルハラアクセ,1,1,8-15%,Phase2.5 affix / 共闘個別報酬
+valhalla_coop_boss,repeat,equipment,(old_king_armor),旧王防具,1,1,3-6%,希少上振れ・Phase2.5 affix / 共闘個別報酬
+valhalla_coop_boss,repeat,equipment,(old_king_accessory),旧王アクセ,1,1,1-3%,希少上振れ・Phase2.5 affix / 共闘個別報酬
+valhalla_coop_boss,repeat,boss_material,boss_silent_page,無答の守護者の頁,1,1,4%,再戦4%設計 / 共闘個別報酬
+valhalla_coop_boss,repeat,boss_material,mat_ur_lottery_shard,UR抽選の欠片,1,1,1-3%,将来UR抽選 / 共闘個別報酬
+valhalla_coop_boss,repeat,boss_material,mat_affix_reroll_assist,特性再抽選の触媒,1,1,0.5-1.5%,将来再抽選 / 共闘個別報酬

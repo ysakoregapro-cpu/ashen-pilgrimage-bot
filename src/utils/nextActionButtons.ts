@@ -31,6 +31,7 @@ export type NextActionContext =
   | 'item_detail'
   | 'coop_raid_result'
   | 'coop_rescue_result'
+  | 'coop_valhalla_result'
   | 'generic';
 
 export type UpgradeActionKind =
@@ -205,6 +206,18 @@ export function nextActionButtons(
         ),
         row(
           btn('coop:recruit:raid', '再募集', ButtonStyle.Success),
+          btn('flow:equip', '身支度', ButtonStyle.Secondary),
+        ),
+      ];
+
+    case 'coop_valhalla_result':
+      return [
+        row(
+          btn('flow:valhalla_menu', 'ヴァルハラメニュー', ButtonStyle.Primary),
+          btn('town:home', '町へ戻る', ButtonStyle.Secondary),
+          btn('town:explore', '探索へ向かう', ButtonStyle.Success),
+        ),
+        row(
           btn('flow:equip', '身支度', ButtonStyle.Secondary),
         ),
       ];

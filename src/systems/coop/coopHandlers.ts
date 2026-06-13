@@ -40,9 +40,11 @@ export async function postCoopRecruitToGuild(
   const result = createCoopRecruit(guild.id, userId, mode, context ?? {});
   if (!result.ok || !result.recruitId) return { ok: false, message: result.message };
 
-  const channelName = mode === 'raid'
-    ? getEnvOptional('RAID_CHANNEL_NAME', 'rpg-レイド募集')
-    : getEnvOptional('RESCUE_CHANNEL_NAME', 'rpg-救難要請');
+  const channelName = mode === 'valhalla_coop'
+    ? getEnvOptional('VALHALLA_COOP_CHANNEL_NAME', 'rpg-レイド募集')
+    : mode === 'raid'
+      ? getEnvOptional('RAID_CHANNEL_NAME', 'rpg-レイド募集')
+      : getEnvOptional('RESCUE_CHANNEL_NAME', 'rpg-救難要請');
   const channel = await getOrCreatePublicChannel(guild, channelName);
   const msg = await channel.send({
     embeds: [buildCoopRecruitEmbed(result.recruitId)],

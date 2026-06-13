@@ -64,33 +64,35 @@ function main() {
   }
 
   // Valhalla emblem in coop
-  if (coopRewardSrc.includes(VALHALLA_EMBLEM_ID)) {
+  if (coopRewardSrc.includes("mode === 'valhalla_coop'") && coopRewardSrc.includes('grantValhallaBossRewards')) {
+    add('マルチ徽章報酬', 'ready', 'valhalla_coop モードで grantValhallaBossRewards 接続');
+  } else if (coopRewardSrc.includes(VALHALLA_EMBLEM_ID)) {
     add('マルチ徽章報酬', 'ready', 'coop に徽章付与あり');
   } else {
-    add('マルチ徽章報酬', 'missing', 'coopRewardSystem に valhalla_emblem なし — ヴァルハラボス専用マルチ未接続');
-    futurePhases.push('ヴァルハラボス co-op 報酬テーブル（徽章・頁・装備）');
+    add('マルチ徽章報酬', 'missing', 'coopRewardSystem に valhalla 接続なし');
   }
 
-  // Valhalla boss coop recruit
-  const indexSrc = fs.existsSync(path.join(process.cwd(), 'src/index.ts'))
-    ? fs.readFileSync(path.join(process.cwd(), 'src/index.ts'), 'utf8')
-    : '';
-  const hasValhallaCoopRecruit = VALHALLA_BOSS_MONSTER_IDS.some((id) => indexSrc.includes(id) && indexSrc.includes('coop'));
-  if (hasValhallaCoopRecruit) {
-    add('ヴァルハラボス専用募集', 'partial', '一部導線あり');
+  const coopTypesSrc = fs.readFileSync(path.join(process.cwd(), 'src/systems/coop/coopTypes.ts'), 'utf8');
+  if (coopTypesSrc.includes("'valhalla_coop'") && coopTypesSrc.includes('VALHALLA_COOP_HP_MULT')) {
+    add('ヴァルハラボス専用募集', 'ready', 'valhalla_coop モード + HP倍率テーブル');
   } else {
-    add('ヴァルハラボス専用募集', 'missing', '救難/レイド募集は mon_bandit / RAID_BOSS のみ');
-    futurePhases.push('ヴァルハラボス専用 co-op 募集導線');
+    add('ヴァルハラボス専用募集', 'missing', 'valhalla_coop 未実装');
   }
 
-  // Multi HP/break for valhalla
-  add('マルチHP/ブレイク調整', 'partial', `レイドボス=${RAID_BOSS_ID} は RAID_HP_MULT。ヴァルハラ3体はソロ戦のみ`);
+  if (coopTypesSrc.includes('VALHALLA_COOP_BREAK_BONUS')) {
+    add('マルチHP/ブレイク調整', 'ready', 'VALHALLA_COOP_HP_MULT / BREAK_BONUS 定義済');
+  } else {
+    add('マルチHP/ブレイク調整', 'partial', 'レイドボス=RAID_HP_MULT のみ');
+  }
 
-  // Join conditions
-  add('参加最低条件', 'partial', 'coop recruit に level/story ゲートは recruit 作成側で可変 — ヴァルハラ専用条件なし');
+  if (fs.readFileSync(path.join(process.cwd(), 'src/systems/valhallaExchangeSystem.ts'), 'utf8').includes('executeValhallaExchange')) {
+    add('徽章交換UI', 'ready', 'valhallaExchangeSystem + 端末導線');
+  } else {
+    add('徽章交換UI', 'missing', '交換UI未実装');
+  }
 
-  // Reward display
-  add('ボス周回専用報酬表示', 'partial', 'ソロ勝利メッセージに初回/徽章表示。co-op は汎用EXP/GOLD行');
+  add('参加最低条件', 'ready', 'valhalla_coop: valhalla_unlocked 必須 / Lv80 警告');
+  add('ボス周回専用報酬表示', 'ready', '共闘勝利時 grantValhallaBossRewards ドロップラベル');
 
   // DB tables
   const coopRewardsTable = db.prepare(`
@@ -110,7 +112,7 @@ function main() {
   }
 
   console.log('\n## 方針（設計）');
-  console.log('- 参加者全員に個別報酬: co-op は ready、ヴァルハラボス co-op は未接続');
+  console.log('- 参加者全員に個別報酬: 救難/レイド/ヴァルハラ共闘すべて ready');
   console.log('- ソロ撃破報酬減額なし: valhallaRewardSystem で固定レンジ');
   console.log('- マルチ価値は倍率より安定性・速度（将来調整）');
 

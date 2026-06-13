@@ -88,6 +88,7 @@ function main() {
 
   const valhallaExchange = parseCsv('valhalla_exchange.csv');
   assert(valhallaExchange.rows.length >= 9, 'valhalla_exchange.csv should have 9+ rows');
+  assert(valhallaExchange.headers.includes('currently_available'), 'valhalla_exchange missing currently_available');
   assert(valhallaExchange.rows.some((r) => r.includes('vex_ur_lottery')), 'valhalla_exchange missing UR lottery');
 
   const legacyRows = equipment.rows.filter((r) => r[24] && r[24] !== 'NO');

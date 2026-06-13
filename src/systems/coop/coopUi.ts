@@ -28,7 +28,11 @@ export function buildCoopRecruitEmbed(recruitId: string): EmbedBuilder {
   const ctx = parseCoopContext(recruit.context_json);
   const members = getCoopMembers(recruitId);
   const count = getActiveMemberCount(recruitId);
-  const modeLabel = recruit.mode === 'raid' ? 'レイド' : '救難要請';
+  const modeLabel = recruit.mode === 'raid'
+    ? 'レイド'
+    : recruit.mode === 'valhalla_coop'
+      ? 'ヴァルハラ共闘'
+      : '救難要請';
   const target = getRecruitTargetLabel(recruit.mode, ctx);
   const recLv = getRecommendedLevel(recruit.mode, ctx);
   const memberList = members.map((m) => `<@${m.user_id}>${m.role === 'leader' ? '（主）' : ''}`).join('\n') || '—';
@@ -37,9 +41,22 @@ export function buildCoopRecruitEmbed(recruitId: string): EmbedBuilder {
     ? `\n状態: **${recruit.status}**`
     : '';
 
+  const title = recruit.mode === 'raid'
+    ? '⚔️ レイド募集'
+    : recruit.mode === 'valhalla_coop'
+      ? '🛡️ ヴァルハラ共闘募集'
+      : '🆘 救難要請';
+  const color = recruit.mode === 'raid' ? 0xaa8844 : recruit.mode === 'valhalla_coop' ? 0x6688cc : 0xff6644;
+
+  const footerNote = recruit.mode === 'rescue'
+    ? '※救難は復帰支援です。報酬は控えめに設定されています。'
+    : recruit.mode === 'valhalla_coop'
+      ? '※ヴァルハラ徽章・装備厳選が主目的。全員に個別報酬。'
+      : '※レイドは高難度協力コンテンツ。3ターンごとに大技予兆があります。';
+
   return new EmbedBuilder()
-    .setTitle(recruit.mode === 'raid' ? '⚔️ レイド募集' : '🆘 救難要請')
-    .setColor(recruit.mode === 'raid' ? 0xaa8844 : 0xff6644)
+    .setTitle(title)
+    .setColor(color)
     .setDescription([
       `**種別:** ${modeLabel}`,
       `**募集主:** <@${recruit.leader_id}>`,
@@ -50,11 +67,12 @@ export function buildCoopRecruitEmbed(recruitId: string): EmbedBuilder {
       `**期限:** ${expires}`,
       statusNote,
       '',
-      recruit.mode === 'rescue'
-        ? '※救難は復帰支援です。報酬は控えめに設定されています。'
-        : '※レイドは高難度協力コンテンツ。3ターンごとに大技予兆があります。',
+      recruit.mode === 'valhalla_coop'
+        ? '**報酬概要:** 徽章4〜8 / 装備チャンス / 無答の頁4% / EXP・Job・Gold'
+        : '',
+      footerNote,
       '※途中参加・観戦不可。',
-    ].join('\n'));
+    ].filter(Boolean).join('\n'));
 }
 
 export type CoopRecruitButtonOptions = {
@@ -220,7 +238,12 @@ export function buildCoopTargetButtons(
 
 export function buildCoopResultButtons(_recruitId?: string, mode?: CoopMode, status?: string): ActionRowBuilder<ButtonBuilder>[] {
   if (status !== 'victory' && status !== 'defeat') return [];
-  return nextActionButtons(mode === 'raid' ? 'coop_raid_result' : 'coop_rescue_result') as ActionRowBuilder<ButtonBuilder>[];
+  const ctx = mode === 'valhalla_coop'
+    ? 'coop_valhalla_result'
+    : mode === 'raid'
+      ? 'coop_raid_result'
+      : 'coop_rescue_result';
+  return nextActionButtons(ctx) as ActionRowBuilder<ButtonBuilder>[];
 }
 
 export { needsTargetSelection };

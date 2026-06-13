@@ -307,12 +307,13 @@ function main() {
   // --- valhalla_exchange.csv ---
   const valhallaExchangeHeaders = [
     'exchange_id', 'cost_valhalla_emblem', 'cost_silent_page', 'receive_type',
-    'receive_item_id', 'receive_item_name', 'receive_amount', 'notes', 'ui_implemented',
+    'receive_item_id', 'receive_item_name', 'receive_amount', 'notes', 'ui_implemented', 'currently_available',
   ];
   const valhallaExchangeRows = VALHALLA_EXCHANGE_TABLE.map((e) => [
     e.exchange_id, String(e.cost_valhalla_emblem), String(e.cost_silent_page), e.receive_type,
     e.receive_item_id, e.receive_item_name, String(e.receive_amount), e.notes,
     e.ui_implemented ? 'YES' : 'NO',
+    e.currently_available ? 'YES' : 'NO',
   ]);
   writeCsv('guide/valhalla_exchange.csv', valhallaExchangeHeaders, valhallaExchangeRows);
 
@@ -331,7 +332,7 @@ Generated: ${new Date().toISOString()}
 | job_unlocks.csv | 基本9 / サブ9 / 上級9 の解放条件 |
 | trials.csv | 現身の試練9種 |
 | valhalla_rewards.csv | ヴァルハラボス初回/再戦報酬・無答の頁 |
-| valhalla_exchange.csv | ヴァルハラ徽章交換表（UI未実装） |
+| valhalla_exchange.csv | ヴァルハラ徽章交換表（ui_implemented / currently_available） |
 
 ## 見方（攻略用）
 
@@ -359,6 +360,9 @@ Generated: ${new Date().toISOString()}
 
 - **valhalla_rewards.csv**: 初回撃破（頁100%・徽章10・装備1）/ 再戦（徽章4〜8・素材・装備確率・頁4%）。
 - **valhalla_exchange.csv**: 徽章10〜300の交換段階。150+頁3（UR抽選）/ 300+頁1（特性保護）は将来UI。
+- **ヴァルハラ共闘ボス**: 要塞探索端末→ボス再戦→共闘募集。全員に個別ヴァルハラ報酬（reward_context=valhalla_coop_boss）。
+- **徽章交換所**: 要塞探索端末→徽章交換所。10〜120徽章の実装済み交換のみ表示。
+- **本格レイドとの違い**: 共闘ボス=徽章周回。本格レイド=将来Phase（挑戦権/週制限/UR武器本体）。
 - **無答の守護者の頁**: Src最終強化・UR覚醒・特性保護・UR抽選・上位レイド解放（多くは将来Phase）。
 - **ヴァルハラ vs レイド**: ヴァルハラ=防具/アクセ厳選・徽章・素材。レイド=UR武器・レイド専用装備・最上位素材。
 - **silent_page_usage**: ${SILENT_PAGE_USAGE.map((u) => `${u.use}(${u.cost_pages}${u.implemented ? '' : '・未実装'})`).join(' / ')}
