@@ -23,7 +23,10 @@ const REQUIRED_FILES = [
   'scripts/enemy-balance-design-audit.ts',
   'scripts/job-sub-ui-check.ts',
   'scripts/job-ui-entry-check.ts',
-  'scripts/equipment-completion-audit.ts',
+  'scripts/equipment-effective-stat-display-check.ts',
+  'scripts/weapon-effective-balance-summary.ts',
+  'scripts/weapon-role-stat-map-check.ts',
+  'scripts/game-balance-overview-check.ts',
 ];
 
 const CODE_CHECKS: Array<{ label: string; file: string; pattern: RegExp }> = [
@@ -39,7 +42,9 @@ const CODE_CHECKS: Array<{ label: string; file: string; pattern: RegExp }> = [
   { label: 'job UI entry', file: 'src/interactions/uxHandler.ts', pattern: /buildJobMenuView/ },
   { label: 'safe select menu', file: 'src/systems/jobUiSystem.ts', pattern: /safeSelectMenu/ },
   { label: 'Uni material drops', file: 'src/db/seedData/jobProgressionMaster.ts', pattern: /PHASE2_UNI_MATERIAL_DROPS/ },
-  { label: 'sanitizeComponents', file: 'src/utils/messageFlow.ts', pattern: /sanitizeComponents/ },
+  { label: 'effective stat display', file: 'src/systems/itemDetailSystem.ts', pattern: /formatEffectiveStatLines/ },
+  { label: 'equipmentEffectiveStats', file: 'src/systems/equipmentEffectiveStats.ts', pattern: /getEquipmentEffectiveStats/ },
+  { label: 'weapon role map', file: 'src/db/seedData/weaponRoleStatMap.ts', pattern: /WEAPON_ROLE_STAT_MAP/ },
 ];
 
 function gitStatusShort(): string {

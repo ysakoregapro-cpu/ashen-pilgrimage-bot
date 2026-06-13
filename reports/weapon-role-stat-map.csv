@@ -1,0 +1,12 @@
+weapon_type,assumed_main_job,assumed_sub_job,primary_stat,secondary_stat,expected_role,notes,status
+sword,剣士,刃走り,attack,hp,安定物理火力・前衛,基本の前衛武器。副能力はHP/防御少量。,OK
+dagger,斥候,影足,attack,speed,速度・手数,単発火力は剣より低いが速度で価値。,OK
+bow,狩人,矢痕読み,attack,speed,遠距離物理火力,剣より軽め、短剣より火力寄り。,OK
+axe,重騎士,城壁番,attack,defense,重火力・崩し,槌系に準ずる重武器。,OK
+spear,剣士,刃走り,attack,speed,中距離物理,槍系。攻撃+速度。,OK
+fist,格闘士,勁打者,attack,speed,近接連撃,手数と近接火力。HP少量。,OK
+staff,魔術師,灰術士,magic,mp,魔力火力,物理攻撃ではなく魔力で評価。,OK
+spell_staff,魔術師,灰術士,magic,mp,魔力火力,魔導杖。staffと同系。,OK
+rod,祈祷師,灯守,magic,mp,支援・回復寄り,杖より火力低め、MP・精神で価値。,OK
+cannon,機工師,歯車工,attack,defense,重火力・ブレイク,bs_mini_cannon は attack 主、奥義は magic 副。表示は attack 主。,OK
+shield,重騎士,城壁番,defense,hp,耐久・防御,火力武器ではなく防御/HPで評価。,OK

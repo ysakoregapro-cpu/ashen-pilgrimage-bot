@@ -8,8 +8,10 @@ import {
   canPerformItemAction, getInventoryProtectRow, type ItemAction,
 } from './itemProtectionSystem';
 import { getInventorySellPrice, resolveShopBuyPrice, resolveShopSellPrice, getItemPricing } from './itemValueSystem';
-import { getEnhanceRequirement, getMaxUpgradeLevel, formatEnhancePreview, getPrimaryStatKey, formatEnhanceDiff, calcUpgradeStatBonuses } from './enhanceSystem';
-import { getAwakeningStatFlatBonus } from './awakeningSystem';
+import { getEnhanceRequirement, getMaxUpgradeLevel, formatEnhancePreview, getPrimaryStatKey, formatEnhanceDiff } from './enhanceSystem';
+import {
+  formatEffectiveStatLines, getEquipmentEffectiveStats, type EquipmentStatsInput,
+} from './equipmentEffectiveStats';
 import { buildInventoryPickView } from '../utils/inventoryUi';
 import { getUnlockedTowns } from './playerSystem';
 import { hasStoryFlag } from './storySystem';
@@ -279,18 +281,21 @@ function formatPermFlags(userId: string, inventoryId: number | null, itemId: str
 }
 
 export function getEquipmentComparison(userId: string, inventoryId: number): string {
-  type EquipRow = {
-    id: number; user_id: string; name: string; upgrade_level: number; src_level: number;
-    durability_state: DurabilityState; awakening_level: number; slot: string;
-    weapon_type: string | null; element: string | null; rarity: string;
-    attack_bonus: number; magic_bonus: number; defense_bonus: number; spirit_bonus: number;
-    speed_bonus: number; hp_bonus: number;
+  type EquipRow = EquipmentStatsInput & {
+    id: number; user_id: string; name: string;
+    element: string | null;
   };
 
+  const equipSelect = `
+    pi.upgrade_level, pi.src_level, pi.durability_state, pi.awakening_level,
+    pi.affix_json, pi.stat_roll_json,
+    i.name, i.rarity, e.slot, e.weapon_type, e.element,
+    e.attack_bonus, e.magic_bonus, e.defense_bonus, e.spirit_bonus, e.speed_bonus, e.hp_bonus,
+    e.mp_bonus, e.accuracy_bonus, e.crit_rate_bonus
+  `;
+
   const target = getDb().prepare(`
-    SELECT pi.id, pi.user_id, pi.upgrade_level, pi.src_level, pi.durability_state, pi.awakening_level,
-      i.name, i.rarity, e.slot, e.weapon_type, e.element,
-      e.attack_bonus, e.magic_bonus, e.defense_bonus, e.spirit_bonus, e.speed_bonus, e.hp_bonus
+    SELECT pi.id, pi.user_id, ${equipSelect}
     FROM player_inventory pi
     JOIN items i ON pi.item_id = i.id
     JOIN equipment e ON pi.item_id = e.item_id
@@ -299,9 +304,7 @@ export function getEquipmentComparison(userId: string, inventoryId: number): str
   if (!target) return '';
 
   const equippedRow = getDb().prepare(`
-    SELECT pi.id, pi.upgrade_level, pi.src_level, pi.durability_state, pi.awakening_level,
-      i.name, i.rarity, e.slot, e.weapon_type, e.element,
-      e.attack_bonus, e.magic_bonus, e.defense_bonus, e.spirit_bonus, e.speed_bonus, e.hp_bonus
+    SELECT pi.id, ${equipSelect}
     FROM player_equipment pe
     JOIN player_inventory pi ON pe.inventory_id = pi.id
     JOIN items i ON pi.item_id = i.id
@@ -313,33 +316,7 @@ export function getEquipmentComparison(userId: string, inventoryId: number): str
     return '**現在装備中** — 変化なし';
   }
 
-  const effectiveStats = (row: EquipRow) => {
-    const durPenalty = DURABILITY_PENALTY[row.durability_state] ?? 1;
-    const stats = calcUpgradeStatBonuses(
-      {
-        attack_bonus: row.attack_bonus, magic_bonus: row.magic_bonus,
-        defense_bonus: row.defense_bonus, spirit_bonus: row.spirit_bonus,
-        speed_bonus: row.speed_bonus, hp_bonus: row.hp_bonus,
-        slot: row.slot, weapon_type: row.weapon_type,
-      },
-      row.upgrade_level,
-      row.src_level,
-      durPenalty,
-      row.rarity,
-    );
-    const primary = getPrimaryStatKey({
-      attack_bonus: row.attack_bonus, magic_bonus: row.magic_bonus,
-      defense_bonus: row.defense_bonus, spirit_bonus: row.spirit_bonus,
-      speed_bonus: row.speed_bonus, hp_bonus: row.hp_bonus,
-      weapon_type: row.weapon_type, slot: row.slot,
-    });
-    const awBonus = getAwakeningStatFlatBonus(row.awakening_level ?? 0, primary);
-    if (awBonus > 0) {
-      stats[primary] += awBonus;
-      stats.hp += awBonus;
-    }
-    return stats;
-  };
+  const effectiveStats = (row: EquipRow) => getEquipmentEffectiveStats(row);
 
   if (!equippedRow?.name) {
     const stats = effectiveStats(target);
@@ -349,7 +326,7 @@ export function getEquipmentComparison(userId: string, inventoryId: number): str
       '',
       '**この装備の実効ボーナス:**',
     ];
-    for (const [label, key] of [['攻撃', 'attack'], ['魔力', 'magic'], ['防御', 'defense'], ['精神', 'spirit'], ['速度', 'speed'], ['HP', 'hp']] as const) {
+    for (const [label, key] of [['攻撃', 'attack'], ['魔力', 'magic'], ['防御', 'defense'], ['精神', 'spirit'], ['速度', 'speed'], ['HP', 'hp'], ['MP', 'mp']] as const) {
       const val = stats[key];
       if (val) lines.push(`${label} +${val}`);
     }
@@ -372,6 +349,7 @@ export function getEquipmentComparison(userId: string, inventoryId: number): str
     ['精神', targetStats.spirit, equippedStats.spirit],
     ['速度', targetStats.speed, equippedStats.speed],
     ['HP', targetStats.hp, equippedStats.hp],
+    ['MP', targetStats.mp, equippedStats.mp],
   ];
   let anyDiff = false;
   for (const [label, nv, ov] of diffs) {
@@ -416,19 +394,30 @@ function buildEquipmentDetail(userId: string, inventoryId: number): string {
   const element = normalizeElement(row.element as string | null);
   const prot = isOwner ? getInventoryProtectRow(inventoryId, userId) : undefined;
 
-  const statLines: string[] = [];
-  const addStat = (label: string, val: number, pct = false) => {
-    if (val) statLines.push(`${label} ${pct ? `+${(val * 100).toFixed(0)}%` : `+${val}`}`);
+  const statsInput: EquipmentStatsInput = {
+    rarity,
+    upgrade_level: upg,
+    src_level: srcLv,
+    awakening_level: (row.awakening_level as number) ?? 0,
+    durability_state: dur,
+    affix_json: row.affix_json as string | null,
+    stat_roll_json: row.stat_roll_json as string | null,
+    attack_bonus: row.attack_bonus as number,
+    magic_bonus: row.magic_bonus as number,
+    defense_bonus: row.defense_bonus as number,
+    spirit_bonus: row.spirit_bonus as number,
+    speed_bonus: row.speed_bonus as number,
+    hp_bonus: row.hp_bonus as number,
+    mp_bonus: row.mp_bonus as number,
+    accuracy_bonus: row.accuracy_bonus as number,
+    crit_rate_bonus: row.crit_rate_bonus as number,
+    weapon_type: wtype,
+    slot,
   };
-  addStat('攻撃', row.attack_bonus as number);
-  addStat('魔力', row.magic_bonus as number);
-  addStat('防御', row.defense_bonus as number);
-  addStat('精神', row.spirit_bonus as number);
-  addStat('速度', row.speed_bonus as number);
-  addStat('HP', row.hp_bonus as number);
-  addStat('MP', row.mp_bonus as number);
-  addStat('命中', row.accuracy_bonus as number, true);
-  addStat('会心', row.crit_rate_bonus as number, true);
+  const statLines = formatEffectiveStatLines(statsInput);
+  const effStats = getEquipmentEffectiveStats(statsInput);
+  if (effStats.accuracy) statLines.push(`命中 +${(effStats.accuracy * 100).toFixed(0)}%`);
+  if (effStats.crit_rate) statLines.push(`会心 +${(effStats.crit_rate * 100).toFixed(0)}%`);
 
   let resistLine = formatElementResistLine(getResistancesFromGearPiece({
     resistances_json: row.resistances_json as string | null,

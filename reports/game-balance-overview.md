@@ -1,0 +1,15 @@
+# game-balance-overview
+
+Generated: 2026-06-13T11:14:17.801Z
+
+## ゲームバランス概要
+
+主要監査項目のサマリー。
+
+| area | value | status | notes |
+| --- | --- | --- | --- |
+| weapon_role_map_entries | 11 | OK | 静的マスタ |
+| weapon_tier_ok | 10/10 | OK | Src>UR+aw |
+| valhalla_emblem_repeat | 4-8 | OK | 再戦徽章 |
+| valhalla_gold_repeat | 2500-5000 | OK | 再戦Gold |
+| effective_stat_fn | getEquipmentEffectiveStats | OK | itemDetail/compare共用 |

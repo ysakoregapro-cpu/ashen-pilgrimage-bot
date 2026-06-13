@@ -1,6 +1,6 @@
 # Equipment Detail Source Audit
 
-Generated: 2026-06-12T22:35:40.951Z
+Generated: 2026-06-13T11:05:56.597Z
 
 ## Current detail UI files
 | File | Role |
@@ -12,7 +12,7 @@ Generated: 2026-06-12T22:35:40.951Z
 | `src/db/seedData/equipmentClassification.ts` | legacy/excluded registry |
 
 ## Current acquisition data
-- items with acquisition_json: 258 / equipment 183
+- items with acquisition_json: 261 / equipment 183
 - Wrapped { sources: [...] } format: 172
 - legacy/excluded → 「入手先：現在通常入手不可」
 

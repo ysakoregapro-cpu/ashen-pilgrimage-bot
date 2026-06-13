@@ -1,6 +1,6 @@
 # Phase2 Final Sanity Check
 
-Generated: 2026-06-12T22:35:45.303Z
+Generated: 2026-06-13T11:14:19.746Z
 
 ## Required files
 - ✓ src/systems/jobUiSystem.ts
@@ -16,7 +16,10 @@ Generated: 2026-06-12T22:35:45.303Z
 - ✓ scripts/enemy-balance-design-audit.ts
 - ✓ scripts/job-sub-ui-check.ts
 - ✓ scripts/job-ui-entry-check.ts
-- ✓ scripts/equipment-completion-audit.ts
+- ✓ scripts/equipment-effective-stat-display-check.ts
+- ✓ scripts/weapon-effective-balance-summary.ts
+- ✓ scripts/weapon-role-stat-map-check.ts
+- ✓ scripts/game-balance-overview-check.ts
 - trial UI buttons: OK
 - inv:use handler: OK
 - consumable out-of-battle: OK
@@ -29,7 +32,9 @@ Generated: 2026-06-12T22:35:45.303Z
 - job UI entry: OK
 - safe select menu: OK
 - Uni material drops: OK
-- sanitizeComponents: OK
+- effective stat display: OK
+- equipmentEffectiveStats: OK
+- weapon role map: OK
 
 ## Dangerous file check
 PASS — no matches

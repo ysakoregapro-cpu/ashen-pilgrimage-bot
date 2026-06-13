@@ -1,0 +1,52 @@
+# upgrade-material-progression
+
+Generated: 2026-06-13T11:18:17.062Z
+
+## 強化素材段階
+
+通常強化は getEnhanceRequirement、Src+11〜は DB seed。
+
+| rarity | target_level | band | material | qty | gold | context |
+| --- | --- | --- | --- | --- | --- | --- |
+| N | 1 | +1-3 | upg_rough_stone | 1 | 100 | normal_enhance |
+| N | 2 | +1-3 | upg_rough_stone | 1 | 200 | normal_enhance |
+| N | 3 | +1-3 | upg_rough_stone | 2 | 300 | normal_enhance |
+| N | 4 | +4-6 | upg_stone | 2 | 800 | normal_enhance |
+| N | 5 | +4-6 | upg_stone | 3 | 1000 | normal_enhance |
+| R | 1 | +1-3 | upg_rough_stone | 1 | 100 | normal_enhance |
+| R | 2 | +1-3 | upg_rough_stone | 1 | 200 | normal_enhance |
+| R | 3 | +1-3 | upg_rough_stone | 2 | 300 | normal_enhance |
+| R | 4 | +4-6 | upg_stone | 2 | 800 | normal_enhance |
+| R | 5 | +4-6 | upg_stone | 3 | 1000 | normal_enhance |
+| SR | 1 | +1-3 | upg_rough_stone | 1 | 150 | normal_enhance |
+| SR | 2 | +1-3 | upg_rough_stone | 1 | 300 | normal_enhance |
+| SR | 3 | +1-3 | upg_rough_stone | 2 | 450 | normal_enhance |
+| SR | 4 | +4-6 | upg_stone | 2 | 1200 | normal_enhance |
+| SR | 5 | +4-6 | upg_stone | 3 | 1500 | normal_enhance |
+| SR | 6 | +4-6 | upg_stone | 3 | 1800 | normal_enhance |
+| SR | 7 | +7-10 | upg_fine_stone | 4 | 3675 | normal_enhance |
+| SSR | 1 | +1-3 | upg_rough_stone | 1 | 200 | normal_enhance |
+| SSR | 2 | +1-3 | upg_rough_stone | 1 | 400 | normal_enhance |
+| SSR | 3 | +1-3 | upg_rough_stone | 2 | 600 | normal_enhance |
+| SSR | 4 | +4-6 | upg_stone | 2 | 1600 | normal_enhance |
+| SSR | 5 | +4-6 | upg_stone | 3 | 2000 | normal_enhance |
+| SSR | 6 | +4-6 | upg_stone | 3 | 2400 | normal_enhance |
+| SSR | 7 | +7-10 | upg_fine_stone | 4 | 4900 | normal_enhance |
+| SSR | 8 | +7-10 | upg_fine_stone | 4 | 5600 | normal_enhance |
+| SSR | 9 | +7-10 | upg_fine_stone | 5 | 6300 | normal_enhance |
+| SSR | 10 | +7-10 | upg_rare_stone | 5 | 10000 | normal_enhance |
+| UR | 1 | +1-3 | upg_rough_stone | 1 | 300 | normal_enhance |
+| UR | 2 | +1-3 | upg_rough_stone | 1 | 600 | normal_enhance |
+| UR | 3 | +1-3 | upg_rough_stone | 2 | 900 | normal_enhance |
+| UR | 4 | +4-6 | upg_stone | 2 | 2400 | normal_enhance |
+| UR | 5 | +4-6 | upg_stone | 3 | 3000 | normal_enhance |
+| UR | 6 | +4-6 | upg_stone | 3 | 3600 | normal_enhance |
+| UR | 7 | +7-10 | upg_fine_stone | 4 | 7350 | normal_enhance |
+| UR | 8 | +7-10 | upg_fine_stone | 4 | 8400 | normal_enhance |
+| UR | 9 | +7-10 | upg_fine_stone | 5 | 9450 | normal_enhance |
+| UR | 10 | +7-10 | upg_rare_stone | 5 | 15000 | normal_enhance |
+| UR | 11 | +11-15 | upg_rare_stone | 6 | 16500 | normal_enhance |
+| UR | 12 | +11-15 | upg_rare_stone | 6 | 18000 | normal_enhance |
+| UR | 13 | +11-15 | upg_rare_stone | 7 | 19500 | normal_enhance |
+| UR | 14 | +11-15 | upg_rare_stone | 7 | 21000 | normal_enhance |
+| UR | 15 | +11-15 | upg_rare_stone | 8 | 22500 | normal_enhance |

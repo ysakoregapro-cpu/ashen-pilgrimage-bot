@@ -23,9 +23,11 @@ function upgradeReqs(level: number): { gold: number; materials: { id: string; qt
   if (level <= 6) return { gold: 3000 * level, materials: [{ id: 'src_upg_core', qty: level }, { id: 'upg_fine_stone', qty: level }], desc: '固有スキル強化' };
   if (level <= 9) return { gold: 5000 * level, materials: [{ id: 'src_star_scar_crystal', qty: level - 6 }, { id: 'raid_valhalla_plate', qty: level - 6 }], desc: '追加パッシブ解放' };
   if (level === 10) return { gold: 50000, materials: [{ id: 'src_valhalla_core', qty: 1 }, { id: 'src_old_king_echo', qty: 1 }, { id: 'src_machina_core', qty: 1 }, { id: 'src_star_mark_full', qty: 1 }], desc: '最終効果解放' };
-  if (level <= 12) return { gold: 8000 * level, materials: [{ id: 'src_upg_core', qty: 2 }, { id: 'upg_rare_stone', qty: 2 }], desc: '極限性能上昇' };
-  if (level <= 14) return { gold: 12000 * level, materials: [{ id: 'src_star_scar_crystal', qty: 2 }, { id: 'raid_deep_core', qty: 2 }, { id: 'upg_deep_core_stone', qty: 1 }], desc: '最終性能強化' };
-  return { gold: 80000, materials: [{ id: 'src_valhalla_core', qty: 1 }, { id: 'src_old_king_echo', qty: 1 }, { id: 'upg_old_king_stone', qty: 3 }], desc: '最終段階強化（+15）' };
+  if (level === 11) return { gold: 15000, materials: [{ id: 'src_upg_core', qty: 2 }, { id: 'upg_rare_stone', qty: 2 }], desc: '極限性能上昇' };
+  if (level === 12) return { gold: 19000, materials: [{ id: 'src_upg_core', qty: 2 }, { id: 'upg_rare_stone', qty: 2 }], desc: '極限性能上昇' };
+  if (level === 13) return { gold: 23000, materials: [{ id: 'src_star_scar_crystal', qty: 2 }, { id: 'raid_deep_core', qty: 2 }, { id: 'upg_deep_core_stone', qty: 1 }], desc: '最終性能強化' };
+  if (level === 14) return { gold: 27000, materials: [{ id: 'src_star_scar_crystal', qty: 2 }, { id: 'raid_deep_core', qty: 2 }, { id: 'upg_deep_core_stone', qty: 1 }], desc: '最終性能強化' };
+  return { gold: 34000, materials: [{ id: 'src_valhalla_core', qty: 1 }, { id: 'src_old_king_echo', qty: 1 }, { id: 'upg_old_king_stone', qty: 3 }], desc: '最終段階強化（+15）' };
 }
 
 export function seedSrcWeapons(db: Database.Database): void {
@@ -63,11 +65,17 @@ export function ensureSrcWeaponLevel15(db: Database.Database): void {
     INSERT OR IGNORE INTO src_weapon_upgrades (src_weapon_id, target_src_level, gold_cost, material_requirements_json, effect_description)
     VALUES (?, ?, ?, ?, ?)
   `);
+  const updUpg = db.prepare(`
+    UPDATE src_weapon_upgrades SET gold_cost = ?, material_requirements_json = ?, effect_description = ?
+    WHERE src_weapon_id = ? AND target_src_level = ?
+  `);
   const srcIds = db.prepare('SELECT id FROM src_weapons').all() as Array<{ id: string }>;
   for (const { id } of srcIds) {
     for (let lv = 1; lv <= MAX_SRC_WEAPON_LEVEL; lv++) {
       const req = upgradeReqs(lv);
-      insUpg.run(id, lv, req.gold, JSON.stringify(req.materials), req.desc);
+      const mats = JSON.stringify(req.materials);
+      insUpg.run(id, lv, req.gold, mats, req.desc);
+      updUpg.run(req.gold, mats, req.desc, id, lv);
     }
   }
 }
