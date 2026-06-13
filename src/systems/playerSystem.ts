@@ -6,6 +6,10 @@ import { addItem } from './inventorySystem';
 import { equipItem } from './equipmentSystem';
 import { calcUpgradeStatBonuses, getPrimaryStatKey } from './enhanceSystem';
 import { getAwakeningStatFlatBonus } from './awakeningSystem';
+import {
+  aggregateAffixStatPercents, applyStatRollMultiplier, loadEquipmentRollFromRow,
+} from './equipmentAffixSystem';
+import { isArmorOrAccessorySlot } from '../db/seedData/equipmentAffixMaster';
 import { levelExpRequired, formatLevelUpMessage, expToNextLevel, type AddExpResult } from './expSystem';
 import { safeClampCurrentMp } from './combatMp';
 import { computeBaseStatsFromLevel, applyJobStatMultipliers } from '../db/seedData/jobMultiplierMaster';
@@ -55,7 +59,7 @@ export function recalculatePlayerStats(userId: string): Player {
   }
 
   const equipped = db.prepare(`
-    SELECT pi.*, e.*, i.rarity, pi.awakening_level
+    SELECT pi.*, e.*, i.rarity, pi.awakening_level, pi.affix_json, pi.stat_roll_json
     FROM player_equipment pe
     JOIN player_inventory pi ON pe.inventory_id = pi.id
     JOIN equipment e ON pi.item_id = e.item_id
@@ -67,11 +71,15 @@ export function recalculatePlayerStats(userId: string): Player {
     spirit_bonus: number; speed_bonus: number; hp_bonus: number; mp_bonus: number;
     crit_rate_bonus: number; crit_damage_bonus: number; accuracy_bonus: number; evasion_bonus: number;
     series_id: string | null; slot: string; rarity: string; weapon_type: string | null;
+    affix_json: string | null; stat_roll_json: string | null;
   }>;
 
+  const affixPctTotals: Record<string, number> = {};
   const setCounts: Record<string, number> = {};
   for (const eq of equipped) {
     const durPenalty = eq.durability_state === '破損' ? 0.7 : eq.durability_state === '損傷' ? 0.85 : eq.durability_state === '摩耗' ? 0.95 : 1;
+    const roll = loadEquipmentRollFromRow(eq);
+    const mults = roll?.statRoll?.multipliers ?? {};
     const stats = calcUpgradeStatBonuses(
       {
         attack_bonus: eq.attack_bonus, magic_bonus: eq.magic_bonus, defense_bonus: eq.defense_bonus,
@@ -83,14 +91,14 @@ export function recalculatePlayerStats(userId: string): Player {
       durPenalty,
       eq.rarity,
     );
-    base.attack += stats.attack;
-    base.magic += stats.magic;
-    base.defense += stats.defense;
+    base.attack += applyStatRollMultiplier(stats.attack, mults.attack);
+    base.magic += applyStatRollMultiplier(stats.magic, mults.magic);
+    base.defense += applyStatRollMultiplier(stats.defense, mults.defense);
     base.spirit += stats.spirit;
-    base.speed += stats.speed;
-    base.max_hp += stats.hp;
-    base.max_mp += Math.floor(eq.mp_bonus * durPenalty);
-    base.crit_rate += eq.crit_rate_bonus;
+    base.speed += applyStatRollMultiplier(stats.speed, mults.speed);
+    base.max_hp += applyStatRollMultiplier(stats.hp, mults.hp);
+    base.max_mp += applyStatRollMultiplier(Math.floor(eq.mp_bonus * durPenalty), mults.mp);
+    base.crit_rate += applyStatRollMultiplier(eq.crit_rate_bonus, mults.crit);
     base.crit_damage += eq.crit_damage_bonus;
     base.accuracy += eq.accuracy_bonus;
     base.evasion += eq.evasion_bonus;
@@ -108,6 +116,12 @@ export function recalculatePlayerStats(userId: string): Player {
       else base.spirit += awBonus;
       base.max_hp += awBonus;
     }
+    if (isArmorOrAccessorySlot(eq.slot) && roll?.affixes?.length) {
+      const pct = aggregateAffixStatPercents(roll.affixes);
+      for (const [k, v] of Object.entries(pct)) {
+        affixPctTotals[k] = (affixPctTotals[k] ?? 0) + v;
+      }
+    }
     if (eq.series_id) setCounts[eq.series_id] = (setCounts[eq.series_id] ?? 0) + 1;
   }
 
@@ -123,6 +137,15 @@ export function recalculatePlayerStats(userId: string): Player {
   base.crit_damage += mods.crit_damage;
   base.accuracy = Math.min(0.99, base.accuracy + mods.accuracy);
   base.evasion = Math.min(0.5, base.evasion + mods.evasion);
+
+  base.max_hp = Math.floor(base.max_hp * (1 + (affixPctTotals.hp_percent ?? 0) / 100));
+  base.max_mp = Math.floor(base.max_mp * (1 + (affixPctTotals.mp_percent ?? 0) / 100));
+  base.attack = Math.floor(base.attack * (1 + (affixPctTotals.attack_percent ?? 0) / 100));
+  base.magic = Math.floor(base.magic * (1 + (affixPctTotals.magic_percent ?? 0) / 100));
+  base.defense = Math.floor(base.defense * (1 + (affixPctTotals.defense_percent ?? 0) / 100));
+  base.spirit = Math.floor(base.spirit * (1 + (affixPctTotals.spirit_percent ?? 0) / 100));
+  base.speed = Math.floor(base.speed * (1 + (affixPctTotals.speed_percent ?? 0) / 100));
+  base.crit_rate = Math.min(0.8, base.crit_rate + (affixPctTotals.crit_percent ?? 0) / 100);
 
   base.max_mp = Math.max(25, base.max_mp);
   const hp = Math.min(player.hp, base.max_hp);

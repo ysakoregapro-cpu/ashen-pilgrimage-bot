@@ -1,5 +1,5 @@
 import { getDb } from '../db/database';
-import { equipItem, getEquipped, getEquippableItems, unequipSlot } from './equipmentSystem';
+import { equipItem, getEquipped, getEquippableItems, unequipSlot, getSortedEquippableRows } from './equipmentSystem';
 import {
   buildEquipChangeSelectOptions,
   formatOwnedEquipmentLabel,
@@ -13,7 +13,7 @@ import { buildEquipChangeConfirmRows } from './equipConfirmSystem';
 import { buildEquipmentDetailView } from './itemDetailSystem';
 import { prependConfirmNavigation } from '../utils/navigationComponents';
 import type { UiPayload } from '../utils/townUi';
-import type { ActionRowBuilder, MessageActionRowComponentBuilder } from 'discord.js';
+import { ButtonBuilder, ButtonStyle, ActionRowBuilder, type MessageActionRowComponentBuilder } from 'discord.js';
 import { safeSelectMenu, selectMenu } from '../utils/embeds';
 import { SLOT_LABELS, type EquipmentSlot } from '../types';
 
@@ -141,23 +141,40 @@ export function getPrepSlotOptions(userId: string, slot: EquipmentSlot) {
   });
 }
 
-export function buildPrepEquipSelectOptions(userId: string, slot: EquipmentSlot) {
+export function buildPrepEquipSelectOptions(userId: string, slot: EquipmentSlot, page = 0) {
   const rows = getPrepSlotOptions(userId, slot)
     .filter((o) => !o.disabled)
     .map((o) => o.row);
-  return buildEquipChangeSelectOptions(slot, rows);
+  const sorted = getSortedEquippableRows(userId, slot).filter((r) => rows.some((x) => x.id === r.id));
+  const pageRows = sorted.slice(page * 24, (page + 1) * 24);
+  return buildEquipChangeSelectOptions(slot, pageRows.length ? pageRows : rows.slice(0, 24));
 }
 
 /** 身支度所スロット選択 UI — detail:inv は候補0件でも落ちない */
 export function buildPrepSlotSelectComponents(
   userId: string,
   slot: EquipmentSlot,
+  page = 0,
 ): ActionRowBuilder<MessageActionRowComponentBuilder>[] {
-  const pickOpts = buildPrepEquipSelectOptions(userId, slot);
+  const enabledIds = new Set(
+    getPrepSlotOptions(userId, slot).filter((o) => !o.disabled).map((o) => o.row.id),
+  );
+  const sorted = getSortedEquippableRows(userId, slot).filter((r) => enabledIds.has(r.id));
+  const totalPages = Math.max(1, Math.ceil(sorted.length / 24));
+  const safePage = Math.min(Math.max(0, page), totalPages - 1);
+  const pageRows = sorted.slice(safePage * 24, (safePage + 1) * 24);
+  const pickOpts = buildEquipChangeSelectOptions(slot, pageRows);
   const detailOpts = pickOpts.filter((o) => !o.value.startsWith('none'));
   const components: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [
     selectMenu('prep:equip', '装備を選ぶ', pickOpts),
   ];
+  if (totalPages > 1) {
+    const nav = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      ...(safePage > 0 ? [new ButtonBuilder().setCustomId(`prep:page:${slot}:${safePage - 1}`).setLabel('◀ 前').setStyle(ButtonStyle.Secondary)] : []),
+      ...(safePage < totalPages - 1 ? [new ButtonBuilder().setCustomId(`prep:page:${slot}:${safePage + 1}`).setLabel('次 ▶').setStyle(ButtonStyle.Secondary)] : []),
+    );
+    if (nav.components.length) components.push(nav);
+  }
   const detailRow = safeSelectMenu('detail:inv', '詳細を見る', detailOpts);
   if (detailRow) components.push(detailRow);
   return components;

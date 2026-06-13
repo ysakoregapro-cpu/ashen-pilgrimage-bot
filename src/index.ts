@@ -886,6 +886,29 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
 
 
 
+  if (parts[0] === 'equip' && parts[1] === 'page') {
+    const slot = parts[2] as import('./types').EquipmentSlot;
+    const page = Number(parts[3] ?? 0);
+    const { buildEquipSlotSelectView } = await import('./systems/equipmentSystem');
+    const { baseEmbed } = await import('./utils/embeds');
+    const view = buildEquipSlotSelectView(userId, slot, page, { customIdPrefix: 'equip' });
+    await interaction.update({ embeds: [baseEmbed('装備変更', view.embedText)], components: view.components });
+    return;
+  }
+
+  if (parts[0] === 'prep' && parts[1] === 'page') {
+    const slot = parts[2] as import('./types').EquipmentSlot;
+    const page = Number(parts[3] ?? 0);
+    const { buildPrepSlotSelectComponents } = await import('./systems/prepSystem');
+    const { townHubEmbed } = await import('./utils/townUi');
+    const { SLOT_LABELS } = await import('./types');
+    await interaction.update({
+      embeds: [townHubEmbed('装備変更', `**${SLOT_LABELS[slot] ?? slot}** の装備候補`)],
+      components: buildPrepSlotSelectComponents(userId, slot, page),
+    });
+    return;
+  }
+
   if (parts[0] === 'battle') {
 
     const sessionId = parts[1]!;

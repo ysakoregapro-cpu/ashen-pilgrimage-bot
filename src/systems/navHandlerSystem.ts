@@ -1,8 +1,4 @@
-import {
-  buildEquipChangeSelectOptions,
-  mapInventoryRowToEquipmentSelect,
-} from './equipmentLabelSystem';
-import { getEquippableItems } from './equipmentSystem';
+import { buildEquipSlotSelectView } from './equipmentSystem';
 import { buildPrepSlotSelectComponents } from './prepSystem';
 import { buildUpgradeSelectPayload } from './upgradeConfirmSystem';
 import { buildExploreList, buildTownHub } from './townActionSystem';
@@ -47,22 +43,10 @@ export function buildNavBackPayload(userId: string, base: string): UiPayload | n
 
   if (parsed.context === 'equip') {
     const slot = parsed.payload as EquipmentSlot;
-    const items = getEquippableItems(userId, slot) as Array<Record<string, unknown>>;
-    const rows = items.map((i) => mapInventoryRowToEquipmentSelect({
-      id: i.id as number,
-      name: i.name as string,
-      rarity: i.rarity as string,
-      upgrade_level: i.upgrade_level as number,
-      src_level: (i.src_level as number) ?? 0,
-      awakening_level: (i.awakening_level as number) ?? 0,
-      durability_state: (i.durability_state as string) ?? '良好',
-      is_equipped: (i.is_equipped as number) ?? 0,
-      slot,
-    }));
-    const options = buildEquipChangeSelectOptions(slot, rows);
+    const view = buildEquipSlotSelectView(userId, slot, 0, { customIdPrefix: 'equip' });
     return {
-      embeds: [baseEmbed('装備変更', `${slot}に装備するアイテムを選択`)],
-      components: [selectMenu(`equip:${slot}`, '装備を選択', options)],
+      embeds: [baseEmbed('装備変更', view.embedText)],
+      components: view.components,
     };
   }
 

@@ -211,4 +211,37 @@ export function runMigrations(db: Database.Database): void {
   ensurePlayerSkillTables(db);
   seedBattleSkills(db);
   seedStoryTables(db);
+
+  addColumn(db, 'player_inventory', 'affix_json', 'TEXT');
+  addColumn(db, 'player_inventory', 'stat_roll_json', 'TEXT');
+
+  ensurePhase25SetBonusRebalance(db);
+}
+
+function ensurePhase25SetBonusRebalance(db: import('better-sqlite3').Database): void {
+  const updates: Array<{ setId: string; count: number; desc: string; effect: Record<string, number> }> = [
+    { setId: 'set_deep_furnace', count: 2, desc: '攻撃 +4%', effect: { attack_pct: 0.04 } },
+    { setId: 'set_deep_furnace', count: 3, desc: '攻撃 +2% / 防御 +2%', effect: { attack_pct: 0.02, defense_pct: 0.02 } },
+    { setId: 'set_deep_furnace', count: 5, desc: '全ステ +5% / 会心ダメ +5%', effect: { all_stat_pct: 0.05, crit_damage: 0.05 } },
+    { setId: 'set_black_lamp', count: 2, desc: '攻撃 +4%', effect: { attack_pct: 0.04 } },
+    { setId: 'set_black_lamp', count: 3, desc: '会心 +3% / 会心ダメ +3%', effect: { crit_rate: 0.03, crit_damage: 0.03 } },
+    { setId: 'set_black_lamp', count: 5, desc: '攻撃 +5% / 会心 +5%', effect: { attack_pct: 0.05, crit_rate: 0.05 } },
+    { setId: 'set_starfall', count: 2, desc: '魔力 +4%', effect: { magic_pct: 0.04 } },
+    { setId: 'set_starfall', count: 3, desc: '魔力 +2% / 精神 +2%', effect: { magic_pct: 0.02, spirit_pct: 0.02 } },
+    { setId: 'set_starfall', count: 5, desc: '全ステ +4% / 魔力 +4%', effect: { all_stat_pct: 0.04, magic_pct: 0.04 } },
+    { setId: 'set_iron_snow', count: 2, desc: '防御 +4%', effect: { defense_pct: 0.04 } },
+    { setId: 'set_iron_snow', count: 3, desc: '防御 +3% / HP +3%', effect: { defense_pct: 0.03, hp_pct: 0.03 } },
+    { setId: 'set_iron_snow', count: 5, desc: '全ステ +3% / 防御 +5%', effect: { all_stat_pct: 0.03, defense_pct: 0.05 } },
+    { setId: 'set_valhalla', count: 2, desc: '全ステ +4%', effect: { all_stat_pct: 0.04 } },
+    { setId: 'set_valhalla', count: 3, desc: '攻撃 +3% / 防御 +3%', effect: { attack_pct: 0.03, defense_pct: 0.03 } },
+    { setId: 'set_valhalla', count: 5, desc: '全ステ +5% / 会心ダメ +8%', effect: { all_stat_pct: 0.05, crit_damage: 0.08 } },
+    { setId: 'set_old_king', count: 2, desc: '攻撃 +5%', effect: { attack_pct: 0.05 } },
+    { setId: 'set_old_king', count: 3, desc: '精神 +4% / 防御 +3%', effect: { spirit_pct: 0.04, defense_pct: 0.03 } },
+    { setId: 'set_old_king', count: 5, desc: '攻撃 +6% / 全ステ +3%', effect: { attack_pct: 0.06, all_stat_pct: 0.03 } },
+  ];
+  const stmt = db.prepare(`
+    UPDATE equipment_set_bonuses SET effect_description = ?, effect_json = ?
+    WHERE set_id = ? AND piece_count = ?
+  `);
+  for (const u of updates) stmt.run(u.desc, JSON.stringify(u.effect), u.setId, u.count);
 }

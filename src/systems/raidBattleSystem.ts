@@ -165,7 +165,7 @@ function distributeRaidRewards(raidSessionId: string, states: ParticipantState[]
     incrementWeeklyProgress(p.user_id, 'raid_joins');
     if (firstClear) triggerBossDefeated(p.user_id, RAID_BOSS);
     if (roll(firstClear ? 1 : 0.1)) addItem(p.user_id, 'wpn_valhalla_blade', 1);
-    else if (roll(0.12)) addItem(p.user_id, 'acc_raid_random', 1, { metadata: generateRaidAccessoryMetadata() });
+    else if (roll(0.12)) addItem(p.user_id, 'acc_raid_random', 1, { metadata: generateRaidAccessoryMetadata(), rollSource: 'raid_reward', valhallaOrRaid: true });
     else addItem(p.user_id, 'raid_deep_core', randomInt(1, 2 + mult.rewardBonus));
     lines.push(`<@${p.user_id}> EXP+${exp} / ${gold}G`);
   }

@@ -1,9 +1,12 @@
 import { getDb } from '../db/database';
 import { nowIso } from '../types';
 import { canLoseOnDefeat } from './itemProtectionSystem';
+import type { AffixRollSource } from '../db/seedData/equipmentAffixMaster';
+import { rollEquipmentInstance } from './equipmentAffixSystem';
 
 export function addItem(userId: string, itemId: string, quantity = 1, opts?: {
   upgradeLevel?: number; durability?: string; srcLevel?: number; pending?: boolean; metadata?: string;
+  rollSource?: AffixRollSource; valhallaOrRaid?: boolean;
 }): number {
   const db = getDb();
   const item = db.prepare('SELECT * FROM items WHERE id = ?').get(itemId) as { category: string } | undefined;
@@ -12,12 +15,39 @@ export function addItem(userId: string, itemId: string, quantity = 1, opts?: {
   const isEquipment = item.category === 'equipment';
   if (isEquipment) {
     const ts = nowIso();
+    let affixJson: string | null = null;
+    let statRollJson: string | null = null;
+    if (opts?.rollSource) {
+      const eq = db.prepare(`
+        SELECT e.slot, e.hp_bonus, e.mp_bonus, e.attack_bonus, e.magic_bonus, e.defense_bonus,
+          e.speed_bonus, e.crit_rate_bonus, i.rarity
+        FROM equipment e JOIN items i ON e.item_id = i.id WHERE e.item_id = ?
+      `).get(itemId) as {
+        slot: string; hp_bonus: number; mp_bonus: number; attack_bonus: number; magic_bonus: number;
+        defense_bonus: number; speed_bonus: number; crit_rate_bonus: number; rarity: string;
+      } | undefined;
+      if (eq) {
+        const rolled = rollEquipmentInstance({
+          rarity: eq.rarity,
+          slot: eq.slot,
+          rollSource: opts.rollSource,
+          valhallaOrRaid: opts.valhallaOrRaid,
+          baseStats: {
+            hp_bonus: eq.hp_bonus, mp_bonus: eq.mp_bonus, attack_bonus: eq.attack_bonus,
+            magic_bonus: eq.magic_bonus, defense_bonus: eq.defense_bonus, speed_bonus: eq.speed_bonus,
+            crit_rate_bonus: eq.crit_rate_bonus,
+          },
+        });
+        affixJson = rolled.affix_json;
+        statRollJson = rolled.stat_roll_json;
+      }
+    }
     const r = db.prepare(`
-      INSERT INTO player_inventory (user_id, item_id, quantity, upgrade_level, durability_state, src_level, is_pending_reward, metadata_json, created_at, updated_at)
-      VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO player_inventory (user_id, item_id, quantity, upgrade_level, durability_state, src_level, is_pending_reward, metadata_json, affix_json, stat_roll_json, created_at, updated_at)
+      VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       userId, itemId, opts?.upgradeLevel ?? 0, opts?.durability ?? '良好', opts?.srcLevel ?? 0,
-      opts?.pending ? 1 : 0, opts?.metadata ?? null, ts, ts,
+      opts?.pending ? 1 : 0, opts?.metadata ?? null, affixJson, statRollJson, ts, ts,
     );
     return Number(r.lastInsertRowid);
   }

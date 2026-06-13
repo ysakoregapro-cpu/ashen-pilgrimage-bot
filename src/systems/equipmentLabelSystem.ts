@@ -1,4 +1,5 @@
 import { awakeningLabel } from './awakeningSystem';
+import { formatAffixSummary, loadEquipmentRollFromRow } from './equipmentAffixSystem';
 import { SLOT_LABELS, type DurabilityState, type EquipmentSlot } from '../types';
 
 /** Player-owned equipment row for select menus (player_inventory.id is the instance key). */
@@ -13,6 +14,8 @@ export type OwnedEquipmentSelectRow = {
   is_equipped: number;
   slot?: string;
   item_id?: string;
+  affix_json?: string | null;
+  stat_roll_json?: string | null;
 };
 
 export const EQUIP_NONE_VALUE = 'none';
@@ -50,6 +53,13 @@ export function formatOwnedEquipmentLabel(row: OwnedEquipmentSelectRow): string 
 
 export function formatOwnedEquipmentDescription(row: OwnedEquipmentSelectRow, extra?: string): string {
   const parts = [...formatEquipmentStateBadges(row)];
+  const roll = loadEquipmentRollFromRow(row);
+  if (roll?.affixes?.length) {
+    const summary = formatAffixSummary(roll.affixes);
+    if (summary) parts.push(summary);
+  } else if (roll?.statRoll?.multipliers && Object.keys(roll.statRoll.multipliers).length) {
+    parts.push('個体補正');
+  }
   if (extra) parts.push(extra);
   else parts.push(`#${row.id}`);
   return parts.join(' / ').slice(0, 100);
@@ -111,6 +121,8 @@ export function mapInventoryRowToEquipmentSelect(row: {
   durability_state?: string;
   is_equipped: number;
   slot?: string;
+  affix_json?: string | null;
+  stat_roll_json?: string | null;
 }): OwnedEquipmentSelectRow {
   return {
     id: row.id,
@@ -122,5 +134,7 @@ export function mapInventoryRowToEquipmentSelect(row: {
     durability_state: (row.durability_state ?? '良好') as DurabilityState,
     is_equipped: row.is_equipped,
     slot: row.slot,
+    affix_json: row.affix_json ?? null,
+    stat_roll_json: row.stat_roll_json ?? null,
   };
 }

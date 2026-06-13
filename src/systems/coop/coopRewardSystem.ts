@@ -95,7 +95,7 @@ function applyReward(userId: string, reward: CoopRewardPayload, mode: CoopMode, 
   if (reward.gold > 0) addGold(userId, reward.gold);
   for (const item of reward.items) {
     if (item.itemId === 'acc_raid_random') {
-      addItem(userId, item.itemId, item.qty, { metadata: generateRaidAccessoryMetadata() });
+      addItem(userId, item.itemId, item.qty, { metadata: generateRaidAccessoryMetadata(), rollSource: 'raid_reward', valhallaOrRaid: true });
     } else {
       addItem(userId, item.itemId, item.qty);
     }

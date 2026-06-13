@@ -10,6 +10,7 @@ import { ensurePhase2Seed } from '../src/db/seedData/phase2Seed';
 import { ensureMasterDataSeed } from '../src/db/seedData/masterDataSeed';
 import { buildItemPurposeCatalog } from '../src/db/seedData/itemPurposeMaster';
 import { EXCLUDED_EQUIPMENT } from '../src/db/seedData/equipmentClassification';
+import { AFFIX_VALUE_CAPS, SKILL_COUNT_WEIGHTS, isAffixEligibleRarity, isArmorOrAccessorySlot } from '../src/db/seedData/equipmentAffixMaster';
 import { runEquipmentAcquisitionAudit } from '../src/systems/equipmentAcquisitionAudit';
 import {
   JOB_TRIO_MAP,
@@ -88,6 +89,7 @@ function main() {
     'max_upgrade_level', 'awakening_eligible', 'max_awakening_level', 'sell_price', 'purpose',
     'source_summary', 'progression_tier', 'estimated_rate_per_100', 'legacy_or_excluded',
     'obtainable', 'notes',
+    'random_affix_eligible', 'skill_count_probability', 'possible_affix_types', 'max_affix_value', 'godroll_possible', 'set_bonus_evaluation',
   ];
   const equipDb = db.prepare(`
     SELECT e.*, i.name, i.rarity, i.sell_price, i.description,
@@ -106,6 +108,13 @@ function main() {
     const bonusSummary = bonuses.map((b) => `${b.piece_count}:${b.effect_description}`).join(' | ');
     const ex = EXCLUDED_EQUIPMENT[String(e.item_id)];
     const drop = dropById.get(String(e.item_id));
+    const slot = String(e.slot);
+    const rarity = String(e.rarity);
+    const affixEligible = isArmorOrAccessorySlot(slot) && isAffixEligibleRarity(rarity) && !ex ? 'YES' : 'NO';
+    const skillProb = affixEligible === 'YES' ? (SKILL_COUNT_WEIGHTS[rarity] ?? []).map((w) => `${w.count}:${w.weight}%`).join(' ') : '';
+    const maxAffix = affixEligible === 'YES' ? String(AFFIX_VALUE_CAPS[rarity] ?? '') : '';
+    const seriesTier = e.series_id ? (db.prepare('SELECT tier FROM equipment_sets WHERE id = ?').get(e.series_id) as { tier: string } | undefined)?.tier ?? '' : '';
+    const setBonusEval = ['SSR', 'UR'].includes(seriesTier) ? 'rebalanced_phase25' : 'baseline';
     return [
       e.item_id, e.name, e.rarity, e.slot, e.weapon_type ?? '',
       e.series_id ?? '', e.series_id ?? '', e.set_name ?? '',
@@ -119,6 +128,12 @@ function main() {
       ex ? `${ex.classification}:${ex.reason}` : 'NO',
       audit?.current_obtainable ?? '',
       audit?.notes ?? cell(e.description),
+      affixEligible,
+      skillProb,
+      affixEligible === 'YES' ? 'param|damage_reduction|damage_dealt' : '',
+      maxAffix,
+      affixEligible === 'YES' && ['SSR', 'UR'].includes(rarity) ? 'theoretical_7.0pct' : 'NO',
+      e.series_id ? setBonusEval : '',
     ].map(cell);
   });
   writeCsv('guide/equipment.csv', equipHeaders, equipCsvRows);
@@ -127,6 +142,7 @@ function main() {
   const setHeaders = [
     'set_id', 'set_name', 'pieces', 'required_slots', 'piece_equipment_ids', 'piece_names',
     'bonus_2', 'bonus_3', 'bonus_4', 'bonus_5', 'source_summary', 'notes',
+    'rarity_tier', 'set_bonus_evaluation', 'recommendation',
   ];
   const sets = db.prepare('SELECT id, name, description FROM equipment_sets ORDER BY id').all() as Array<{ id: string; name: string; description: string }>;
   const setRows = sets.map((s) => {
@@ -139,6 +155,10 @@ function main() {
     `).all(s.id) as Array<{ piece_count: number; effect_description: string }>;
     const bMap = Object.fromEntries(bonuses.map((b) => [b.piece_count, b.effect_description]));
     const audit = equipAudit.find((r) => r.set_id === s.id);
+    const tierRow = db.prepare('SELECT tier FROM equipment_sets WHERE id = ?').get(s.id) as { tier: string } | undefined;
+    const tier = tierRow?.tier ?? '';
+    const setEval = ['SSR', 'UR'].includes(tier) ? 'rebalanced_phase25' : 'baseline';
+    const rec = ['SSR', 'UR'].includes(tier) ? 'full_set_competitive_with_mixed_godrolls' : 'keep';
     return [
       s.id, s.name, pieces.length,
       [...new Set(pieces.map((p) => p.slot))].join(';'),
@@ -147,6 +167,7 @@ function main() {
       bMap[2] ?? '', bMap[3] ?? '', bMap[4] ?? '', bMap[5] ?? '',
       audit?.current_sources ?? '',
       s.description ?? '',
+      tier, setEval, rec,
     ].map(cell);
   });
   writeCsv('guide/equipment_sets.csv', setHeaders, setRows);
@@ -247,6 +268,16 @@ Generated: ${new Date().toISOString()}
 
 - drop rate / estimated_rate_per_100 は監査上の推定値であり、本番で完全一致しない場合があります。
 - acc_raid_random 等 collection 用途装備も obtainable=YES なら equipment 付与対象に含まれます。
+
+## Phase2.5 ランダム厳選（防具/アクセ）
+
+- **random_affix_eligible**: 防具・アクセ（N〜UR）のみ。武器・店売り・seed・管理者通常付与は対象外。
+- **skill_count_probability**: レア度別スキル数（N/R/SRは最大1、SSR/URは最大2）。
+- **possible_affix_types**: param（ステ%）> 被ダメ軽減 > 与ダメ増の順で抽選。
+- **max_affix_value / godroll_possible**: SSR/URは最大7.0%（理論値は極低確率）。4.5%以上は80%でデバフ付き。
+- **理論値**: 7.0%×2スキル×デバフ無しは夢のまた夢 — 周回厳選の目標値。
+- **セット統一 vs 混成**: SSR/URセット5部位は安定強度。ランダム混成神個体は理論上セット超え可能だが確率は極小。
+- **set_bonus_evaluation**: SSR/URシリーズは Phase2.5 で再調整済（\`reports/set-bonus-balance-audit.md\` 参照）。
 `;
   fs.writeFileSync(path.join(GUIDE_DIR, 'README.md'), readme, 'utf8');
 

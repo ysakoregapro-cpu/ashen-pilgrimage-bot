@@ -29,6 +29,7 @@ import {
 } from '../db/seedData/awakeningMaster';
 import { isJobStarterWeapon } from '../db/seedData/jobStarterWeapons';
 import { formatUpgradeTag, isSrcStageEquipment } from './equipmentLabelSystem';
+import { formatAdditionalTraitsBlock } from './equipmentAffixSystem';
 import { isInventoryItemUsableOutOfBattle } from './inventoryUseSystem';
 import { ButtonBuilder, ButtonStyle, ActionRowBuilder, type MessageActionRowComponentBuilder } from 'discord.js';
 
@@ -503,6 +504,10 @@ function buildEquipmentDetail(userId: string, inventoryId: number): string {
     statLines.length ? statLines.join('\n') : '—',
     durPen < 1 ? `（損傷補正: 性能×${Math.round(durPen * 100)}%）` : '',
     resistLine ? `属性耐性: ${resistLine}` : '',
+    (() => {
+      const traits = formatAdditionalTraitsBlock(row.affix_json as string | null, row.stat_roll_json as string | null);
+      return traits ? `\n${traits}` : '';
+    })(),
     '',
     formatSeriesBlock(userId, row.series_id as string | null, slot),
     '',

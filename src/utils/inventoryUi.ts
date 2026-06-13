@@ -31,7 +31,9 @@ export type InventoryListItem = {
   awakening_level: number;
   durability_state: string;
   is_equipped: number;
-  slot?: string | null;
+  slot?: string;
+  affix_json?: string | null;
+  stat_roll_json?: string | null;
 };
 
 const CATEGORY_LABELS: Record<InventoryCategory, string> = {
@@ -67,7 +69,7 @@ export function getInventoryListItems(
 
   let rows = getDb().prepare(`
     SELECT pi.id, i.name, i.rarity, i.category, pi.quantity, pi.upgrade_level, pi.src_level,
-      pi.awakening_level, pi.durability_state, pi.is_equipped, pi.is_pending_reward, e.slot
+      pi.awakening_level, pi.durability_state, pi.is_equipped, pi.is_pending_reward, pi.affix_json, pi.stat_roll_json, e.slot
     FROM player_inventory pi JOIN items i ON pi.item_id = i.id
     LEFT JOIN equipment e ON pi.item_id = e.item_id
     WHERE pi.user_id = ?

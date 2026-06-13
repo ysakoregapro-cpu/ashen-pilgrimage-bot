@@ -16,6 +16,8 @@ import type { StatusEffectKey } from '../db/seedData/skillEffectMaster';
 import { resolveSkillEffect } from '../db/seedData/skillEffectMaster';
 import { addExp, addGold, requirePlayer, recalculatePlayerStats } from './playerSystem';
 import { addItem } from './inventorySystem';
+import type { AffixRollSource } from '../db/seedData/equipmentAffixMaster';
+import { clampCombatAffixMultiplier, getEquippedCombatAffixMods } from './equipmentAffixSystem';
 import { applyDefeat, applyTrialDefeat } from './defeatSystem';
 import { incrementWeeklyProgress } from './weeklySystem';
 import { getUsableBattleSkills, isUsableBattleSkill, skillTypeLabel, scalingLabel, type SkillRow } from './skillSystem';
@@ -78,6 +80,8 @@ export interface BattleState extends BattleStatusState {
   guardStrong: boolean;
   combatScale?: ScaledMonster;
   isRematch?: boolean;
+  affixDealtMult?: number;
+  affixTakenMult?: number;
   pendingAction?: { kind: 'attack' | 'skill'; skillId?: string };
   enemyState?: EnemyStateJson;
 }
@@ -98,6 +102,31 @@ type SessionRow = {
 };
 
 const ACTION_PRIORITY: Record<string, number> = { defend: 20, item: 10, attack: 0, skill: 0 };
+
+function computeBattleAffixMults(userId: string): { dealt: number; taken: number } {
+  const mods = getEquippedCombatAffixMods(getDb(), userId);
+  return clampCombatAffixMultiplier(
+    1 + mods.damage_dealt_pct / 100 - mods.damage_dealt_down_pct / 100,
+    1 - mods.damage_taken_reduction_pct / 100 + mods.damage_taken_increase_pct / 100,
+  );
+}
+
+function resolveEquipmentRollSource(session: SessionRow, state: BattleState): AffixRollSource {
+  if (state.isRematch) return 'rematch_reward';
+  if (session.is_boss) return 'boss_reward';
+  if (session.is_raid) return 'raid_reward';
+  if (session.is_event_battle) return 'event_reward';
+  if (session.area_id?.includes('valhalla')) return 'valhalla_reward';
+  return 'battle_reward';
+}
+
+function grantBattleEquipmentDrop(userId: string, itemId: string, session: SessionRow, state: BattleState): void {
+  addItem(userId, itemId, 1, {
+    pending: true,
+    rollSource: resolveEquipmentRollSource(session, state),
+    valhallaOrRaid: session.is_raid === 1 || !!session.area_id?.includes('valhalla'),
+  });
+}
 
 export function getActiveBattle(userId: string) {
   return getDb().prepare(`SELECT * FROM battle_sessions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1`).get(userId);
@@ -158,6 +187,7 @@ function createBattleInternal(
   const id = uuid();
   const names = enemyState.enemies.map((e) => `${e.label}:${e.name}`).join(' / ');
   const threatLine = getThreatLabel(scaled.threatTier, monster.name);
+  const affixMults = computeBattleAffixMults(userId);
   const state: BattleState = {
     ...mergeStatusState(loadBattleStatusFromPlayer(userId)),
     defending: false, enemyBroken: false, breakRemainingHits: 0, playerBreakDamageMult: 1.25,
@@ -167,6 +197,8 @@ function createBattleInternal(
     combatScale: scaled,
     enemyState,
     isRematch,
+    affixDealtMult: affixMults.dealt,
+    affixTakenMult: affixMults.taken,
     log: tutorialBattle
       ? [formatBattleLine('info', names + 'が現れた。…最初の一歩。油断は禁物だ。')]
       : [
@@ -207,6 +239,8 @@ function parseState(json: string): BattleState {
     combatScale: s.combatScale,
     enemyState: s.enemyState,
     pendingAction: s.pendingAction,
+    affixDealtMult: s.affixDealtMult ?? 1,
+    affixTakenMult: s.affixTakenMult ?? 1,
   };
 }
 
@@ -322,12 +356,12 @@ function calcFleeRate(player: ReturnType<typeof requirePlayer>, monster: Monster
   return Math.max(0.2, Math.min(0.9, rate));
 }
 
-function calcDamage(atk: number, def: number, critRate: number, critDmg: number, multiplier: number, hitRate: number, bonusCrit = 0, bonusHit = 0): { hit: boolean; damage: number; crit: boolean } {
+function calcDamage(atk: number, def: number, critRate: number, critDmg: number, multiplier: number, hitRate: number, bonusCrit = 0, bonusHit = 0, affixDealtMult = 1): { hit: boolean; damage: number; crit: boolean } {
   if (!roll(hitRate + bonusHit)) return { hit: false, damage: 0, crit: false };
   const crit = roll(critRate + bonusCrit);
   let base = calcPhysicalDamage(atk, def, multiplier);
   if (crit) base = Math.floor(base * critDmg);
-  return { hit: true, damage: base, crit };
+  return { hit: true, damage: Math.max(1, Math.floor(base * affixDealtMult)), crit };
 }
 
 function skillPriority(skill: SkillRow): number {
@@ -575,7 +609,7 @@ function executePlayerActionLegacy(
   if (action === 'attack') {
     const mult = diff.playerDamage * (1 + state.atkBuff);
     const def = Math.floor(scale.defense * statusMods.enemyDefMult);
-    const result = calcDamage(player.attack, def, player.crit_rate, player.crit_damage, mult, diff.playerHitRate + state.hitBonus + statusMods.hitPenalty, 0, state.hitBonus);
+    const result = calcDamage(player.attack, def, player.crit_rate, player.crit_damage, mult, diff.playerHitRate + state.hitBonus + statusMods.hitPenalty, 0, state.hitBonus, state.affixDealtMult ?? 1);
     if (result.hit) {
       const wpnEl = getPlayerWeaponElement(userId);
       let dmg = applyElementDamage(result.damage, wpnEl, monster, (line) => pushLog(state, 'player_attack', line));
@@ -721,7 +755,7 @@ function applySkill(
     const mult = diff.playerDamage * skill.power * buffMult * aoeMult;
 
     for (let i = 0; i < hits; i++) {
-      const result = calcDamage(stat, def, player.crit_rate, player.crit_damage, mult / hits, diff.playerHitRate + (skill.hit_bonus ?? 0) + statusMods.hitPenalty, skill.crit_bonus ?? 0, state.hitBonus);
+      const result = calcDamage(stat, def, player.crit_rate, player.crit_damage, mult / hits, diff.playerHitRate + (skill.hit_bonus ?? 0) + statusMods.hitPenalty, skill.crit_bonus ?? 0, state.hitBonus, state.affixDealtMult ?? 1);
       if (result.hit) {
         let dmg = applyElementDamage(result.damage, skill.element, monRow ?? monster, (line) => pushLog(state, 'player_skill', line));
         dmg = applyPlayerBreakDamage(state, dmg);
@@ -788,7 +822,7 @@ function applyPhysicalAttack(
   const scale = target.combatScale;
   const mult = diff.playerDamage * (1 + state.atkBuff);
   const def = Math.floor(scale.defense * statusMods.enemyDefMult);
-  const result = calcDamage(player.attack, def, player.crit_rate, player.crit_damage, mult, diff.playerHitRate + state.hitBonus + statusMods.hitPenalty, 0, state.hitBonus);
+  const result = calcDamage(player.attack, def, player.crit_rate, player.crit_damage, mult, diff.playerHitRate + state.hitBonus + statusMods.hitPenalty, 0, state.hitBonus, state.affixDealtMult ?? 1);
   let hp = target.hp;
   let br = target.break;
   const monRow = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(target.monster_id) as MonsterRow;
@@ -901,7 +935,7 @@ function executeSingleEnemyTurn(
   }
   const resists = getPlayerElementResistances(player.user_id);
   const mit = applyPlayerElementResist(dmg, monster.element, resists);
-  dmg = mit.damage;
+  dmg = Math.max(1, Math.floor(mit.damage * (state.affixTakenMult ?? 1)));
   pHp -= dmg;
   pushLog(state, 'enemy_attack', `${formatEnemyDisplayName(enemy, partySize)}の攻撃${heavy ? '（強）' : ''}。\n　あなたに **${dmg}** ダメージ。`);
   if (mit.logText) pushLog(state, 'status', mit.logText);
@@ -955,7 +989,7 @@ function executeEnemyTurn(monster: MonsterRow, player: ReturnType<typeof require
   }
   const resists = getPlayerElementResistances(player.user_id);
   const mit = applyPlayerElementResist(dmg, monster.element, resists);
-  dmg = mit.damage;
+  dmg = Math.max(1, Math.floor(mit.damage * (state.affixTakenMult ?? 1)));
   pHp -= dmg;
   pushLog(state, 'enemy_attack', `${monster.name}の攻撃${heavy ? '（強）' : ''}。\n　あなたに **${dmg}** ダメージ。`);
   if (mit.logText) pushLog(state, 'status', mit.logText);
@@ -1097,7 +1131,7 @@ function resolveVictory(
         const slot = resolveEquipSlot();
         const eqId = pickEquipmentFromAreaPool(rewardPool, eqRarity, slot);
         if (eqId) {
-          addItem(userId, eqId, 1, { pending: true });
+          grantBattleEquipmentDrop(userId, eqId, session, state);
           dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(eqId) as { name: string }).name);
         }
       }
@@ -1122,7 +1156,7 @@ function resolveVictory(
       const slot = resolveEquipSlot();
       const eqId = pickEquipmentFromAreaPool(rewardPool, equipRarity, slot);
       if (eqId) {
-        addItem(userId, eqId, 1, { pending: true });
+        grantBattleEquipmentDrop(userId, eqId, session, state);
         dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(eqId) as { name: string }).name);
       }
     } else if (rewardPool.length && roll(0.35)) {

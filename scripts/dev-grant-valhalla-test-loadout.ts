@@ -21,6 +21,8 @@ import { unlockSubJob } from '../src/systems/jobProgressionSystem';
 import { getSelectableSubJobs, canStartTrial } from '../src/systems/jobProgressionSystem';
 import { getJobLevel } from '../src/systems/jobLevelSystem';
 import { setStoryFlag } from '../src/systems/storySystem';
+import { applyGodRollToInventoryRow } from '../src/systems/equipmentAffixSystem';
+import { getSortedEquippableRows, EQUIP_SELECT_PAGE_SIZE } from '../src/systems/equipmentSystem';
 import { nowIso } from '../src/types';
 
 export type Args = {
@@ -35,6 +37,7 @@ export type Args = {
   maxAwaken: boolean;
   unlockTrials: boolean;
   trialsUncleared: boolean;
+  godRollSsrPlusArmorAccessories: boolean;
   apply: boolean;
   verifyOnly: boolean;
 };
@@ -62,6 +65,7 @@ function parseArgs(argv: string[]): Args {
     maxAwaken: has('--max-awaken'),
     unlockTrials: has('--unlock-trials'),
     trialsUncleared: has('--trials-uncleared'),
+    godRollSsrPlusArmorAccessories: has('--god-roll-ssr-plus-armor-accessories'),
     apply: has('--apply'),
     verifyOnly: has('--verify'),
   };
@@ -126,7 +130,29 @@ export type EquipmentVerifyResult = {
   expectedPlayable: number;
   missingIds: string[];
   extraExcluded: string[];
+  weaponByRarity: Record<string, number>;
+  expectedWeaponByRarity: Record<string, number>;
+  missingWeapons: string[];
 };
+
+function countWeaponsByRarity(db: ReturnType<typeof getDb>, itemIds: string[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const id of itemIds) {
+    const row = db.prepare(`
+      SELECT i.rarity FROM items i JOIN equipment e ON e.item_id = i.id WHERE i.id = ? AND e.slot = 'weapon'
+    `).get(id) as { rarity: string } | undefined;
+    if (!row) continue;
+    out[row.rarity] = (out[row.rarity] ?? 0) + 1;
+  }
+  return out;
+}
+
+function getPlayableWeaponIds(db: ReturnType<typeof getDb>): string[] {
+  return getPlayableEquipmentIds(db).filter((id) => {
+    const row = db.prepare('SELECT slot FROM equipment WHERE item_id = ?').get(id) as { slot: string } | undefined;
+    return row?.slot === 'weapon';
+  });
+}
 
 export function verifyEquipmentInventory(db: ReturnType<typeof getDb>, userId: string): EquipmentVerifyResult {
   const playable = getPlayableEquipmentIds(db);
@@ -143,6 +169,9 @@ export function verifyEquipmentInventory(db: ReturnType<typeof getDb>, userId: s
   const weapons = ownedRows.filter((r) => r.slot === 'weapon').length;
   const armor = ownedRows.filter((r) => ['head', 'body', 'arms', 'legs', 'feet'].includes(r.slot)).length;
   const accessories = ownedRows.filter((r) => r.slot === 'accessory1' || r.slot === 'accessory2').length;
+  const ownedWeaponIds = ownedRows.filter((r) => r.slot === 'weapon').map((r) => r.item_id);
+  const playableWeapons = getPlayableWeaponIds(db);
+  const missingWeapons = playableWeapons.filter((id) => !owned.has(id));
 
   return {
     weapons,
@@ -152,11 +181,83 @@ export function verifyEquipmentInventory(db: ReturnType<typeof getDb>, userId: s
     expectedPlayable: playable.length,
     missingIds,
     extraExcluded,
+    weaponByRarity: countWeaponsByRarity(db, ownedWeaponIds),
+    expectedWeaponByRarity: countWeaponsByRarity(db, playableWeapons),
+    missingWeapons,
   };
+}
+
+function getEquipSelectVisibleIds(userId: string, slot: string, page: number): Set<number> {
+  const rows = getSortedEquippableRows(userId, slot as import('../src/types').EquipmentSlot);
+  const start = page * EQUIP_SELECT_PAGE_SIZE;
+  return new Set(rows.slice(start, start + EQUIP_SELECT_PAGE_SIZE).map((r) => r.id));
+}
+
+function printUiHiddenOnFirstPage(userId: string, slot: import('../src/types').EquipmentSlot): void {
+  const rows = getSortedEquippableRows(userId, slot);
+  const visible = getEquipSelectVisibleIds(userId, slot, 0);
+  const hidden = rows.filter((r) => !visible.has(r.id));
+  if (!hidden.length) {
+    console.log(`owned but hidden by UI (page 0 ${slot}): none`);
+    return;
+  }
+  console.log(`owned but hidden by UI (page 0 ${slot}, ${hidden.length} — use 次 ▶ for more):`);
+  for (const r of hidden.slice(0, 10)) {
+    console.log(`  ${r.id} / ${r.name} / ${r.rarity} / pagination`);
+  }
+  if (hidden.length > 10) console.log(`  … +${hidden.length - 10} more`);
+}
+
+function printGodRollVerify(db: ReturnType<typeof getDb>, userId: string): void {
+  const rows = db.prepare(`
+    SELECT pi.id, pi.affix_json, e.slot, i.rarity, i.name
+    FROM player_inventory pi
+    JOIN equipment e ON pi.item_id = e.item_id
+    JOIN items i ON pi.item_id = i.id
+    WHERE pi.user_id = ?
+      AND i.rarity IN ('SSR', 'UR')
+      AND e.slot IN ('head','body','arms','legs','feet','accessory1','accessory2')
+  `).all(userId) as Array<{ id: number; affix_json: string | null; slot: string; rarity: string; name: string }>;
+  let ok = 0;
+  let bad = 0;
+  for (const r of rows) {
+    const affixes = r.affix_json ? JSON.parse(r.affix_json) as Array<{ key: string; value: number; drawbackKey: string | null }> : [];
+    const atk = affixes.find((a) => a.key === 'attack_percent' && a.value === 7.0);
+    const dealt = affixes.find((a) => a.key === 'damage_dealt_percent' && a.value === 7.0);
+    const clean = affixes.every((a) => !a.drawbackKey);
+    if (atk && dealt && clean) ok++;
+    else bad++;
+  }
+  console.log(`god-roll SSR+ armor/accessories: ${ok} OK / ${bad} not matching / ${rows.length} total`);
+  const weaponAffix = db.prepare(`
+    SELECT COUNT(*) c FROM player_inventory pi
+    JOIN equipment e ON pi.item_id = e.item_id
+    WHERE pi.user_id = ? AND e.slot = 'weapon' AND pi.affix_json IS NOT NULL
+  `).get(userId) as { c: number };
+  console.log(`weapons with affix_json (should be 0): ${weaponAffix.c}`);
+  const srAffix = db.prepare(`
+    SELECT COUNT(*) c FROM player_inventory pi
+    JOIN items i ON pi.item_id = i.id
+    WHERE pi.user_id = ? AND i.rarity IN ('N','R','SR') AND pi.affix_json LIKE '%7.0%'
+  `).get(userId) as { c: number };
+  console.log(`SR- with 7.0% affix (should be 0 unless player rolled): ${srAffix.c}`);
 }
 
 function printEquipmentVerify(db: ReturnType<typeof getDb>, userId: string): void {
   const v = verifyEquipmentInventory(db, userId);
+  const playableWeapons = getPlayableWeaponIds(db).length;
+  console.log(`weapon playable total: ${playableWeapons}`);
+  console.log(`weapon owned: ${v.weapons}`);
+  console.log('weapon by rarity (owned / expected):');
+  for (const rarity of ['N', 'R', 'SR', 'SSR', 'UR', 'Uni', 'Src']) {
+    const o = v.weaponByRarity[rarity] ?? 0;
+    const e = v.expectedWeaponByRarity[rarity] ?? 0;
+    if (o || e) console.log(`  ${rarity}: ${o} / ${e}`);
+  }
+  console.log(`missing weapons: ${v.missingWeapons.length}`);
+  if (v.missingWeapons.length) console.log(`  ${v.missingWeapons.slice(0, 15).join(', ')}`);
+  console.log(`armor owned: ${v.armor}/90 (distinct item_id count)`);
+  console.log(`accessory owned: ${v.accessories}/11`);
   console.log(`equipment weapons/armor/accessories (distinct item_id): ${v.weapons}/${v.armor}/${v.accessories}`);
   console.log(`equipment total distinct: ${v.totalDistinct} / expected playable ${v.expectedPlayable}`);
   if (v.missingIds.length) {
@@ -167,6 +268,7 @@ function printEquipmentVerify(db: ReturnType<typeof getDb>, userId: string): voi
   if (v.extraExcluded.length) {
     console.warn(`WARN: legacy/excluded in inventory: ${v.extraExcluded.join(', ')}`);
   }
+  printUiHiddenOnFirstPage(userId, 'weapon');
   const accRaidOwned = ownedHas(db, userId, 'acc_raid_random');
   const accRaidPlayable = getPlayableEquipmentIds(db).includes('acc_raid_random');
   console.log(`acc_raid_random: playable=${accRaidPlayable ? 'YES' : 'NO'}, owned=${accRaidOwned ? 'YES' : 'NO'} (collection purpose, included when obtainable)`);
@@ -265,6 +367,19 @@ function applyChanges(db: ReturnType<typeof getDb>, args: Args): void {
   }
 
   recalculatePlayerStats(args.userId);
+
+  if (args.godRollSsrPlusArmorAccessories) {
+    const targets = db.prepare(`
+      SELECT pi.id FROM player_inventory pi
+      JOIN equipment e ON pi.item_id = e.item_id
+      JOIN items i ON pi.item_id = i.id
+      WHERE pi.user_id = ?
+        AND i.rarity IN ('SSR', 'UR')
+        AND e.slot IN ('head','body','arms','legs','feet','accessory1','accessory2')
+    `).all(args.userId) as Array<{ id: number }>;
+    for (const t of targets) applyGodRollToInventoryRow(db, t.id, args.userId);
+    recalculatePlayerStats(args.userId);
+  }
 }
 
 function printSummary(db: ReturnType<typeof getDb>, args: Args, label: string) {
@@ -346,10 +461,12 @@ function main() {
   console.log('- auto equip: NO');
   console.log('- legacy/excluded: excluded via equipmentClassification (wpn_unique_silence excluded)');
   console.log('- acc_raid_random: included when equipment audit current_obtainable=YES');
+  console.log(`- god-roll SSR+ armor/accessories: ${args.godRollSsrPlusArmorAccessories}`);
 
   if (args.verifyOnly) {
     console.log('\n## Verify (read-only)');
     printEquipmentVerify(db, args.userId);
+    if (args.godRollSsrPlusArmorAccessories) printGodRollVerify(db, args.userId);
     printJobUiVerify(args.userId);
     return;
   }
@@ -363,6 +480,7 @@ function main() {
   printSummary(db, args, 'After apply');
   console.log('\n## Post-apply verify');
   printEquipmentVerify(db, args.userId);
+  if (args.godRollSsrPlusArmorAccessories) printGodRollVerify(db, args.userId);
   printJobUiVerify(args.userId);
   console.log('\nAPPLY complete.');
 }

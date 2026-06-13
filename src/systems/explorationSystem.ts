@@ -118,7 +118,7 @@ export function exploreArea(userId: string, areaId: string): {
         const slot = resolveEquipSlot();
         const itemId = pickEquipmentFromAreaPool(pool, chestRoll.rarity, slot);
         if (itemId && canDropEquipment(userId, itemId, area.recommended_min_level)) {
-          addItem(userId, itemId, 1, { pending: true });
+          addItem(userId, itemId, 1, { pending: true, rollSource: 'chest' });
           const item = getDb().prepare('SELECT name FROM items WHERE id = ?').get(itemId) as { name: string };
           return { type: 'treasure', message: `${statusPrefix}${prefix}古い箱を見つけた。${item.name}を手に入れた。` };
         }
