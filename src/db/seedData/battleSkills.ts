@@ -104,7 +104,7 @@ export function ensureLegacySkillMp(db: Database.Database): void {
   }
   const updJob = db.prepare('UPDATE jobs SET mp_mod = ? WHERE name = ?');
   const jobMp: Record<string, number> = {
-    剣士: 5, 重騎士: -8, 狩人: 8, 魔術師: 22, 祈祷師: 18, 斥候: 3, 機工師: 8, 格闘士: -5,
+    剣士: 5, 重騎士: -8, 狩人: 8, 魔術師: 22, 祈祷師: 18, 斥候: 3, 機工師: 8, 格闘士: -5, 巡礼者: 10,
   };
   for (const [name, mp] of Object.entries(jobMp)) {
     updJob.run(mp, name);

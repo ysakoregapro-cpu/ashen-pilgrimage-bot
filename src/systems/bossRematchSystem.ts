@@ -1,17 +1,13 @@
 import { getDb } from '../db/database';
 import { createBattle, getActiveBattle } from './battleSystem';
+import { formatRematchBossListEntry, hasDefeatedMonster } from './bossEncounterSystem';
 import { REMATCH_MATERIAL_BOSSES } from '../db/seedData/forgeMaster';
 import { STORY_BOSS_MONSTERS } from '../db/seedData/storyData';
 import { VALHALLA_BOSS_MONSTER_IDS, VALHALLA_BOSS_REMATCH_META } from '../db/seedData/valhallaRewardMaster';
 
-export type BossRematchCategory = 'story' | 'material';
+export { hasDefeatedMonster };
 
-export function hasDefeatedMonster(userId: string, monsterId: string): boolean {
-  const row = getDb().prepare(`
-    SELECT COUNT(*) AS c FROM battle_sessions WHERE user_id = ? AND monster_id = ? AND status = 'victory'
-  `).get(userId, monsterId) as { c: number };
-  return row.c > 0;
-}
+export type BossRematchCategory = 'story' | 'material';
 
 export function getRematchableBosses(userId: string): Array<{ monsterId: string; name: string; category: BossRematchCategory; hint?: string }> {
   const out: Array<{ monsterId: string; name: string; category: BossRematchCategory; hint?: string }> = [];
@@ -74,9 +70,9 @@ export function formatRematchBossList(userId: string): string {
     return '再戦できるボスはまだない。\n強敵を一度倒すと、ここから再挑戦できる。';
   }
   const lines = bosses.map((b) => {
-    const tag = b.category === 'material' ? '素材' : '章';
-    const hint = b.hint ? `（${b.hint}）` : '';
-    return `・[${tag}] **${b.name}**${hint}`;
+    const block = formatRematchBossListEntry(b.monsterId, b.name);
+    const hint = b.hint ? `\n（${b.hint}）` : '';
+    return `・${block}${hint}`;
   });
-  return ['**ボス再戦** — 初回報酬なし・素材周回向け', '', ...lines].join('\n');
+  return ['**ボス再戦** — 初回報酬なし・素材周回向け', '', ...lines].join('\n\n');
 }

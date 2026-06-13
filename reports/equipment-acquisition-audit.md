@@ -1,6 +1,6 @@
 # Equipment Acquisition Audit (summary)
 
-Generated: 2026-06-12T22:35:38.583Z
+Generated: 2026-06-13T12:22:38.046Z
 
 > Phase2 audit + Phase2.1 completion checks via equipmentAcquisitionAudit
 
@@ -27,20 +27,20 @@ Generated: 2026-06-12T22:35:38.583Z
 - Kai: facility kai_src | manifest: /upgrade manifest
 
 ## 5. 全防具入手経路
-- Total: 101 | Obtainable: 101 | Unobtainable: 0
+- Total: 101 | Obtainable: 95 | Unobtainable: 6
 | slot | total | pool | shop | unobtainable |
 | --- | --- | --- | --- | --- |
-| head | 18 | 18 | 4 | 0 |
-| body | 18 | 17 | 1 | 0 |
-| arms | 18 | 18 | 3 | 0 |
-| legs | 18 | 18 | 3 | 0 |
-| feet | 18 | 18 | 3 | 0 |
+| head | 18 | 17 | 4 | 1 |
+| body | 18 | 16 | 1 | 1 |
+| arms | 18 | 17 | 3 | 1 |
+| legs | 18 | 17 | 3 | 1 |
+| feet | 18 | 17 | 3 | 1 |
 
 ## 6. 未配置防具セット
 - **set_iron_snow**: 5/5 in pools
 - **set_valhalla**: 5/5 in pools
 - **set_black_lamp**: 5/5 in pools
-- **set_old_king**: 5/5 in pools
+- **set_old_king**: 0/5 in pools
 
 ## 7. Phase2.1 completion
 - See reports/equipment-completion-audit.md

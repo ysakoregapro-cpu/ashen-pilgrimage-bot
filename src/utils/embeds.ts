@@ -68,7 +68,10 @@ export function battleEmbed(
   extraNote?: string,
 ): EmbedBuilder {
   const logText = log.slice(-5).join('\n\n') || '—';
-  const embed = baseEmbed(title === '技と術' || title === '所持品' ? title : '戦闘')
+  const panelTitle = title === '技と術' || title === '所持品' || title === '対象選択' || title === 'ボス戦' || title === 'ボス再戦'
+    ? title
+    : '戦闘';
+  const embed = baseEmbed(panelTitle)
     .setColor(COLORS.battle)
     .addFields(
       {
@@ -98,10 +101,14 @@ export function battleEmbedMulti(
   log: string[],
   extraNote?: string,
   partySize?: number,
+  bossBattle?: boolean,
 ): EmbedBuilder {
   const logText = log.slice(-5).join('\n\n') || '—';
+  const panelTitle = title === '対象選択' || title === '技と術' || title === '所持品' || title === 'ボス戦' || title === 'ボス再戦'
+    ? title
+    : '戦闘';
   const labeled = (partySize ?? enemies.filter((e) => e.is_alive !== false).length) > 1;
-  const embed = baseEmbed(title === '対象選択' || title === '技と術' || title === '所持品' ? title : '戦闘')
+  const embed = baseEmbed(panelTitle)
     .setColor(COLORS.battle)
     .addFields({
       name: '🔵 あなた',
@@ -111,7 +118,9 @@ export function battleEmbedMulti(
   for (const e of enemies) {
     if (e.is_alive === false) continue;
     embed.addFields({
-      name: labeled ? `🔴 ${e.label}: ${e.name}` : `🔴 ${e.name}`,
+      name: labeled
+        ? `🔴 ${bossBattle ? 'BOSS: ' : ''}${e.label}: ${e.name}`
+        : `🔴 ${bossBattle ? `BOSS: ${e.name}` : e.name}`,
       value: `HP ${hpBar(e.hp, e.max_hp)}\n${breakBar(e.break, e.break_max)}`,
       inline: true,
     });

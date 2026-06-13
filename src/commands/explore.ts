@@ -26,6 +26,10 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     await safeEdit(interaction, { embeds: [], components: [] });
     if (!channel) return;
     if (result.type === 'battle' && result.battleId) {
+      const { buildBossEncounterExplorePost } = await import('../systems/bossEncounterSystem');
+      if (result.bossEncounter && result.message) {
+        await channel.send(buildBossEncounterExplorePost(result.message));
+      }
       const reply = buildBattleReply(result.battleId, userId);
       if (reply) {
         await channel.send(reply);

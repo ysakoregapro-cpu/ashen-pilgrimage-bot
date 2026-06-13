@@ -1,0 +1,28 @@
+# Src Material Route Audit (Uni→Src Kai materials)
+
+Generated: 2026-06-13T12:30:17.229Z
+
+- Materials: 16 (expected 16)
+- NG routes: 0
+- Trigger rate: 0.28 → per-mat 1.75%
+
+| material_id | name | job_or_weapon_family | drop_source | drop_trigger_rate | selection_pool_size | effective_specific_rate | shop_available | exploration_available | normal_enemy_available | exchange_available | balance_note |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| mat_ash_fist_bone | 灰拳の骨片 | 格闘士 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_ash_mirror_fragment | 灰鏡の欠片 | 斥候 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_ash_star_magic_core | 灰星の魔核 | 魔術師 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_black_fox_clawmark | 黒狐の爪痕 | 格闘士 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_black_iron_powder_case | 黒鉄の火薬筒 | 機工師 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_deep_furnace_gear | 深層炉の歯車 | 機工師 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_echo_bowstring | 残響の弦糸 | 狩人 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_lampkeeper_holy_oil | 灯守の聖油 | 祈祷師 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_mist_lantern_stardust | 霧灯の星砂 | 魔術師 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_moon_arrowhead | 月弓の鏃 | 狩人 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_old_furnace_hammer_core | 古炉の鎚芯 | 重騎士 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_pilgrim_prayer_cloth | 巡礼祈祷布 | 祈祷師 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_shadowstep_black_thread | 影渡りの黒糸 | 斥候 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_silver_castle_core | 白銀の城核 | 重騎士 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_starfield_old_steel | 星原の古鋼 | 剣士 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+| mat_twilight_blade_shard | 黄昏の剣片 | 剣士 | mon_furnace_keeper | 0.28 | 16 | 1.75% | no | no | no | no | OK — furnace keeper only |
+
+All checks passed

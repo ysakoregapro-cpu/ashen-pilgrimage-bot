@@ -244,7 +244,7 @@ function inferPurpose(item: {
       shouldDropInRaidPool: false,
       sinkDescription: id.startsWith('mat_') ? '装備強化/作成素材' : '装備強化',
       risk: UNI_MAT_IDS.has(id) ? 'medium' : 'low',
-      notes: UNI_MAT_IDS.has(id) ? '再戦ドロップ' : '',
+      notes: UNI_MAT_IDS.has(id) ? '深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）' : '',
     };
   }
 
@@ -320,9 +320,9 @@ function inferPurpose(item: {
       shouldDropInNormalPool: false,
       shouldDropInBossPool: true,
       shouldDropInRaidPool: false,
-      sinkDescription: 'Uni/Kai変質（再戦）',
+      sinkDescription: 'Uni/Kai変質（深層炉前哨ボス）',
       risk: 'medium',
-      notes: '',
+      notes: '炉熱の番人のみ — 初回1個確定/再戦28%→16種',
     };
   }
 

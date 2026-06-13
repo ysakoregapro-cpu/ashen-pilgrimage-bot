@@ -5,8 +5,14 @@ import { SRC_FORGE_MATERIAL_ID, SRC_FORGE_MATERIAL_DROP_RATE } from '../db/seedD
 import { BOSS_VICTORY_MATERIAL_DROPS } from '../db/seedData/dropBalanceMaster';
 import { rollManaConsumableDrop } from '../db/seedData/manaConsumables';
 import {
-  REMATCH_MATERIAL_BOSSES, UNI_FORGE_DROP_RATE, SRC_FARM_MONSTER_IDS, PHASE2_UNI_MATERIAL_DROPS,
+  REMATCH_MATERIAL_BOSSES, UNI_FORGE_DROP_RATE, SRC_FARM_MONSTER_IDS,
 } from '../db/seedData/forgeMaster';
+import { rollUniSrcMaterialFromFurnaceKeeper, FURNACE_KEEPER_BOSS_ID } from './uniSrcMaterialDropSystem';
+import {
+  formatBossBattleEmbedTitle,
+  formatBossEnemyFieldName,
+  formatBossFirstVictoryHeader,
+} from './bossEncounterSystem';
 import { calcElementDamageMultiplier, applyElementToDamage, resolveAttackElement, getPlayerElementResistances, applyPlayerElementResist } from './elementSystem';
 import {
   applyStatusEffect, attemptApplyEnemyStatus, tickStatusEffects, isEnemyActionBlocked,
@@ -26,7 +32,7 @@ import { grantBattleJobExp, grantDirectBattleJobExp, getJobProgressText } from '
 import { grantValhallaBossRewards, isValhallaBossMonster } from './valhallaRewardSystem';
 import { rollValhallaExploreSeriesDrop } from './valhallaSeriesDropSystem';
 import { afterJobExpGranted } from './jobProgressionSystem';
-import { handleTrialVictory, isTrialBattleSession, parseTrialBaseJob } from './trialBattleSystem';
+import { isTrialBattleSession, parseTrialBaseJob, processTrialVictory } from './trialBattleSystem';
 import { roll, uuid, randomInt, weightedChoice } from '../utils/random';
 import {
   getAreaLootTier, rollBattleEquipmentRarity, resolveEquipSlot, pickEquipmentFromAreaPool,
@@ -191,6 +197,11 @@ function createBattleInternal(
   const names = enemyState.enemies.map((e) => `${e.label}:${e.name}`).join(' / ');
   const threatLine = getThreatLabel(scaled.threatTier, monster.name);
   const affixMults = computeBattleAffixMults(userId);
+  const bossIntro = isBoss
+    ? (isRematch
+      ? formatBattleLine('info', `🔴 BOSS再戦: ${monster.name}`)
+      : formatBattleLine('info', `🔴 BOSS: ${monster.name}`))
+    : null;
   const state: BattleState = {
     ...mergeStatusState(loadBattleStatusFromPlayer(userId)),
     defending: false, enemyBroken: false, breakRemainingHits: 0, playerBreakDamageMult: 1.25,
@@ -205,8 +216,9 @@ function createBattleInternal(
     log: tutorialBattle
       ? [formatBattleLine('info', names + 'が現れた。…最初の一歩。油断は禁物だ。')]
       : [
+        ...(bossIntro ? [bossIntro] : []),
         formatBattleLine('info', enemyState.partySize > 1 ? `${names}が現れた！` : monster.name + 'が現れた！'),
-        ...(threatLine && scaled.threatTier !== 'normal' ? [formatBattleLine('info', threatLine)] : []),
+        ...(threatLine && scaled.threatTier !== 'normal' && !isBoss ? [formatBattleLine('info', threatLine)] : []),
       ],
     tutorialBattle,
   };
@@ -1143,12 +1155,14 @@ function resolveVictory(
 
   if (isTrialBattleSession(session)) {
     const baseJob = parseTrialBaseJob(session);
-    const trialMsg = baseJob ? handleTrialVictory(userId, baseJob) : '試練に勝利した。';
+    const trialResult = baseJob
+      ? processTrialVictory(userId, baseJob)
+      : { message: '現身の試練を制した。', wasFirstClear: false, goldAwarded: 0, expAwarded: 1 };
     pushLog(state, 'info', '勝利。');
     return {
       done: true,
       status: 'victory' as BattleStatus,
-      message: `🔵 現身の試練に勝利した。\n\n${trialMsg}`,
+      message: `🔵 ${trialResult.message}`,
       sessionId,
       isRematch: false,
     };
@@ -1182,6 +1196,7 @@ function resolveVictory(
   addGold(userId, gold);
   // Pending rewards are confirmed on town return; battle victory keeps them pending until then
   const dropMsgs: string[] = [];
+  let kaiMaterialNames: string[] = [];
   const areaRow = session.area_id
     ? getDb().prepare('SELECT recommended_min_level, town_id FROM exploration_areas WHERE id = ?').get(session.area_id) as {
       recommended_min_level: number; town_id: string;
@@ -1225,13 +1240,6 @@ function resolveVictory(
         dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(matId) as { name: string }).name);
       }
     }
-    for (const drop of PHASE2_UNI_MATERIAL_DROPS) {
-      if (drop.monsterId !== session.monster_id) continue;
-      if (roll(drop.rate)) {
-        addItem(userId, drop.matId, 1, { pending: true });
-        dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(drop.matId) as { name: string }).name);
-      }
-    }
   } else {
     const equipRarity = rollBattleEquipmentRarity(threat, lootTier);
     if (equipRarity && rewardPool.length) {
@@ -1249,6 +1257,18 @@ function resolveVictory(
       const pick = weightedChoice(matPool.length ? matPool : rewardPool);
       addItem(userId, pick.item_id, 1, { pending: true });
       dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(pick.item_id) as { name: string }).name);
+    }
+  }
+  if (session.monster_id === FURNACE_KEEPER_BOSS_ID) {
+    const uniMatId = rollUniSrcMaterialFromFurnaceKeeper({ wasFirstKill: !!wasFirstKill, isRematch: !!state.isRematch });
+    if (uniMatId) {
+      const uniName = (getDb().prepare('SELECT name FROM items WHERE id = ?').get(uniMatId) as { name: string }).name;
+      addItem(userId, uniMatId, 1, { pending: true });
+      if (wasFirstKill && !state.isRematch) {
+        kaiMaterialNames = [uniName];
+      } else {
+        dropMsgs.push(uniName);
+      }
     }
   }
   if (session.is_boss || threat === 'boss') {
@@ -1291,12 +1311,17 @@ function resolveVictory(
   if (session.is_boss) incrementWeeklyProgress(userId, 'boss_kills');
   incrementWeeklyProgress(userId, 'explore_count');
 
+  const isFirstBossClear = session.is_boss === 1 && wasFirstKill && !state.isRematch;
   const lines: string[] = [];
   const battleTail = state.log.filter((l) => !l.includes('勝利') && !/打ち倒した|すべて倒した/.test(l)).slice(-4);
   if (battleTail.length) {
     lines.push('**戦闘の終わり**', ...battleTail, '');
   }
-  lines.push('🔵 ' + (es.partySize > 1 ? '敵をすべて倒した。' : monster.name + 'を倒した。'));
+  if (isFirstBossClear) {
+    lines.push(...formatBossFirstVictoryHeader(monster.name, kaiMaterialNames));
+  } else {
+    lines.push('🔵 ' + (es.partySize > 1 ? '敵をすべて倒した。' : monster.name + 'を倒した。'));
+  }
   lines.push('');
   lines.push('**得たもの**');
   lines.push(`・経験値 +${exp}`);
@@ -1304,7 +1329,10 @@ function resolveVictory(
     if (jr.expGained > 0) lines.push('・' + jr.jobName + '経験 +' + jr.expGained);
   }
   lines.push('・' + gold + 'G');
-  if (dropMsgs.length) lines.push('・' + dropMsgs.join('、'));
+  const dropLineItems = isFirstBossClear && kaiMaterialNames.length
+    ? dropMsgs.filter((d) => !kaiMaterialNames.includes(d))
+    : dropMsgs;
+  if (dropLineItems.length) lines.push('・' + dropLineItems.join('、'));
   lines.push('');
   if (levelResult.leveledUp && levelResult.levelUpMessage) {
     lines.push(levelResult.levelUpMessage);
@@ -1394,23 +1422,27 @@ export function buildBattleReply(battleId: string, userId: string) {
   }
   const enemyHp = getEnemyHpDisplay(display.session, display.state, display.monster);
   const playerHp = getPlayerBattleDisplay(display.session, display.player);
+  const isBoss = display.session.is_boss === 1;
+  const embedTitle = formatBossBattleEmbedTitle(isBoss, !!display.state.isRematch);
+  const enemyLabel = formatBossEnemyFieldName(display.monster.name, isBoss);
   const es = display.enemyState;
   if (es && es.partySize > 1) {
     return {
       embeds: [battleEmbedMulti(
-        '戦闘',
+        embedTitle,
         playerHp.hp, display.player.max_hp, playerHp.mp, display.player.max_mp,
         es.enemies.filter((e) => e.is_alive),
         display.state.log,
         undefined,
         es.partySize,
+        isBoss,
       )],
       components: battleButtons(battleId, display.session.can_flee === 1),
     };
   }
   return {
-    embeds: [battleEmbed(display.monster.name, playerHp.hp, display.player.max_hp, playerHp.mp, display.player.max_mp,
-      display.monster.name, enemyHp.current, enemyHp.max, display.session.enemy_break, display.monster.break_max, display.state.log)],
+    embeds: [battleEmbed(embedTitle, playerHp.hp, display.player.max_hp, playerHp.mp, display.player.max_mp,
+      enemyLabel, enemyHp.current, enemyHp.max, display.session.enemy_break, display.monster.break_max, display.state.log)],
     components: battleButtons(battleId, display.session.can_flee === 1),
   };
 }

@@ -4,10 +4,14 @@ import { ensurePhase2Seed } from '../src/db/seedData/phase2Seed';
 import { ensureMaterialsSeed } from '../src/db/seedData/materials';
 import { createPlayer, getPlayer } from '../src/systems/playerSystem';
 import { setStoryFlag } from '../src/systems/storySystem';
-import { canStartTrial, changeMainJob, isAdvancedJobUnlocked, recordAdvancedJobTrialVictory } from '../src/systems/jobProgressionSystem';
-import { startTrialBattle } from '../src/systems/trialBattleSystem';
+import {
+  canStartTrial, changeMainJob, isAdvancedJobUnlocked,
+} from '../src/systems/jobProgressionSystem';
+import { startTrialBattle, processTrialVictory } from '../src/systems/trialBattleSystem';
 import { getJobLevel } from '../src/systems/jobLevelSystem';
-import { ADVANCED_JOB_UNLOCK_LEVEL, JOB_TRIO_MAP } from '../src/db/seedData/jobProgressionMaster';
+import {
+  ADVANCED_JOB_UNLOCK_LEVEL, JOB_TRIO_MAP, TRIAL_REPEAT_CLEAR_GOLD,
+} from '../src/db/seedData/jobProgressionMaster';
 import { writeReport } from './audit/reportWriter';
 
 const TEST_USER = 'advanced-trial-flow-check-user';
@@ -25,7 +29,7 @@ function resetUser(db: ReturnType<typeof getDb>) {
 function ensureUser(db: ReturnType<typeof getDb>) {
   resetUser(db);
   createPlayer(TEST_USER, 'test-guild', 'TrialTest', 'test-channel');
-  db.prepare('UPDATE players SET main_job = ? WHERE user_id = ?').run(BASE_JOB, TEST_USER);
+  db.prepare('UPDATE players SET main_job = ?, gold = 1000 WHERE user_id = ?').run(BASE_JOB, TEST_USER);
   db.prepare(`
     INSERT INTO player_job_levels (user_id, job_name, job_level, job_exp, is_main, is_sub, unlocked_at, updated_at)
     VALUES (?, ?, ?, 0, 1, 0, datetime('now'), datetime('now'))
@@ -61,19 +65,22 @@ function main() {
   if (!ready.ok) issues.push(`条件達成でも開始不可: ${ready.reason}`);
   lines.push(`- 条件達成: ${ready.ok ? 'OK (開始可)' : `FAIL (${ready.reason})`}`);
 
+  const goldBefore = getPlayer(TEST_USER)!.gold;
   const start = startTrialBattle(TEST_USER, BASE_JOB);
   if (!start.ok || !start.battleId) issues.push(`試練開始失敗: ${start.message}`);
-  lines.push(`- startTrialBattle: ${start.ok ? `OK (${start.battleId})` : `FAIL (${start.message})`}`);
+  if (getPlayer(TEST_USER)!.gold !== goldBefore) issues.push('初回挑戦でGold消費');
+  lines.push(`- startTrialBattle(無料): ${start.ok && getPlayer(TEST_USER)!.gold === goldBefore ? 'OK' : 'FAIL'}`);
 
-  db.prepare('UPDATE battle_sessions SET status = ? WHERE user_id = ?').run('victory', TEST_USER);
-  const victoryMsg = recordAdvancedJobTrialVictory(TEST_USER, BASE_JOB);
+  const first = processTrialVictory(TEST_USER, BASE_JOB);
+  if (!first.wasFirstClear || first.goldAwarded !== 0) issues.push('初回クリア報酬不正');
+  lines.push(`- 初回クリア Gold0 EXP1: ${first.goldAwarded === 0 && first.expAwarded === 1 ? 'OK' : 'FAIL'}`);
+
   const unlockRow = db.prepare(`
     SELECT trial_cleared_at FROM player_advanced_job_unlocks
     WHERE user_id = ? AND advanced_job = ?
   `).get(TEST_USER, ADVANCED) as { trial_cleared_at: string | null } | undefined;
   if (!unlockRow?.trial_cleared_at) issues.push('勝利後 player_advanced_job_unlocks に記録されていない');
   lines.push(`- 勝利記録: ${unlockRow?.trial_cleared_at ? 'OK' : 'FAIL'}`);
-  lines.push(`  - message: ${victoryMsg}`);
 
   const baseLv = getJobLevel(TEST_USER, BASE_JOB)?.job_level ?? 0;
   const advLv = getJobLevel(TEST_USER, ADVANCED)?.job_level ?? 0;
@@ -86,8 +93,21 @@ function main() {
   lines.push(`- メイン選択: ${player?.main_job === ADVANCED ? 'OK' : `FAIL (${mainChange})`}`);
 
   const retry = canStartTrial(TEST_USER, BASE_JOB);
-  if (retry.ok) issues.push('解放済み上級職で再挑戦可になっている');
-  lines.push(`- 解放後再挑戦不可: ${retry.ok ? 'FAIL' : `OK (${retry.reason})`}`);
+  if (!retry.ok) issues.push(`解放後に再挑戦不可: ${retry.reason}`);
+  lines.push(`- 解放後再挑戦可: ${retry.ok ? 'OK' : `FAIL (${retry.reason})`}`);
+
+  const gBeforeRematch = getPlayer(TEST_USER)!.gold;
+  db.prepare('DELETE FROM battle_sessions WHERE user_id = ?').run(TEST_USER);
+  const rematch = startTrialBattle(TEST_USER, BASE_JOB);
+  if (!rematch.ok) issues.push(`再挑戦開始失敗: ${rematch.message}`);
+  if (getPlayer(TEST_USER)!.gold !== gBeforeRematch) issues.push('再挑戦開始でGold消費');
+  lines.push(`- 再挑戦無料: ${rematch.ok && getPlayer(TEST_USER)!.gold === gBeforeRematch ? 'OK' : 'FAIL'}`);
+
+  const repeat = processTrialVictory(TEST_USER, BASE_JOB);
+  if (repeat.wasFirstClear || repeat.goldAwarded !== TRIAL_REPEAT_CLEAR_GOLD) {
+    issues.push(`再クリア報酬不正: gold=${repeat.goldAwarded}`);
+  }
+  lines.push(`- 再クリア Gold${TRIAL_REPEAT_CLEAR_GOLD}: ${repeat.goldAwarded === TRIAL_REPEAT_CLEAR_GOLD ? 'OK' : 'FAIL'}`);
 
   lines.push('', '## Summary', issues.length ? `FAIL (${issues.length} issues)` : 'PASS', '');
   if (issues.length) {

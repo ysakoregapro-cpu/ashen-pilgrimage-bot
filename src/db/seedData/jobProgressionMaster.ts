@@ -27,6 +27,12 @@ export const TRIAL_ENEMY_NAMES: Record<string, string> = {
 export const SUB_JOB_UNLOCK_LEVEL = 20;
 export const ADVANCED_JOB_UNLOCK_LEVEL = 70;
 
+/** 現身の試練 — 2回目以降クリア時のGold報酬（挑戦料ではない） */
+export const TRIAL_REPEAT_CLEAR_GOLD = 250;
+
+/** 現身の試練 — 勝利時プレイヤーEXP（初回/再戦共通） */
+export const TRIAL_VICTORY_EXP = 1;
+
 export const UNI_JOB_MATERIALS: Record<string, { mat1: string; mat2: string; qty: number }> = {
   '剣士': { mat1: 'mat_twilight_blade_shard', mat2: 'mat_starfield_old_steel', qty: 2 },
   '重騎士': { mat1: 'mat_silver_castle_core', mat2: 'mat_old_furnace_hammer_core', qty: 2 },
@@ -38,24 +44,38 @@ export const UNI_JOB_MATERIALS: Record<string, { mat1: string; mat2: string; qty
   '格闘士': { mat1: 'mat_black_fox_clawmark', mat2: 'mat_ash_fist_bone', qty: 2 },
 };
 
-export const PHASE2_UNI_MATERIAL_DROPS: Array<{ matId: string; monsterId: string; rate: number; label: string }> = [
-  { matId: 'mat_twilight_blade_shard', monsterId: 'mon_ash_knight', rate: 0.18, label: '灰冠騎士再戦' },
-  { matId: 'mat_starfield_old_steel', monsterId: 'mon_night_shadow', rate: 0.20, label: '古道・星原系再戦' },
-  { matId: 'mat_silver_castle_core', monsterId: 'mon_silver_golem', rate: 0.18, label: '白銀鉱山系再戦' },
-  { matId: 'mat_old_furnace_hammer_core', monsterId: 'mon_furnace_keeper', rate: 0.15, label: '炉熱の番人再戦' },
-  { matId: 'mat_echo_bowstring', monsterId: 'mon_tree_guardian', rate: 0.18, label: '霧深き森系再戦' },
-  { matId: 'mat_moon_arrowhead', monsterId: 'mon_moon_observer', rate: 0.18, label: '月下の観測者再戦' },
-  { matId: 'mat_mist_lantern_stardust', monsterId: 'mon_tree_guardian', rate: 0.18, label: '霧深き森系再戦' },
-  { matId: 'mat_ash_star_magic_core', monsterId: 'mon_moon_observer', rate: 0.15, label: '星落ち観測系再戦' },
-  { matId: 'mat_lampkeeper_holy_oil', monsterId: 'mon_black_lantern_wraith', rate: 0.18, label: '黒灯系再戦' },
-  { matId: 'mat_pilgrim_prayer_cloth', monsterId: 'mon_silent_guardian', rate: 0.18, label: '沈黙修道院系再戦' },
-  { matId: 'mat_ash_mirror_fragment', monsterId: 'mon_masked_thief', rate: 0.18, label: '忘却地下市系再戦' },
-  { matId: 'mat_shadowstep_black_thread', monsterId: 'mon_black_lantern_wraith', rate: 0.18, label: '黒灯系再戦' },
-  { matId: 'mat_deep_furnace_gear', monsterId: 'mon_furnace_keeper', rate: 0.18, label: '深層炉系再戦' },
-  { matId: 'mat_black_iron_powder_case', monsterId: 'mon_black_iron_exec', rate: 0.18, label: '赤灰・深層炉系再戦' },
-  { matId: 'mat_black_fox_clawmark', monsterId: 'mon_black_lantern_wraith', rate: 0.18, label: '黒灯・黒狐系再戦' },
-  { matId: 'mat_ash_fist_bone', monsterId: 'mon_black_iron_exec', rate: 0.18, label: '竜骨・赤灰系再戦' },
-];
+/** 深層炉前哨基地 — Uni→Src（Kai伝承）素材の唯一ドロップ源 */
+export const FURNACE_KEEPER_BOSS_ID = 'mon_furnace_keeper';
+
+/** 再戦時: 素材ドロップ発生率 → 発生時は16種から均等1個 */
+export const UNI_SRC_DROP_TRIGGER_RATE = 0.28;
+
+export const UNI_SRC_MATERIAL_IDS: readonly string[] = (() => {
+  const ids = new Set<string>();
+  for (const req of Object.values(UNI_JOB_MATERIALS)) {
+    ids.add(req.mat1);
+    ids.add(req.mat2);
+  }
+  return [...ids].sort();
+})();
+
+export const UNI_SRC_MATERIAL_JOB_MAP: Record<string, string> = (() => {
+  const map: Record<string, string> = {};
+  for (const [job, req] of Object.entries(UNI_JOB_MATERIALS)) {
+    map[req.mat1] = job;
+    map[req.mat2] = job;
+  }
+  return map;
+})();
+
+/** 監査用 — 実行時は uniSrcMaterialDropSystem の pooled drop を使用 */
+export const PHASE2_UNI_MATERIAL_DROPS: Array<{ matId: string; monsterId: string; rate: number; label: string }> =
+  UNI_SRC_MATERIAL_IDS.map((matId) => ({
+    matId,
+    monsterId: FURNACE_KEEPER_BOSS_ID,
+    rate: UNI_SRC_DROP_TRIGGER_RATE / UNI_SRC_MATERIAL_IDS.length,
+    label: '深層炉前哨・炉熱の番人',
+  }));
 
 export const SRC_FORGE_GOLD_COST = 5000;
 export const SRC_FORGE_ECHO_QTY = 3;

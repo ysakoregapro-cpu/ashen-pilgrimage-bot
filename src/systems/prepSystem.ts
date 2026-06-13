@@ -9,9 +9,10 @@ import {
 } from './equipmentLabelSystem';
 import { recalculatePlayerStats, requirePlayer } from './playerSystem';
 import { buildActiveSetBonusSection } from './setBonusDisplaySystem';
+import { formatEquippedAffixProfileBlock } from './equipmentAffixSystem';
 import { buildEquipChangeConfirmRows } from './equipConfirmSystem';
 import { buildEquipmentDetailView } from './itemDetailSystem';
-import { prependConfirmNavigation } from '../utils/navigationComponents';
+import { prependConfirmNavigation, appendSelectNavigation } from '../utils/navigationComponents';
 import type { UiPayload } from '../utils/townUi';
 import { ButtonBuilder, ButtonStyle, ActionRowBuilder, type MessageActionRowComponentBuilder } from 'discord.js';
 import { safeSelectMenu, selectMenu } from '../utils/embeds';
@@ -177,7 +178,7 @@ export function buildPrepSlotSelectComponents(
   }
   const detailRow = safeSelectMenu('detail:inv', '詳細を見る', detailOpts);
   if (detailRow) components.push(detailRow);
-  return components;
+  return appendSelectNavigation(components, 'prep', slot);
 }
 
 /** 装備候補選択後の確認 UI（compare + confirm nav） */
@@ -200,7 +201,7 @@ export function formatCurrentEquipment(userId: string): string {
     }
     return `**${SLOT_LABELS[s]}**: —`;
   }).join('\n');
-  return [body, '', buildActiveSetBonusSection(userId)].join('\n');
+  return [body, '', buildActiveSetBonusSection(userId), '', '**装備厳選効果**', formatEquippedAffixProfileBlock(userId)].join('\n');
 }
 
 export { PREP_SLOTS };

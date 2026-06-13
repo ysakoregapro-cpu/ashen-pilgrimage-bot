@@ -1,7 +1,7 @@
 import { ButtonStyle } from 'discord.js';
 import { getDb } from '../db/database';
 import { baseEmbed } from '../utils/embeds';
-import { buildConfirmNavigationRows, upgradeBackPayload } from '../utils/navigationComponents';
+import { buildConfirmNavigationRows, upgradeBackPayload, appendSelectNavigation } from '../utils/navigationComponents';
 import type { UpgradeActionKind } from '../utils/nextActionButtons';
 import type { UiPayload } from '../utils/townUi';
 import {
@@ -188,11 +188,12 @@ export function buildUpgradeConfirmPayload(
 
 export function buildUpgradeSelectPayload(userId: string, action: UpgradeActionKind, facilityId: string): UiPayload {
   const menuOpts = getUpgradeSelectMenuOptions(userId, action);
+  const rows = menuOpts.length ? [
+    selectMenu(`upgrade:${action}`, '装備を選ぶ', menuOpts),
+    detailOpenButton('upgrade'),
+  ] : [];
   return {
     embeds: [townHubEmbed('工房', `${CONFIRM_LABELS[action].replace(/する$/, '')}する装備を選んでください`)],
-    components: menuOpts.length ? [
-      selectMenu(`upgrade:${action}`, '装備を選ぶ', menuOpts),
-      detailOpenButton('upgrade'),
-    ] : [],
+    components: appendSelectNavigation(rows, 'upgrade', upgradeBackPayload(action, facilityId)),
   };
 }

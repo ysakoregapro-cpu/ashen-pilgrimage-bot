@@ -9,9 +9,11 @@ export function applyTrialDefeat(userId: string): string {
   const player = requirePlayer(userId);
   const returnTown = player.last_safe_town_id || player.current_town_id;
   setPlayerTown(userId, returnTown);
-  getDb().prepare('UPDATE players SET hp = 1, updated_at = ? WHERE user_id = ?').run(nowIso(), userId);
+  if (player.hp <= 0) {
+    getDb().prepare('UPDATE players SET hp = 1, updated_at = ? WHERE user_id = ?').run(nowIso(), userId);
+  }
   const town = getDb().prepare('SELECT name FROM towns WHERE id = ?').get(returnTown) as { name: string } | undefined;
-  return `現身の試練に敗れた…\n${town?.name ?? '安全な町'}へ戻った。（HP1・軽微なペナルティ）\n再挑戦できる。`;
+  return `現身の試練に敗れた…\n${town?.name ?? '安全な町'}へ戻った。\n所持金・装備・戦利品に影響はない。再挑戦できる。`;
 }
 
 export function applyDefeat(userId: string, isBoss: boolean, _areaId: string | null): string {
@@ -61,6 +63,7 @@ function worsenEquipment(userId: string, steps: number): void {
   `).all(userId) as Array<{ inventory_id: number; durability_state: DurabilityState }>;
 
   for (const eq of equipped) {
+    // 各部位50%で1段階（ボス敗北時はsteps=2で最大2段階）劣化
     if (Math.random() > 0.5) continue;
     const idx = DURABILITY_ORDER.indexOf(eq.durability_state);
     const newIdx = Math.min(DURABILITY_ORDER.length - 1, idx + steps);

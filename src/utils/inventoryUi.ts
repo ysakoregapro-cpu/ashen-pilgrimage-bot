@@ -9,6 +9,7 @@ import { baseEmbed, selectMenu } from './embeds';
 import type { UiPayload } from './townUi';
 import { inventorySummaryEmbed } from './townUi';
 import { nextActionButtons } from './nextActionButtons';
+import { appendSelectNavigation } from './navigationComponents';
 import {
   formatOwnedEquipmentDescription,
   formatOwnedEquipmentLabel,
@@ -240,13 +241,10 @@ export function buildInventoryPickView(userId: string, page = 0, category: Inven
 
   return {
     embeds: [baseEmbed('所持品の詳細', '品を選ぶと性能・入手・用途を確認できます。')],
-    components: buildInventoryComponents(
-      userId,
-      page,
-      category,
-      'detail:inv',
-      '詳細を見る品',
-      nextActionButtons('inventory'),
+    components: appendSelectNavigation(
+      buildInventoryComponents(userId, page, category, 'detail:inv', '詳細を見る品', []),
+      'detail',
+      'inventory',
     ),
   };
 }

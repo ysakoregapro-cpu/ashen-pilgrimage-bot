@@ -5,9 +5,11 @@ import { ensurePhase2Seed } from '../src/db/seedData/phase2Seed';
 import { ensureMasterDataSeed } from '../src/db/seedData/masterDataSeed';
 import { createPlayer, getPlayer } from '../src/systems/playerSystem';
 import { addItem } from '../src/systems/inventorySystem';
-import { buildAreaDetailView } from '../src/systems/townActionSystem';
-import { buildUpgradeConfirmPayload } from '../src/systems/upgradeConfirmSystem';
+import { buildAreaDetailView, buildExploreList, buildTravelList } from '../src/systems/townActionSystem';
+import { buildUpgradeConfirmPayload, buildUpgradeSelectPayload } from '../src/systems/upgradeConfirmSystem';
 import { buildEquipNoneConfirmPayload, buildEquipChangeConfirmRows } from '../src/systems/equipConfirmSystem';
+import { buildEquipSlotSelectView } from '../src/systems/equipmentSystem';
+import { buildInventoryPickView } from '../src/utils/inventoryUi';
 import { buildNavBackPayload } from '../src/systems/navHandlerSystem';
 import { nextActionButtons } from '../src/utils/nextActionButtons';
 import {
@@ -59,6 +61,17 @@ function main() {
     createPlayer(TEST_USER, 'guild-nav-check', 'NavCheck', 'ch-nav');
   }
 
+  const exploreList = buildExploreList(TEST_USER);
+  checkComponents('explore list select', exploreList.components as ActionRowBuilder<MessageActionRowComponentBuilder>[]);
+  const exploreListLabels = buttonLabels(exploreList.components as ActionRowBuilder<MessageActionRowComponentBuilder>[]);
+  assert(exploreListLabels.includes('ひとつ戻る'), 'explore list missing back');
+  assert(exploreListLabels.includes('街に戻る'), 'explore list missing town');
+
+  const travelList = buildTravelList(TEST_USER);
+  checkComponents('travel list select', travelList.components as ActionRowBuilder<MessageActionRowComponentBuilder>[]);
+  const travelLabels = buttonLabels(travelList.components as ActionRowBuilder<MessageActionRowComponentBuilder>[]);
+  assert(travelLabels.includes('ひとつ戻る') || travelLabels.includes('街に戻る'), 'travel list missing nav');
+
   const areaView = buildAreaDetailView(TEST_USER, 'area_star_outskirts');
   checkComponents('explore area detail', areaView.components as ActionRowBuilder<MessageActionRowComponentBuilder>[]);
   const exploreLabels = buttonLabels(areaView.components as ActionRowBuilder<MessageActionRowComponentBuilder>[]);
@@ -79,6 +92,12 @@ function main() {
   getDb().prepare('UPDATE player_inventory SET upgrade_level = 1 WHERE id = ?').run(inv.id);
 
   for (const action of ['enhance', 'repair', 'awaken'] as const) {
+    const selectPayload = buildUpgradeSelectPayload(TEST_USER, action, 'blacksmith_starfield');
+    checkComponents(`upgrade ${action} select`, selectPayload.components as ActionRowBuilder<MessageActionRowComponentBuilder>[]);
+    const selectLabels = buttonLabels(selectPayload.components as ActionRowBuilder<MessageActionRowComponentBuilder>[]);
+    assert(selectLabels.includes('ひとつ戻る'), `${action} select missing back`);
+    assert(selectLabels.includes('街に戻る'), `${action} select missing town`);
+
     const payload = buildUpgradeConfirmPayload(TEST_USER, action, inv.id, 'blacksmith_starfield');
     checkComponents(`upgrade ${action} confirm`, payload.components as ActionRowBuilder<MessageActionRowComponentBuilder>[]);
     const labels = buttonLabels(payload.components as ActionRowBuilder<MessageActionRowComponentBuilder>[]);
@@ -91,6 +110,14 @@ function main() {
   const noneLabels = buttonLabels(nonePayload.components as ActionRowBuilder<MessageActionRowComponentBuilder>[]);
   assert(noneLabels.includes('装備を外す'), 'equip none missing confirm');
   assert(noneLabels.includes('ひとつ戻る'), 'equip none missing back');
+
+  const equipView = buildEquipSlotSelectView(TEST_USER, 'weapon');
+  checkComponents('equip slot select', equipView.components);
+  assert(buttonLabels(equipView.components).includes('街に戻る'), 'equip select missing town');
+
+  const invPick = buildInventoryPickView(TEST_USER);
+  checkComponents('inventory detail pick', invPick.components as ActionRowBuilder<MessageActionRowComponentBuilder>[]);
+  assert(buttonLabels(invPick.components as ActionRowBuilder<MessageActionRowComponentBuilder>[]).includes('街に戻る'), 'inv pick missing town');
 
   const equipNav = buildEquipChangeConfirmRows(inv.id, 'weapon', 'slash');
   checkComponents('equip change confirm rows', equipNav);

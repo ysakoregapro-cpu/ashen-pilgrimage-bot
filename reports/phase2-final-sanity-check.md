@@ -1,6 +1,6 @@
 # Phase2 Final Sanity Check
 
-Generated: 2026-06-13T11:44:36.780Z
+Generated: 2026-06-13T13:34:04.208Z
 
 ## Required files
 - ✓ src/systems/jobUiSystem.ts
@@ -17,6 +17,25 @@ Generated: 2026-06-13T11:44:36.780Z
 - ✓ scripts/job-sub-ui-check.ts
 - ✓ scripts/job-ui-entry-check.ts
 - ✓ scripts/equipment-effective-stat-display-check.ts
+- ✓ scripts/drop-pool-probability-audit.ts
+- ✓ scripts/exploration-reward-probability-audit.ts
+- ✓ scripts/rare-route-exclusivity-audit.ts
+- ✓ scripts/src-material-route-audit.ts
+- ✓ scripts/navigation-back-route-audit.ts
+- ✓ scripts/navigation-back-flow-check.ts
+- ✓ scripts/boss-encounter-flow-audit.ts
+- ✓ scripts/equipped-affix-profile-check.ts
+- ✓ scripts/equipped-affix-summary-audit.ts
+- ✓ scripts/mp-efficiency-all-jobs-audit.ts
+- ✓ scripts/skill-mp-cost-design-audit.ts
+- ✓ scripts/job-skill-rotation-mp-audit.ts
+- ✓ scripts/magic-job-mp-balance-audit.ts
+- ✓ scripts/inn-pricing-progression-check.ts
+- ✓ scripts/trial-battle-reward-audit.ts
+- ✓ scripts/death-penalty-audit.ts
+- ✓ scripts/skill-mp-efficiency-audit.ts
+- ✓ scripts/job-mp-sustain-audit.ts
+- ✓ scripts/inn-price-progression-audit.ts
 - ✓ scripts/weapon-effective-balance-summary.ts
 - ✓ scripts/weapon-role-stat-map-check.ts
 - ✓ scripts/game-balance-overview-check.ts
@@ -32,9 +51,20 @@ Generated: 2026-06-13T11:44:36.780Z
 - job UI entry: OK
 - safe select menu: OK
 - Uni material drops: OK
+- town loot no_drop: OK
+- select nav helper: OK
+- boss encounter system: OK
+- boss explore filter: OK
 - effective stat display: OK
 - equipmentEffectiveStats: OK
 - weapon role map: OK
+- affix profile display: OK
+- affix profile labels: OK
+- affix summary builder: OK
+- trial repeat clear gold: OK
+- trial victory processor: OK
+- no mage 15% mp discount: OK
+- mp cost design audit: OK
 
 ## Dangerous file check
 PASS — no matches

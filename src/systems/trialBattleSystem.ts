@@ -1,7 +1,9 @@
 import { getDb } from '../db/database';
-import { requirePlayer, recalculatePlayerStats } from './playerSystem';
+import { requirePlayer, recalculatePlayerStats, addGold, addExp, healPlayer } from './playerSystem';
 import { createBattle } from './battleSystem';
-import { JOB_TRIO_MAP, TRIAL_ENEMY_NAMES } from '../db/seedData/jobProgressionMaster';
+import {
+  JOB_TRIO_MAP, TRIAL_ENEMY_NAMES, TRIAL_REPEAT_CLEAR_GOLD, TRIAL_VICTORY_EXP,
+} from '../db/seedData/jobProgressionMaster';
 import { canStartTrial, isAdvancedJobUnlocked, recordAdvancedJobTrialVictory } from './jobProgressionSystem';
 import { isUserBlockedFromTrial } from './jobUiSystem';
 
@@ -56,11 +58,49 @@ export function startTrialBattle(userId: string, baseJob: string): { ok: boolean
   };
 }
 
-export function handleTrialVictory(userId: string, baseJob: string): string {
-  if (isAdvancedJobUnlocked(userId, JOB_TRIO_MAP[baseJob]?.advanced ?? '')) {
-    return '既に上級職は解放済みです。';
+export type TrialVictoryResult = {
+  message: string;
+  wasFirstClear: boolean;
+  goldAwarded: number;
+  expAwarded: number;
+};
+
+export function processTrialVictory(userId: string, baseJob: string): TrialVictoryResult {
+  const advanced = JOB_TRIO_MAP[baseJob]?.advanced ?? '';
+  const wasFirstClear = !!advanced && !isAdvancedJobUnlocked(userId, advanced);
+
+  if (wasFirstClear) {
+    recordAdvancedJobTrialVictory(userId, baseJob);
   }
-  return recordAdvancedJobTrialVictory(userId, baseJob);
+
+  healPlayer(userId, 1);
+  addExp(userId, TRIAL_VICTORY_EXP);
+
+  const goldAwarded = wasFirstClear ? 0 : TRIAL_REPEAT_CLEAR_GOLD;
+  if (goldAwarded > 0) addGold(userId, goldAwarded);
+
+  const lines = ['現身の試練を制した。'];
+  if (wasFirstClear) {
+    lines.push('対応する力が解放された。');
+    lines.push(`・経験値 +${TRIAL_VICTORY_EXP}`);
+    lines.push('HPとMPが回復した。');
+  } else {
+    lines.push(`・経験値 +${TRIAL_VICTORY_EXP}`);
+    lines.push(`・${goldAwarded}G`);
+    lines.push('HPとMPが回復した。');
+  }
+
+  return {
+    message: lines.join('\n'),
+    wasFirstClear,
+    goldAwarded,
+    expAwarded: TRIAL_VICTORY_EXP,
+  };
+}
+
+/** @deprecated use processTrialVictory */
+export function handleTrialVictory(userId: string, baseJob: string): string {
+  return processTrialVictory(userId, baseJob).message;
 }
 
 export function isTrialBattleSession(session: { trial_type?: string | null }): boolean {
@@ -75,8 +115,8 @@ export function getTrialBaseJobsForMenu(userId: string): Array<{ baseJob: string
   return Object.keys(JOB_TRIO_MAP).map((baseJob) => ({
     baseJob,
     label: TRIAL_ENEMY_NAMES[baseJob] ?? baseJob,
-    status: canStartTrial(userId, baseJob).ok ? '挑戦可' : (
-      isAdvancedJobUnlocked(userId, JOB_TRIO_MAP[baseJob]!.advanced) ? '解放済' : '条件未達'
+    status: isAdvancedJobUnlocked(userId, JOB_TRIO_MAP[baseJob]!.advanced) ? '再挑戦可' : (
+      canStartTrial(userId, baseJob).ok ? '挑戦可' : '条件未達'
     ),
   }));
 }

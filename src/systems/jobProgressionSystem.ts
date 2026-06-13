@@ -92,10 +92,6 @@ export function afterJobExpGranted(userId: string, jobName: string): string[] {
 
 export function canStartTrial(userId: string, baseJob: string): { ok: boolean; reason?: string } {
   if (!JOB_TRIO_MAP[baseJob]) return { ok: false, reason: 'この職能には現身の試練がありません。' };
-  const advanced = JOB_TRIO_MAP[baseJob]!.advanced;
-  if (isAdvancedJobUnlocked(userId, advanced)) {
-    return { ok: false, reason: `「${advanced}」は既に解放済みです。` };
-  }
   const row = getJobLevel(userId, baseJob);
   if (!row || row.job_level < ADVANCED_JOB_UNLOCK_LEVEL) {
     return { ok: false, reason: `${baseJob}のJobLv${ADVANCED_JOB_UNLOCK_LEVEL}以上が必要です。（現在 Lv${row?.job_level ?? 0}）` };
@@ -110,7 +106,7 @@ export function getTrialStatusText(userId: string, baseJob: string): string {
   const check = canStartTrial(userId, baseJob);
   const advanced = JOB_TRIO_MAP[baseJob]?.advanced ?? '—';
   if (isAdvancedJobUnlocked(userId, advanced)) {
-    return `✅ ${advanced} — 解放済み`;
+    return check.ok ? `✅ ${advanced} — 解放済（再挑戦可）` : `✅ ${advanced} — 解放済`;
   }
   if (!check.ok) return `🔒 ${advanced} — ${check.reason}`;
   return `⚔ ${advanced} — 現身の試練に挑める`;

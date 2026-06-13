@@ -48,9 +48,13 @@ export { buildPostExplore, buildPostVictory, buildPostDefeat, buildPostFled, bui
 async function runExploreAction(interaction: ButtonInteraction, userId: string, areaId: string): Promise<void> {
   const { handleExploreSelect } = await import('../commands/explore');
   const { buildPostExplore } = await import('../systems/townActionSystem');
+  const { buildBossEncounterExplorePost } = await import('../systems/bossEncounterSystem');
   const { buildBattleReply } = await import('../systems/battleSystem');
   const result = await handleExploreSelect(userId, areaId);
   if (result.type === 'battle' && result.battleId) {
+    if (result.bossEncounter && result.message) {
+      await sendJourneyLog(interaction, buildBossEncounterExplorePost(result.message));
+    }
     const reply = buildBattleReply(result.battleId, userId);
     if (reply) {
       await sendJourneyLog(interaction, reply);
@@ -556,13 +560,14 @@ async function handleFacilityResult(
     }
     case 'boss_rematch_select': {
       const { getRematchableBosses } = await import('../systems/bossRematchSystem');
+      const { formatRematchSelectDescription } = await import('../systems/bossEncounterSystem');
       const bosses = getRematchableBosses(userId);
       await sendPanelAfterAction(interaction, userId, {
         embeds: [townHubEmbed(facilityName, result.message)],
         components: [selectMenu('rematch:boss', '再戦するボス', bosses.slice(0, 25).map((b) => ({
           label: b.name,
           value: b.monsterId,
-          description: b.category === 'material' ? '素材' : '章ボス',
+          description: formatRematchSelectDescription(b.monsterId),
         })))],
       });
       break;
@@ -631,10 +636,11 @@ async function handleShopMarketPrep(
     return;
   }
   if (result.type === 'shop_buy') {
+    const { appendSelectNavigation } = await import('../utils/navigationComponents');
     const catalog = getShopCatalog(town?.id ?? 'start_starfield').slice(0, 25);
     await sendPanelAfterAction(interaction, userId, {
       embeds: [townHubEmbed(getFacilityName(facId), result.message)],
-      components: [
+      components: appendSelectNavigation([
         selectMenu('shop:buy', '品を選ぶ', catalog.map((c) => ({
           label: c.name, value: c.item_id, description: `${c.buy_price}G`,
         }))),
@@ -642,11 +648,12 @@ async function handleShopMarketPrep(
           label: c.name, value: c.item_id, description: `${c.buy_price}G [${c.rarity}]`.slice(0, 100),
         }))),
         detailOpenButton('shop_buy'),
-      ],
+      ], 'shop', `buy:${facId}`),
     });
     return;
   }
   if (result.type === 'shop_sell') {
+    const { appendSelectNavigation } = await import('../utils/navigationComponents');
     const items = getSellableInventory(userId);
     if (!items.length) {
       await sendJourneyLog(interaction, {
@@ -657,7 +664,7 @@ async function handleShopMarketPrep(
     }
     await sendPanelAfterAction(interaction, userId, {
       embeds: [townHubEmbed(getFacilityName(facId), result.message)],
-      components: [
+      components: appendSelectNavigation([
         selectMenu('shop:sell', '売る品を選ぶ', items.slice(0, 25).map((i) => ({
           label: i.name, value: String(i.id), description: `[${i.rarity}] x${i.quantity}`,
         }))),
@@ -665,7 +672,7 @@ async function handleShopMarketPrep(
           label: i.name, value: String(i.id), description: i.rarity,
         }))),
         detailOpenButton('shop_sell'),
-      ],
+      ], 'shop', `sell:${facId}`),
     });
     return;
   }

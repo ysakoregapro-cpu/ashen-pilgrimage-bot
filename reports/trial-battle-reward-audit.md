@@ -1,0 +1,21 @@
+# trial-battle-reward-audit
+
+Generated: 2026-06-13T13:20:01.819Z
+
+## Summary
+
+- fails: 0
+- warns: 0
+
+| check | status | detail |
+| --- | --- | --- |
+| first_start_gold_cost | OK | 500 |
+| first_clear_gold | OK | 0 |
+| first_clear_exp | OK | 1 |
+| first_clear_heal | OK | 108/108 |
+| rematch_start_gold_cost | OK | 500 |
+| repeat_clear_gold | OK | 250 |
+| repeat_clear_exp | OK | 1 |
+| defeat_no_durability | OK | 0->0 |
+| defeat_no_gold_loss | OK | 300 |
+| rematch_allowed | OK |  |

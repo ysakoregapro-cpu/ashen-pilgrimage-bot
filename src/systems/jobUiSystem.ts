@@ -17,6 +17,7 @@ import {
   JOB_TRIO_MAP,
   SUB_JOB_UNLOCK_LEVEL,
   TRIAL_ENEMY_NAMES,
+  TRIAL_REPEAT_CLEAR_GOLD,
   getBaseJobForAdvanced,
 } from '../db/seedData/jobProgressionMaster';
 import {
@@ -304,12 +305,28 @@ export function buildTrialDetailView(userId: string, baseJob: string): UiPayload
   }
 
   if (detail.unlocked) {
-    const embed = baseEmbed('現身の試練', `「**${detail.advanced}**」は解放済みです。\n再挑戦はできません。`);
+    const embed = baseEmbed(
+      '現身の試練',
+      [
+        `「**${detail.advanced}**」は解放済みです。`,
+        '何度でも再挑戦できます（挑戦料なし）。',
+        `再クリア報酬: 経験値 +1 / **${TRIAL_REPEAT_CLEAR_GOLD}G** / HP・MP全回復`,
+        '',
+        formatConditionBlock(detail),
+      ].join('\n'),
+    );
     return {
       embeds: [embed],
       components: sanitizeComponents([
-        new ActionRowBuilder<ButtonBuilder>().addComponents(backToMenuButton()),
-      ], 'job:trial:detail'),
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`job:trial:start:${baseJob}`)
+            .setLabel('再挑戦する')
+            .setStyle(ButtonStyle.Danger)
+            .setDisabled(!detail.canStart),
+          new ButtonBuilder().setCustomId('job:trial:list').setLabel('戻る').setStyle(ButtonStyle.Secondary),
+        ),
+      ], 'job:trial:confirm'),
     };
   }
 
@@ -331,6 +348,7 @@ export function buildTrialDetailView(userId: string, baseJob: string): UiPayload
     [
       `**${detail.enemyName}**に挑みますか？`,
       `勝利すると、上級職「**${detail.advanced}**」が解放されます。`,
+      '挑戦料はかかりません。',
       '',
       formatConditionBlock(detail),
     ].join('\n'),

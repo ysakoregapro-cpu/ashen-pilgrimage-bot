@@ -1,5 +1,5 @@
 import { getDb } from '../db/database';
-import { requirePlayer, spendGold } from './playerSystem';
+import { requirePlayer, spendGold, getUnlockedTowns } from './playerSystem';
 import { clearPlayerStatusEffects, hasPlayerStatusEffects } from './playerStatusSystem';
 import { nowIso } from '../types';
 
@@ -11,13 +11,27 @@ export type RestOutcome = {
   message: string;
 };
 
-export function calcInnCost(userId: string, townId: string): number {
+/** 解放済み町のうち最高 required_level（宿代ティア決定用） */
+export function getHighestUnlockedTownTier(userId: string): number {
   const player = requirePlayer(userId);
-  const town = getDb().prepare('SELECT required_level FROM towns WHERE id = ?').get(townId) as { required_level: number } | undefined;
-  const townTier = town?.required_level ?? 1;
+  const townIds = new Set(getUnlockedTowns(userId));
+  townIds.add(player.current_town_id);
+  townIds.add('start_starfield');
+
+  let maxTier = 1;
+  for (const townId of townIds) {
+    const row = getDb().prepare('SELECT required_level FROM towns WHERE id = ?').get(townId) as { required_level: number } | undefined;
+    if (row) maxTier = Math.max(maxTier, row.required_level);
+  }
+  return maxTier;
+}
+
+export function calcInnCost(userId: string, _townId: string): number {
+  const player = requirePlayer(userId);
+  const townTier = getHighestUnlockedTownTier(userId);
   const lv = player.level;
 
-  if (townId === 'valhalla_fortress' || townTier >= 55) {
+  if (townTier >= 55) {
     return Math.min(1500, 800 + Math.floor(lv * 8));
   }
   if (townTier >= 40 || lv >= 45) {

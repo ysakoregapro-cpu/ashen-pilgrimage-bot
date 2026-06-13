@@ -1,0 +1,7 @@
+pool_id,context,no_drop_weight,common_weight,consumable_weight,weak_upgrade_weight,low_gear_weight,rare_material_weight,ssr_gear_weight,ur_material_weight,ur_gear_weight,total_weight,rare_effective_rate,ur_effective_rate,balance_note
+town_loot_pick,explore_material_event,22,32,0,0,27,0,0,0,0,81,0.00%,0.00%,OK — no_drop/filler present
+chest_early,explore_treasure,0,55,0,0,45,0,0,0,0,100,0.00%,0.00%,WARN — no explicit no_drop
+chest_valhalla,explore_treasure,0,45,0,0,18,0,27,0,10,100,27.00%,10.00%,WARN — no explicit no_drop
+battle_boss_equip,battle_victory,78,0,0,0,12,0,7,0,3,100,7.00%,3.00%,OK — no_drop/filler present
+rematch_generic,boss_rematch,15,58,0,22,5,0,0,0,0,100,0.00%,0.00%,OK — no_drop/filler present
+uni_src_furnace,boss_furnace_keeper,0.72,0,0,0,0,0.28,0,0,0,1,28.00%,0.00%,OK — no_drop/filler present

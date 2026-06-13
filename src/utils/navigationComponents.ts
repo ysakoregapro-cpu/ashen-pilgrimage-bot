@@ -68,6 +68,32 @@ export function upgradeBackPayload(action: UpgradeActionKind, facilityId: string
   return `${action}:${facilityId}`;
 }
 
+export function buildSelectNavigationRow(backContext: string, backPayload = ''): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    buildBackButton(backContext, backPayload),
+    buildTownButton(),
+  );
+}
+
+/** Select画面末尾に戻る/街へ — 5行制限時は街へ戻るのみ */
+export function appendSelectNavigation(
+  components: ActionRowBuilder<MessageActionRowComponentBuilder>[],
+  backContext: string,
+  backPayload = '',
+  tag = 'select-nav',
+): ActionRowBuilder<MessageActionRowComponentBuilder>[] {
+  if (components.length >= 5) {
+    return sanitizeComponents(
+      [...components.slice(0, 4), new ActionRowBuilder<ButtonBuilder>().addComponents(buildTownButton())],
+      tag,
+    ) as ActionRowBuilder<MessageActionRowComponentBuilder>[];
+  }
+  return sanitizeComponents(
+    [...components, buildSelectNavigationRow(backContext, backPayload)],
+    tag,
+  ) as ActionRowBuilder<MessageActionRowComponentBuilder>[];
+}
+
 export function parseUpgradeBackPayload(payload: string): { action: UpgradeActionKind; facilityId: string } | null {
   const sep = payload.indexOf(':');
   if (sep <= 0) return null;

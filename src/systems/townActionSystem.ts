@@ -22,6 +22,7 @@ import {
   type UiPayload,
 } from '../utils/townUi';
 import { nextActionButtons } from '../utils/nextActionButtons';
+import { appendSelectNavigation } from '../utils/navigationComponents';
 import { formatTownIntro, formatExploreResult, formatVictoryMessage, formatSpeech, formatSpeechOnly } from '../utils/formatters';
 import { townMenuEmbed } from '../utils/embeds';
 import {
@@ -143,7 +144,7 @@ export function buildExploreList(userId: string): UiPayload {
   const areas = getAreasForTown(town.id) as Array<{ id: string; name: string; recommended_min_level: number; recommended_max_level: number }>;
   return {
     embeds: [townHubEmbed('探索へ向かう', `${town.name}の周辺。どこへ足を踏み入れる？\n\n*エリアを選ぶと詳細が表示されます*`)],
-    components: [exploreSelectMenu(userId, areas)],
+    components: appendSelectNavigation([exploreSelectMenu(userId, areas)], 'explore', 'list'),
   };
 }
 
@@ -161,7 +162,7 @@ export function buildTravelList(userId: string): UiPayload {
   const options = towns.filter((t) => unlocked.includes(t.id));
   return {
     embeds: [townHubEmbed('別の町へ向かう', 'どこへ向かう？')],
-    components: [travelSelectMenu(options)],
+    components: appendSelectNavigation([travelSelectMenu(options)], 'travel'),
   };
 }
 

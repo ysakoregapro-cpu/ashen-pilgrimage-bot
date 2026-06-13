@@ -1,0 +1,9 @@
+# job-skill-rotation-mp-audit
+
+Generated: 2026-06-13T13:37:44.211Z
+
+## DB unavailable
+
+| job_id | job_name | level_band | expected_max_mp | main_skill_id | main_skill_mp | four_turn_mp_spend | four_turn_mp_percent | eight_turn_mp_spend | eight_turn_mp_percent | mana_vial_casts_restored | mana_flask_casts_restored | valhalla_mana_casts_restored | sustain_note | balance_note |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+|  |

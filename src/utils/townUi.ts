@@ -8,6 +8,7 @@ import {
 import { baseEmbed, selectMenu } from './embeds';
 import type { Player } from '../types';
 import { formatActiveSetBonusBody } from '../systems/setBonusDisplaySystem';
+import { formatEquippedAffixProfileBlock } from '../systems/equipmentAffixSystem';
 import { formatPlayerStatusLine } from '../systems/playerStatusSystem';
 import { GUIDE_SECTIONS } from '../systems/dialogueSystem';
 import { buildExploreAreaOptions } from '../systems/areaDisplaySystem';
@@ -45,6 +46,7 @@ export function playerRecordEmbed(player: Player, userId?: string): EmbedBuilder
       embed.addFields({ name: '状態', value: statusLine, inline: false });
     }
     embed.addFields({ name: '発動中のセット効果', value: formatActiveSetBonusBody(userId), inline: false });
+    embed.addFields({ name: '装備厳選効果', value: formatEquippedAffixProfileBlock(userId), inline: false });
   }
   return embed;
 }

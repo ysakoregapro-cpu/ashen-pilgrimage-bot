@@ -1,5 +1,6 @@
 import { getDb } from '../db/database';
 import { TOWN_LOOT_POOLS, type TownLootCategory, type TownLootEntry } from '../db/seedData/townLootPools';
+import { TOWN_LOOT_NO_DROP_WEIGHT } from '../db/seedData/dropBalanceMaster';
 import { isJobStarterWeapon } from '../db/seedData/jobStarterWeapons';
 import { roll, weightedChoice } from '../utils/random';
 import { requirePlayer } from './playerSystem';
@@ -114,6 +115,12 @@ export function pickTownLoot(
     if (weight > 0) candidates.push({ ...entry, weight });
   }
   if (!candidates.length) return { kind: 'none' };
+
+  const itemWeightTotal = candidates.reduce((sum, c) => sum + c.weight, 0);
+  const totalWeight = itemWeightTotal + TOWN_LOOT_NO_DROP_WEIGHT;
+  if (Math.random() * totalWeight < TOWN_LOOT_NO_DROP_WEIGHT) {
+    return { kind: 'none' };
+  }
 
   const pick = weightedChoice(candidates);
   if (pick.category === 'gold') {

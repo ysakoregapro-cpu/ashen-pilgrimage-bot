@@ -9,7 +9,7 @@ import type { UpgradeActionKind } from '../utils/nextActionButtons';
 import type { UiPayload } from '../utils/townUi';
 import { townHubEmbed } from '../utils/townUi';
 import { selectMenu } from '../utils/embeds';
-import { buildConfirmNavigationRows } from '../utils/navigationComponents';
+import { buildConfirmNavigationRows, appendSelectNavigation } from '../utils/navigationComponents';
 import { baseEmbed } from '../utils/embeds';
 import { getShopCatalog } from './shopSystem';
 import { getCurrentTown } from './townSystem';
@@ -33,6 +33,22 @@ export function buildNavBackPayload(userId: string, base: string): UiPayload | n
 
   if (parsed.context === 'explore' && parsed.payload === 'list') {
     return buildExploreList(userId);
+  }
+
+  if (parsed.context === 'travel') {
+    return buildTownHub(userId);
+  }
+
+  if (parsed.context === 'detail' && parsed.payload === 'inventory') {
+    const { buildInventoryView } = require('../utils/inventoryUi') as typeof import('../utils/inventoryUi');
+    return buildInventoryView(userId);
+  }
+
+  if (parsed.context === 'detail' && parsed.payload.startsWith('shop_')) {
+    const mode = parsed.payload === 'shop_buy' ? 'buy' : 'sell';
+    const town = getCurrentTown(userId) as { id: string } | undefined;
+    const { buildShopDetailPickView } = require('./itemDetailSystem') as typeof import('./itemDetailSystem');
+    return buildShopDetailPickView(userId, town?.id ?? 'start_starfield', mode);
   }
 
   if (parsed.context === 'upgrade') {
@@ -64,7 +80,7 @@ export function buildNavBackPayload(userId: string, base: string): UiPayload | n
     const catalog = getShopCatalog(town?.id ?? 'start_starfield').slice(0, 25);
     return {
       embeds: [townHubEmbed(getFacility(facId)?.name ?? '店', '何を買いますか？')],
-      components: catalog.length ? [
+      components: catalog.length ? appendSelectNavigation([
         selectMenu('shop:buy', '品を選ぶ', catalog.map((c) => ({
           label: c.name, value: c.item_id, description: `${c.buy_price}G`,
         }))),
@@ -72,7 +88,25 @@ export function buildNavBackPayload(userId: string, base: string): UiPayload | n
           label: c.name, value: c.item_id, description: `${c.buy_price}G [${c.rarity}]`.slice(0, 100),
         }))),
         detailOpenButton('shop_buy'),
-      ] : [],
+      ], 'shop', `buy:${facId}`) : [],
+    };
+  }
+
+  if (parsed.context === 'shop' && parsed.payload.startsWith('sell:')) {
+    const facId = parsed.payload.slice('sell:'.length);
+    const { getSellableInventory } = require('./shopSystem') as typeof import('./shopSystem');
+    const items = getSellableInventory(userId);
+    return {
+      embeds: [townHubEmbed(getFacility(facId)?.name ?? '店', '何を売りますか？')],
+      components: items.length ? appendSelectNavigation([
+        selectMenu('shop:sell', '売る品を選ぶ', items.slice(0, 25).map((i) => ({
+          label: i.name, value: String(i.id), description: `[${i.rarity}] x${i.quantity}`,
+        }))),
+        selectMenu('detail:inv', '詳細を見る', items.slice(0, 25).map((i) => ({
+          label: i.name, value: String(i.id), description: i.rarity,
+        }))),
+        detailOpenButton('shop_sell'),
+      ], 'shop', `sell:${facId}`) : [],
     };
   }
 

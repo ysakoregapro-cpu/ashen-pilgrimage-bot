@@ -1,5 +1,5 @@
 import { getDb } from '../db/database';
-import { requirePlayer } from './playerSystem';
+import { requirePlayer, addGold } from './playerSystem';
 import { createBattle, getActiveBattle } from './battleSystem';
 import { pickEncounterMonsters } from './multiEncounter';
 import { addItem } from './inventorySystem';
@@ -9,6 +9,11 @@ import { incrementExploreAction } from './townSystem';
 import { applyExplorationStatusTick } from './playerStatusSystem';
 import { getMonsterThreatTier, getThreatLabel } from './combatMath';
 import { weightedChoice, roll, randomInt } from '../utils/random';
+import {
+  filterExplorationMonsterPool,
+  formatBossExploreIntro,
+  shouldStartExploreAsBossBattle,
+} from './bossEncounterSystem';
 import {
   getAreaLootTier, rollChestLoot, resolveEquipSlot, pickEquipmentFromAreaPool, pickMaterialFromPool,
 } from './equipmentDropSystem';
@@ -39,6 +44,7 @@ export function exploreArea(userId: string, areaId: string): {
   type: 'battle' | 'material' | 'treasure' | 'npc_event' | 'nothing';
   message: string;
   battleId?: string;
+  bossEncounter?: boolean;
 } {
   const player = requirePlayer(userId);
   const area = getDb().prepare('SELECT * FROM exploration_areas WHERE id = ?').get(areaId) as {
@@ -70,13 +76,27 @@ export function exploreArea(userId: string, areaId: string): {
   switch (event.type) {
     case 'battle': {
       const pool = JSON.parse(area.monster_pool_json) as Array<{ monster_id: string; weight: number }>;
-      const monsterIds = pickEncounterMonsters(pool, areaId);
+      const filteredPool = filterExplorationMonsterPool(userId, pool);
+      const monsterIds = pickEncounterMonsters(filteredPool, areaId);
+      if (!monsterIds.length) {
+        return { type: 'nothing', message: `${statusPrefix}${prefix}${area.name}を歩いたが、特に何もなかった。` };
+      }
       const pick = monsterIds[0]!;
+      const isBoss = shouldStartExploreAsBossBattle(userId, pick);
+      const battleId = createBattle(userId, monsterIds, areaId, { isBoss });
+      const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(pick) as { name: string };
+      if (isBoss) {
+        return {
+          type: 'battle',
+          message: formatBossExploreIntro(area.name, mon.name, `${area.name}の奥で、${mon.name}が立ちはだかった。`),
+          battleId,
+          bossEncounter: true,
+        };
+      }
       const threat = getMonsterThreatTier(pick);
-      const battleId = createBattle(userId, monsterIds, areaId, { isBoss: threat === 'boss' });
       const names = monsterIds.map((id) => {
-        const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(id) as { name: string };
-        return mon.name;
+        const m = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(id) as { name: string };
+        return m.name;
       });
       const threatLine = getThreatLabel(threat, names[0] ?? '');
       const lines = [`${statusPrefix}${prefix}${area.name}で${names.join('と')}に遭遇した。`];
@@ -85,9 +105,13 @@ export function exploreArea(userId: string, areaId: string): {
       return { type: 'battle', message: lines.join('\n'), battleId };
     }
     case 'material': {
-      const loot = pickTownLoot(userId, area.town_id, areaId, { categories: ['material', 'consumable'] });
-      if (loot.kind !== 'item') {
-        return { type: 'nothing', message: `${statusPrefix}${prefix}${area.name}を調べたが、今の足取りでは手に入れられそうにない。` };
+      const loot = pickTownLoot(userId, area.town_id, areaId, { categories: ['material', 'consumable', 'gold'] });
+      if (loot.kind === 'none') {
+        return { type: 'nothing', message: `${statusPrefix}${prefix}${area.name}を調べたが、特に目ざわりなものは見つからなかった。` };
+      }
+      if (loot.kind === 'gold') {
+        addGold(userId, loot.amount);
+        return { type: 'material', message: `${statusPrefix}${prefix}${area.name}で${loot.amount}Gを拾った。` };
       }
       addItem(userId, loot.itemId, randomInt(1, 3), { pending: true });
       const item = getDb().prepare('SELECT name FROM items WHERE id = ?').get(loot.itemId) as { name: string };
@@ -97,9 +121,23 @@ export function exploreArea(userId: string, areaId: string): {
       const pool = buildEffectiveRewardPool(area.town_id, areaId);
       if (levelDeficit >= 2 && roll(0.25 + levelDeficit * 0.05)) {
         const poolM = JSON.parse(area.monster_pool_json) as Array<{ monster_id: string; weight: number }>;
-        const monsterIds = pickEncounterMonsters(poolM, areaId, { forceSingle: true });
-        const battleId = createBattle(userId, monsterIds, areaId);
-        const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(monsterIds[0]!) as { name: string };
+        const filteredPoolM = filterExplorationMonsterPool(userId, poolM);
+        const monsterIds = pickEncounterMonsters(filteredPoolM, areaId, { forceSingle: true });
+        if (!monsterIds.length) {
+          return { type: 'nothing', message: `${statusPrefix}${prefix}箱の影に何もなかった。` };
+        }
+        const pick = monsterIds[0]!;
+        const isBoss = shouldStartExploreAsBossBattle(userId, pick);
+        const battleId = createBattle(userId, monsterIds, areaId, { isBoss });
+        const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(pick) as { name: string };
+        if (isBoss) {
+          return {
+            type: 'battle',
+            message: formatBossExploreIntro(area.name, mon.name, `箱を開けようとしたが、${mon.name}が立ちはだかった！`),
+            battleId,
+            bossEncounter: true,
+          };
+        }
         return {
           type: 'battle',
           message: `${statusPrefix}${prefix}箱を開けようとしたが、${mon.name}が待ち構えていた！`,

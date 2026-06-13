@@ -12,6 +12,7 @@ import {
   mapInventoryRowToEquipmentSelect,
   type OwnedEquipmentSelectRow,
 } from './equipmentLabelSystem';
+import { appendSelectNavigation } from '../utils/navigationComponents';
 
 const RARITY_RANK: Record<string, number> = { UR: 70, SSR: 60, Uni: 55, Src: 50, SR: 30, R: 20, N: 10 };
 export const EQUIP_SELECT_PAGE_SIZE = 24;
@@ -88,7 +89,7 @@ export function buildEquipSlotSelectView(
     }
     if (nav.components.length) components.push(nav);
   }
-  return { embedText, components };
+  return { embedText, components: appendSelectNavigation(components, 'equip', slot) };
 }
 
 export function equipItem(userId: string, inventoryId: number): string {

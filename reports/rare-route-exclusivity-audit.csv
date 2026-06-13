@@ -1,0 +1,81 @@
+item_or_equipment_id,name,rarity,intended_route,found_routes,is_exclusive,should_be_exclusive,balance_note
+acc_deep_gear_ring,深層炉の機構環,SSR,装備として装備/強化/覚醒,explore:deep_furnace_outpost; area:area_furnace_entrance,yes,no,OK
+acc_old_king_seal,旧王の印章,UR,装備として装備/強化/覚醒,none,no,no,WARN — no route
+acc_starfall_earring,星落ちの耳飾り,SSR,装備として装備/強化/覚醒,explore:starfall_observatory; area:area_starfall_platform,yes,no,OK
+acc_valhalla_necklace,ヴァルハラの首飾り,UR,装備として装備/強化/覚醒,shop:valhalla_fortress,yes,no,OK
+arm_set_black_lamp_arms,黒灯篭手,SSR,装備として装備/強化/覚醒,explore:forgotten_market; area:area_under_path,yes,no,OK
+arm_set_black_lamp_body,黒灯鎧,SSR,装備として装備/強化/覚醒,explore:black_lantern_lane; area:area_cinder_passage,yes,no,OK
+arm_set_black_lamp_feet,黒灯靴,SSR,装備として装備/強化/覚醒,explore:forgotten_market; area:area_cursed_storage,yes,no,OK
+arm_set_black_lamp_head,黒灯兜,SSR,装備として装備/強化/覚醒,explore:black_lantern_lane; area:area_black_lantern_alley,yes,no,OK
+arm_set_black_lamp_legs,黒灯腿当て,SSR,装備として装備/強化/覚醒,explore:forgotten_market; area:area_black_alley,yes,no,OK
+arm_set_deep_furnace_arms,深層炉篭手,SSR,装備として装備/強化/覚醒,explore:deep_furnace_outpost; area:area_furnace_entrance,yes,no,OK
+arm_set_deep_furnace_body,深層炉鎧,SSR,装備として装備/強化/覚醒,explore:deep_furnace_outpost; area:area_mechanic_yard,yes,no,OK
+arm_set_deep_furnace_feet,深層炉靴,SSR,装備として装備/強化/覚醒,explore:deep_furnace_outpost; area:area_iron_supply,yes,no,OK
+arm_set_deep_furnace_head,深層炉兜,SSR,装備として装備/強化/覚醒,explore:deep_furnace_outpost; area:area_core_tower,yes,no,OK
+arm_set_deep_furnace_legs,深層炉腿当て,SSR,装備として装備/強化/覚醒,explore:deep_furnace_outpost; area:area_arc_lab,yes,no,OK
+arm_set_iron_snow_arms,鉄雪篭手,SSR,装備として装備/強化/覚醒,explore:valhalla_fortress; area:area_experiment_zone,yes,no,OK
+arm_set_iron_snow_body,鉄雪鎧,SSR,装備として装備/強化/覚醒,explore:valhalla_fortress; area:area_mech_hangar,yes,no,OK
+arm_set_iron_snow_feet,鉄雪靴,SSR,装備として装備/強化/覚醒,explore:valhalla_fortress; area:area_sky_lift,yes,no,OK
+arm_set_iron_snow_head,鉄雪兜,SSR,装備として装備/強化/覚醒,explore:valhalla_fortress; area:area_valhalla_outer,yes,no,OK
+arm_set_iron_snow_legs,鉄雪腿当て,SSR,装備として装備/強化/覚醒,explore:starfall_observatory; area:area_meteor_crater,yes,no,OK
+arm_set_old_king_arms,旧王篭手,UR,装備として装備/強化/覚醒,none,no,no,WARN — no route
+arm_set_old_king_body,旧王鎧,UR,装備として装備/強化/覚醒,none,no,no,WARN — no route
+arm_set_old_king_feet,旧王靴,UR,装備として装備/強化/覚醒,none,no,no,WARN — no route
+arm_set_old_king_head,旧王兜,UR,装備として装備/強化/覚醒,none,no,no,WARN — no route
+arm_set_old_king_legs,旧王腿当て,UR,装備として装備/強化/覚醒,none,no,no,WARN — no route
+arm_set_starfall_arms,星落ち篭手,SSR,装備として装備/強化/覚醒,explore:starfall_observatory; area:area_broken_telescope,yes,no,OK
+arm_set_starfall_body,星落ち鎧,SSR,装備として装備/強化/覚醒,explore:starfall_observatory; area:area_astronomy_record,yes,no,OK
+arm_set_starfall_feet,星落ち靴,SSR,装備として装備/強化/覚醒,explore:starfall_observatory; area:area_starfall_platform,yes,no,OK
+arm_set_starfall_head,星落ち兜,SSR,装備として装備/強化/覚醒,explore:starfall_observatory; area:area_star_lab,yes,no,OK
+arm_set_starfall_legs,星落ち腿当て,SSR,装備として装備/強化/覚醒,explore:starfall_observatory; area:area_meteor_crater,yes,no,OK
+arm_set_valhalla_arms,ヴァルハラ篭手,UR,装備として装備/強化/覚醒,explore:valhalla_fortress; area:area_experiment_zone,yes,no,OK
+arm_set_valhalla_body,ヴァルハラ鎧,UR,装備として装備/強化/覚醒,explore:valhalla_fortress; area:area_mech_hangar,yes,no,OK
+arm_set_valhalla_feet,ヴァルハラ靴,UR,装備として装備/強化/覚醒,explore:valhalla_fortress; area:area_sky_lift,yes,no,OK
+arm_set_valhalla_head,ヴァルハラ兜,UR,装備として装備/強化/覚醒,explore:valhalla_fortress; area:area_valhalla_outer,yes,no,OK
+arm_set_valhalla_legs,ヴァルハラ腿当て,UR,装備として装備/強化/覚醒,explore:valhalla_fortress; area:area_control_room,yes,no,OK
+boss_ash_knight,灰冠騎士の紋章,SSR,ボス/再戦専用素材,explore:ash_capital; area:area_broken_throne,no,yes,OK
+boss_black_iron,黒鉄処刑人の鎖,SSR,ボス/再戦専用素材,explore:forgotten_market; area:area_contract_cage,no,yes,OK
+boss_dragon_fang,竜鳴きの牙,SSR,ボス/再戦専用素材,explore:mist_forest; explore:dragonbone_valley; area:area_sleeping_nest; area:area_dragon_cliff,no,yes,OK
+boss_furnace_core,炉熱の番人核,UR,ボス/再戦専用素材,explore:deep_furnace_outpost; area:area_iron_supply,no,yes,OK
+boss_silent_page,無答の守護者の頁,UR,無答の守護者/ヴァルハラボス専用。通常探索から除外,boss:mon_silent_guardian,yes,yes,OK
+boss_tree_heart,古樹の心材,SR,ボス/再戦専用素材,explore:mist_forest; area:area_old_tree_root,no,yes,OK
+mat_affix_slot_protect,特性保護の触媒,UR,交換所のみ・ドロップなし,none,no,no,WARN — no route
+mat_ash_fist_bone,灰拳の骨片,SSR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_ash_mirror_fragment,灰鏡の欠片,SR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_ash_star_magic_core,灰星の魔核,SR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_black_fox_clawmark,黒狐の爪痕,SSR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_black_iron_powder_case,黒鉄の火薬筒,SR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_deep_furnace_gear,深層炉の歯車,SR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_echo_bowstring,残響の弦糸,SR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_lampkeeper_holy_oil,灯守の聖油,SR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_mist_lantern_stardust,霧灯の星砂,SR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_moon_arrowhead,月弓の鏃,SR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_old_furnace_hammer_core,古炉の鎚芯,SR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_pilgrim_prayer_cloth,巡礼祈祷布,SR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_shadowstep_black_thread,影渡りの黒糸,SR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_silver_castle_core,白銀の城核,SR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_starfield_old_steel,星原の古鋼,SR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+mat_twilight_blade_shard,黄昏の剣片,SR,深層炉前哨・炉熱の番人（初回1個/再戦28%→16種）,boss_rematch:mon_furnace_keeper,yes,yes,OK
+src_ash_star,灰星結晶,UR,Src変質,explore:ash_capital; area:area_broken_throne,no,yes,OK
+src_bind_thread,繋ぎ糸の断片,SR,Src変質,none,yes,yes,WARN — no route
+src_deep_crystal,深層炉心結晶,UR,Src変質,none,yes,yes,WARN — no route
+src_deep_furnace,深層炉核,UR,Src変質,explore:deep_furnace_outpost; area:area_arc_lab,no,yes,OK
+src_echo_core,残響核,SSR,Src変質,none,yes,yes,WARN — no route
+src_lamp_core,灯火核,SSR,Src変質,explore:silent_monastery; area:area_prayer_room,no,yes,OK
+src_machina_core,マキナ残響核,Src,Src変質素材,explore:valhalla_fortress; area:area_machina_zone,no,yes,OK
+src_mirror_crystal,灰鏡結晶,UR,Src変質,none,yes,yes,WARN — no route
+src_mirror_shard,灰鏡片,UR,Src変質,none,yes,yes,WARN — no route
+src_old_king_echo,旧王の残響核,Src,Src変質素材,explore:valhalla_fortress; area:area_old_throne,no,yes,OK
+src_old_king_mark,古王の印,UR,Src変質,explore:ash_capital; area:area_capital_dungeon,no,yes,OK
+src_primordial,原初刻印の欠片,SSR,Src変質,none,yes,yes,WARN — no route
+src_primordial_full,原初刻印,Src,Src変質,none,yes,yes,WARN — no route
+src_silence_tune,静寂の調律片,SSR,Src変質,explore:silent_monastery; area:area_silent_corridor; area:area_silent_pilgrim,yes,yes,OK
+src_star_mark,星印の欠片,SSR,Src変質,explore:hourglass_city; explore:starfall_observatory; area:area_inverted_tower; area:area_starfall_platform,no,yes,OK
+src_star_mark_full,完全な星印,Src,Src変質素材,explore:starfall_observatory; area:area_astronomy_record,no,yes,OK
+src_star_scar_crystal,星痕結晶,UR,Src変質,none,yes,yes,WARN — no route
+src_upg_core,Src強化核,SSR,Src変質,none,yes,yes,WARN — no route
+src_upg_shard,Src強化片,SR,Src変質,none,yes,yes,WARN — no route
+src_valhalla_core,ヴァルハラ炉心核,Src,Src変質素材,explore:valhalla_fortress; area:area_deep_core,no,yes,OK
+wpn_ash_knight_sword,灰冠騎士剣,SSR,装備として装備/強化/覚醒,explore:ash_capital; area:area_capital_under; area:area_ash_boulevard,yes,no,OK
+wpn_ash_wing_twin,灰翼の双刃,UR,装備として装備/強化/覚醒,explore:ash_capital; area:area_broken_throne,yes,no,OK
+wpn_black_exec_sword,黒灯処刑剣,UR,装備として装備/強化/覚醒,explore:forgotten_market; area:area_masked_warehouse,yes,no,OK

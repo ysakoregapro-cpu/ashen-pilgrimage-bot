@@ -1,15 +1,14 @@
 # equipment-effective-stat-display-check
 
-Generated: 2026-06-13T11:46:38.376Z
+Generated: 2026-06-13T12:56:55.119Z
 
-## DB
+## 装備詳細【性能】実効値チェック
 
-Application Control 等によりローカルDB不可。VPS側で要実行。
+UR弓/Src弓（src_level・legacy upgrade_level）と weapon-tier 参照値の一致。
 
-| check | status | detail |
-| --- | --- | --- |
-| db | SKIP | The module '\\?\C:\Users\natan\projects\ashen-pilgrimage-bot\node_modules\better-sqlite3\build\Release\better_sqlite3.node' |
-| was compiled against a different Node.js version using |
-| NODE_MODULE_VERSION 127. This version of Node.js requires |
-| NODE_MODULE_VERSION 137. Please try re-compiling or re-installing |
-| the module (for instance, using `npm rebuild` or `npm install`). |
+| case | status | display_line | effective_attack | suffix | notes |
+| --- | --- | --- | --- | --- | --- |
+| UR弓+15覚醒IV | OK | 攻撃 +90（強化・覚醒込み） | 90 | （強化・覚醒込み） | resolved src=0 upg=15 |
+| Src弓+15(src_level) | OK | 攻撃 +121（Src強化込み） | 121 | （Src強化込み） | resolved src=15 upg=0 |
+| Src弓+15(legacy upgrade_level) | OK | 攻撃 +121（Src強化込み） | 121 | （Src強化込み） | resolved src=15 upg=0 |
+| Src>UR比較 | OK | 121 | 90 | +31 |  |

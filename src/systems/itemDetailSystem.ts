@@ -13,6 +13,7 @@ import {
   formatEffectiveStatLines, getEquipmentEffectiveStats, resolveEquipmentEnhanceLevels, type EquipmentStatsInput,
 } from './equipmentEffectiveStats';
 import { buildInventoryPickView } from '../utils/inventoryUi';
+import { appendSelectNavigation } from '../utils/navigationComponents';
 import { getUnlockedTowns } from './playerSystem';
 import { hasStoryFlag } from './storySystem';
 import { JOB_SKILL_UNLOCKS } from '../db/seedData/jobSkillData';
@@ -817,22 +818,20 @@ export function buildShopDetailPickView(userId: string, townId: string, mode: 'b
     const catalog = getShopCatalog(townId).slice(0, 25);
     return {
       embeds: [baseEmbed('店の品詳細', '商品を選んで詳細を確認できます。')],
-      components: [
+      components: appendSelectNavigation([
         selectMenu('detail:shop', '商品詳細', catalog.map((c) => ({
           label: c.name, value: c.item_id, description: `${c.buy_price}G [${c.rarity}]`.slice(0, 100),
         }))),
-        ...nextActionButtons('facility'),
-      ],
+      ], 'detail', 'shop_buy'),
     };
   }
   const items = getSellableInventory(userId) as Array<{ id: number; name: string; rarity: string }>;
   return {
     embeds: [baseEmbed('売却品詳細', '売る前に詳細と警告を確認できます。')],
-    components: [
+    components: appendSelectNavigation([
       selectMenu('detail:inv', '詳細を見る', items.slice(0, 25).map((i) => ({
         label: i.name, value: String(i.id), description: i.rarity,
       }))),
-      ...nextActionButtons('facility'),
-    ],
+    ], 'detail', 'shop_sell'),
   };
 }

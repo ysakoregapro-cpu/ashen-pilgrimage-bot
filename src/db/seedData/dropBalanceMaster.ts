@@ -3,9 +3,13 @@
  * area_pool / town loot pool の weight・出現範囲を集中管理
  */
 import type { ItemPurposeKind } from './itemPurposeMaster';
+import { UNI_SRC_MATERIAL_IDS, FURNACE_KEEPER_BOSS_ID, UNI_SRC_DROP_TRIGGER_RATE } from './jobProgressionMaster';
 
 export type { ItemPurposeKind } from './itemPurposeMaster';
 export { FORMAL_ITEM_PURPOSE_KINDS } from './itemPurposeMaster';
+
+/** pickTownLoot — 何もなし枠（候補weight合計に加算） */
+export const TOWN_LOOT_NO_DROP_WEIGHT = 22;
 
 /** 通常探索 town pool から除外（legacy・reserved・boss専用） */
 export const NORMAL_EXPLORE_POOL_EXCLUDED = new Set([
@@ -17,7 +21,16 @@ export const NORMAL_EXPLORE_POOL_EXCLUDED = new Set([
   'mat_starfall_obsidian',
   'mat_black_lantern_cinder',
   'wpn_unique_silence',
+  ...UNI_SRC_MATERIAL_IDS,
 ]);
+
+/** Uni→Src（Kai伝承）16素材 — 深層炉前哨・炉熱の番人のみ */
+export const BOSS_UNI_SRC_MATERIAL_DROP = {
+  monsterId: FURNACE_KEEPER_BOSS_ID,
+  rematchTriggerRate: UNI_SRC_DROP_TRIGGER_RATE,
+  firstKillGuaranteed: true,
+  materialIds: UNI_SRC_MATERIAL_IDS,
+} as const;
 
 /** 探索宝箱/素材イベントではなく、ボス戦勝利時のみドロップ */
 export const BOSS_VICTORY_MATERIAL_DROPS: Array<{

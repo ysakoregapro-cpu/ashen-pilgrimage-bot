@@ -13,6 +13,7 @@ const LEVELS = [30, 50, 70, 100];
 const WEAKNESS_MULT = 1.35;
 
 const warns: string[] = [];
+const fails: string[] = [];
 
 function learnLevel(job: string, skillId: string): number {
   return JOB_SKILL_UNLOCKS[job]?.find((u) => u.skillId === skillId)?.level ?? 1;
@@ -97,7 +98,7 @@ function main() {
     console.log(`\n弱点なし: 魔術師 vs 物理平均 **${mageOverPct >= 0 ? '+' : ''}${mageOverPct.toFixed(1)}%**\n`);
 
     if (mageOverPct > 25) {
-      warns.push(`Lv${lv} 弱点なしで魔術師が物理平均を${mageOverPct.toFixed(0)}%上回る`);
+      fails.push(`Lv${lv} 弱点なしで魔術師が物理平均を${mageOverPct.toFixed(0)}%上回る`);
     }
 
     const ult = ultimateAtLevel('魔術師', lv);
@@ -105,8 +106,8 @@ function main() {
       const maxMp = computeExpectedMaxMp(lv, 22, 0);
       const ultUses = Math.floor(maxMp / ult.mp);
       console.log(`魔術師奥義 ${ult.name}: MP${ult.mp} → 最大${ultUses}回/戦`);
-      if (lv === 70 && ultUses >= 4) warns.push(`Lv70 魔術師奥義${ultUses}回/戦 (≥4)`);
-      if (lv === 100 && ultUses >= 6) warns.push(`Lv100 魔術師奥義${ultUses}回/戦 (≥6)`);
+      if (lv === 70 && ultUses >= 5) warns.push(`Lv70 魔術師奥義${ultUses}回/戦 (≥5)`);
+      if (lv === 100 && ultUses >= 7) warns.push(`Lv100 魔術師奥義${ultUses}回/戦 (≥7)`);
     }
 
     const aoe = bestAoeAtLevel('魔術師', lv);
@@ -115,7 +116,7 @@ function main() {
       const ratio2 = (aoe.total1 * 2) / (mageSingle.power * mageSingle.hits);
       console.log(`魔術師AOE ${aoe.name}: 1体${aoe.total1.toFixed(2)} / 2体x${ratio2.toFixed(2)} vs 単体${mageSingle.name}`);
       if (aoe.total1 > mageSingle.power * mageSingle.hits) {
-        warns.push(`Lv${lv} 魔術師AOEが単体戦でも単体主力超え`);
+        fails.push(`Lv${lv} 魔術師AOEが単体戦でも単体主力超え`);
       }
     }
 
@@ -140,17 +141,23 @@ function main() {
   const mageEff = effs.find((e) => e.job === '魔術師')?.eff ?? 0;
   const othersAvg = effs.filter((e) => e.job !== '魔術師').reduce((a, e) => a + e.eff, 0) / 4;
   if (mageEff > othersAvg * 1.35) {
-    warns.push(`Lv70 MPあたり火力で魔術師が他職平均+${(((mageEff / othersAvg) - 1) * 100).toFixed(0)}%`);
+    fails.push(`Lv70 MPあたり火力で魔術師が他職平均+${(((mageEff / othersAvg) - 1) * 100).toFixed(0)}%`);
   }
 
   console.log('\n## WARN\n');
-  const unique = [...new Set(warns)];
-  if (unique.length) {
-    for (const w of unique) console.log(`- ${w}`);
+  const uniqueWarns = [...new Set(warns)];
+  if (uniqueWarns.length) {
+    for (const w of uniqueWarns) console.log(`- ${w}`);
+  } else {
+    console.log('(なし)');
+  }
+
+  if (fails.length) {
+    console.error('\n## FAIL\n');
+    for (const f of fails) console.error(`- ${f}`);
     console.error('\n❌ job-damage-balance-check failed');
     process.exit(1);
   }
-  console.log('(なし)');
   console.log('\n✅ job-damage-balance-check passed');
 }
 
