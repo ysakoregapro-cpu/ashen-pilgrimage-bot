@@ -1,6 +1,14 @@
 import type { EquipStatRow } from './enhanceSystem';
 
 import { computeSrcBaseStats } from './enhanceSystem';
+import {
+  MAX_SRC_WEAPON_LEVEL,
+  SRC_UR_TARGET_DIFF_HARD_MAX,
+  SRC_UR_TARGET_DIFF_MIN,
+  SRC_UR_TARGET_DIFF_MAX,
+  UR_MAX_AWAKENING_PRIMARY_BONUS,
+  UR_MAX_UPGRADE_LEVEL,
+} from '../db/seedData/weaponTierBalanceMaster';
 
 
 
@@ -195,13 +203,19 @@ export function judgeWeaponPower(row: Omit<WeaponPowerRow, 'verdict'>): string {
   const uni4High = isShield ? 1.25 : 1.05;
   const src0Max = isShield ? 1.0 : 0.95;
   const srcMidMin = isShield ? 0.85 : 1.0;
+  const urMaxEff = row.urMax + UR_MAX_AWAKENING_PRIMARY_BONUS;
 
   if (row.uni4 < row.ur0 * uni4Low || row.uni4 > row.ur0 * uni4High) issues.push('Uni+4≒UR+0外');
   if (row.uniMax <= row.ur0) issues.push('Uni最大≯UR+0');
-  if (row.uniMax >= row.urMax) issues.push('Uni最大≮UR最大');
+  if (row.uniMax >= urMaxEff) issues.push('Uni最大≮UR最大');
   if (row.src0 > row.ur0 * src0Max) issues.push('Src+0>UR+0×95%');
-  if (row.srcMid < row.urMid * srcMidMin || row.srcMid >= row.urMax) issues.push('Src中間≈UR中間〜UR最大手前外');
-  if (row.srcMax <= row.urMax) issues.push('Src最大≯UR最大');
+  if (row.srcMid < row.urMid * srcMidMin || row.srcMid >= urMaxEff) issues.push('Src中間≈UR中間〜UR最大手前外');
+  if (row.srcMax <= urMaxEff) issues.push('Src最大≯UR+15覚醒IV');
+  else {
+    const diff = row.srcMax - urMaxEff;
+    if (diff < SRC_UR_TARGET_DIFF_MIN) issues.push(`Src差不足(${diff}<${SRC_UR_TARGET_DIFF_MIN})`);
+    if (diff > SRC_UR_TARGET_DIFF_HARD_MAX) issues.push(`Src差過大(${diff})`);
+  }
   if (row.srcMax <= row.uniMax) issues.push('Src最大≯Uni最大');
   if (row.srMax >= row.uniMax) issues.push('SR最大≮Uni最大');
   return issues.length ? issues.join(', ') : 'OK';
@@ -337,13 +351,13 @@ export function buildWeaponPowerComparison(
 
       urMid: primaryStatAt(ur, 7, 0, getStat),
 
-      urMax: primaryStatAt(ur, 15, 0, getStat),
+      urMax: primaryStatAt(ur, UR_MAX_UPGRADE_LEVEL, 0, getStat),
 
       src0: primaryStatAt(src, 0, 0, getStat),
 
       srcMid: primaryStatAt(src, 0, 5, getStat),
 
-      srcMax: primaryStatAt(src, 0, 10, getStat),
+      srcMax: primaryStatAt(src, 0, MAX_SRC_WEAPON_LEVEL, getStat),
 
     };
 
@@ -401,7 +415,7 @@ export function formatStaffDetailTable(
 
       mid = primaryStatAt(row, 0, 5, getStat);
 
-      enhanced = primaryStatAt(row, 0, 10, getStat);
+      enhanced = primaryStatAt(row, 0, MAX_SRC_WEAPON_LEVEL, getStat);
 
     } else if (row.rarity === 'Uni') {
 
@@ -437,6 +451,16 @@ export function collectPowerBalanceIssues(rows: WeaponPowerRow[]): string[] {
 
   return rows.filter((r) => r.verdict !== 'OK').map((r) => `${r.label}: ${r.verdict}`);
 
+}
+
+export function judgeSrcVsUrDiff(srcMax: number, urMax: number): { ok: boolean; diff: number; note: string } {
+  const urEff = urMax + UR_MAX_AWAKENING_PRIMARY_BONUS;
+  const diff = srcMax - urEff;
+  if (srcMax <= urEff) return { ok: false, diff, note: `Src<=UR+覚醒 (${srcMax}<=${urEff})` };
+  if (diff < SRC_UR_TARGET_DIFF_MIN) return { ok: false, diff, note: `差不足(${diff})` };
+  if (diff > SRC_UR_TARGET_DIFF_HARD_MAX) return { ok: false, diff, note: `差過大(${diff})` };
+  if (diff > SRC_UR_TARGET_DIFF_MAX) return { ok: true, diff, note: `OK(やや上振れ${diff})` };
+  return { ok: true, diff, note: 'OK' };
 }
 
 

@@ -24,6 +24,13 @@ import { buildDropEconomyRows, getNamedHighRarityAudits } from './audit/dropEcon
 import { writeCsv } from './audit/reportWriter';
 import { buildValhallaRewardAuditRows } from '../src/db/seedData/valhallaRewardMaster';
 import { SILENT_PAGE_USAGE, VALHALLA_EXCHANGE_TABLE } from '../src/db/seedData/valhallaExchangeMaster';
+import {
+  OLD_KING_SERIES_ARMOR_IDS,
+  VALHALLA_SERIES_ARMOR_IDS,
+  VALHALLA_SERIES_ACCESSORY_IDS,
+  OLD_KING_SERIES_ACCESSORY_IDS,
+} from '../src/db/seedData/valhallaSeriesDropMaster';
+import { MAX_SRC_WEAPON_LEVEL } from '../src/db/seedData/weaponTierBalanceMaster';
 
 const GUIDE_DIR = path.join(process.cwd(), 'reports', 'guide');
 
@@ -117,6 +124,16 @@ function main() {
     const maxAffix = affixEligible === 'YES' ? String(AFFIX_VALUE_CAPS[rarity] ?? '') : '';
     const seriesTier = e.series_id ? (db.prepare('SELECT tier FROM equipment_sets WHERE id = ?').get(e.series_id) as { tier: string } | undefined)?.tier ?? '' : '';
     const setBonusEval = ['SSR', 'UR'].includes(seriesTier) ? 'rebalanced_phase25' : 'baseline';
+    let equipNotes = audit?.notes ?? cell(e.description);
+    if (String(e.rarity) === 'Src' && e.slot === 'weapon') {
+      equipNotes = `完成Src+${MAX_SRC_WEAPON_LEVEL}は対応UR+15覚醒IVより+15〜+25強い設計。${equipNotes}`;
+    }
+    if (String(e.series_id) === 'set_valhalla') {
+      equipNotes = `主入手:ヴァルハラボス再戦15-25%/道中0.1-0.4%。${equipNotes}`;
+    }
+    if (String(e.series_id) === 'set_old_king') {
+      equipNotes = `主入手:ヴァルハラボス再戦3-6%(防具)/1-3%(アクセ)/深層道中0.03-0.12%。${equipNotes}`;
+    }
     return [
       e.item_id, e.name, e.rarity, e.slot, e.weapon_type ?? '',
       e.series_id ?? '', e.series_id ?? '', e.set_name ?? '',
@@ -129,7 +146,7 @@ function main() {
       drop?.estimated_rate_band ?? '',
       ex ? `${ex.classification}:${ex.reason}` : 'NO',
       audit?.current_obtainable ?? '',
-      audit?.notes ?? cell(e.description),
+      equipNotes,
       affixEligible,
       skillProb,
       affixEligible === 'YES' ? 'param|damage_reduction|damage_dealt' : '',
@@ -204,6 +221,38 @@ function main() {
         '', 'YES', '',
       ].map(cell));
     }
+  }
+  for (const id of VALHALLA_SERIES_ARMOR_IDS) {
+    const item = db.prepare('SELECT name, rarity FROM items WHERE id = ?').get(id) as { name: string; rarity: string };
+    dropRouteRows.push([
+      id, item.name, 'equipment', item.rarity, 'playable_gear', 'valhalla_boss_repeat',
+      '', '', 'valhalla_fortress', 'valhalla', '58', 'mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss', 'ヴァルハラ3ボス',
+      'valhalla_boss_armor', '', '15-25%', '0.15-0.25', 'NO', 'YES', 'Phase2.5 affix・本命厳選',
+    ].map(cell));
+  }
+  for (const id of VALHALLA_SERIES_ACCESSORY_IDS) {
+    const item = db.prepare('SELECT name, rarity FROM items WHERE id = ?').get(id) as { name: string; rarity: string };
+    dropRouteRows.push([
+      id, item.name, 'equipment', item.rarity, 'playable_gear', 'valhalla_boss_repeat',
+      '', '', 'valhalla_fortress', 'valhalla', '58', 'mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss', 'ヴァルハラ3ボス',
+      'valhalla_boss_accessory', '', '8-15%', '0.08-0.15', 'NO', 'YES', 'Phase2.5 affix',
+    ].map(cell));
+  }
+  for (const id of OLD_KING_SERIES_ARMOR_IDS) {
+    const item = db.prepare('SELECT name, rarity FROM items WHERE id = ?').get(id) as { name: string; rarity: string };
+    dropRouteRows.push([
+      id, item.name, 'equipment', item.rarity, 'playable_gear', 'valhalla_boss_repeat',
+      '', '', 'valhalla_fortress', 'valhalla', '64', 'mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss', 'ヴァルハラ3ボス',
+      'old_king_boss_armor', '', '3-6%', '0.03-0.06', 'NO', 'YES', '希少上振れ・Phase2.5 affix',
+    ].map(cell));
+  }
+  for (const id of OLD_KING_SERIES_ACCESSORY_IDS) {
+    const item = db.prepare('SELECT name, rarity FROM items WHERE id = ?').get(id) as { name: string; rarity: string };
+    dropRouteRows.push([
+      id, item.name, 'equipment', item.rarity, 'playable_gear', 'valhalla_boss_repeat',
+      '', '', 'valhalla_fortress', 'valhalla', '64', 'mon_machina_echo;mon_old_king_shadow;mon_deep_core_boss', 'ヴァルハラ3ボス',
+      'old_king_boss_accessory', '', '1-3%', '0.01-0.03', 'NO', 'YES', '希少上振れ・Phase2.5 affix',
+    ].map(cell));
   }
   writeCsv('guide/drop_routes.csv', dropHeaders, dropRouteRows);
 
@@ -313,6 +362,13 @@ Generated: ${new Date().toISOString()}
 - **無答の守護者の頁**: Src最終強化・UR覚醒・特性保護・UR抽選・上位レイド解放（多くは将来Phase）。
 - **ヴァルハラ vs レイド**: ヴァルハラ=防具/アクセ厳選・徽章・素材。レイド=UR武器・レイド専用装備・最上位素材。
 - **silent_page_usage**: ${SILENT_PAGE_USAGE.map((u) => `${u.use}(${u.cost_pages}${u.implemented ? '' : '・未実装'})`).join(' / ')}
+
+## Phase2.6 追加 — Src武器性能 / シリーズ入手
+
+- **Src武器**: 最大 \`Src+${MAX_SRC_WEAPON_LEVEL}\`。完成時は対応UR+15・覚醒IVより主能力値 **+15〜+25**（中心+20）。
+- **ヴァルハラシリーズ**: ボス再戦が主（防具15-25%/アクセ8-15%）。道中おまけ0.1-0.4%。
+- **旧王シリーズ**: ボス再戦が主（防具3-6%/アクセ1-3%）。深層道中0.03-0.12%。探索poolからは切り離し。
+- **レイド**: UR武器・レイド専用装備の役割は維持（ヴァルハラでUR武器大量ドロップしない）。
 `;
   fs.writeFileSync(path.join(GUIDE_DIR, 'README.md'), readme, 'utf8');
 

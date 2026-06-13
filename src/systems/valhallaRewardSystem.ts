@@ -7,8 +7,10 @@ import {
   AFFIX_REROLL_ASSIST_ID,
   SILENT_PAGE_ID,
   UR_LOTTERY_SHARD_ID,
-  VALHALLA_ACCESSORY_DROP_IDS,
-  VALHALLA_ARMOR_DROP_IDS,
+  OLD_KING_SERIES_ACCESSORY_DROP_IDS,
+  OLD_KING_SERIES_ARMOR_DROP_IDS,
+  VALHALLA_SERIES_ACCESSORY_DROP_IDS,
+  VALHALLA_SERIES_ARMOR_DROP_IDS,
   VALHALLA_EMBLEM_ID,
   VALHALLA_FIRST_CLEAR_REWARDS,
   VALHALLA_REPEAT_MATERIAL_POOL,
@@ -34,10 +36,19 @@ function itemName(itemId: string): string {
   return row?.name ?? itemId;
 }
 
-function pickValhallaGear(kind: 'armor' | 'accessory' | 'either'): string {
-  if (kind === 'either') kind = roll(0.55) ? 'armor' : 'accessory';
-  const pool = kind === 'armor' ? [...VALHALLA_ARMOR_DROP_IDS] : [...VALHALLA_ACCESSORY_DROP_IDS];
+function pickFromPool(pool: readonly string[]): string {
   return pool[randomInt(0, pool.length - 1)]!;
+}
+
+function pickValhallaGear(kind: 'armor' | 'accessory' | 'either', series: 'valhalla' | 'old_king' | 'either'): string {
+  if (kind === 'either') kind = roll(0.55) ? 'armor' : 'accessory';
+  if (series === 'either') series = roll(0.72) ? 'valhalla' : 'old_king';
+  if (kind === 'armor') {
+    const pool = series === 'old_king' ? OLD_KING_SERIES_ARMOR_DROP_IDS : VALHALLA_SERIES_ARMOR_DROP_IDS;
+    return pickFromPool(pool);
+  }
+  const pool = series === 'old_king' ? OLD_KING_SERIES_ACCESSORY_DROP_IDS : VALHALLA_SERIES_ACCESSORY_DROP_IDS;
+  return pickFromPool(pool);
 }
 
 function grantValhallaEquipment(
@@ -76,7 +87,7 @@ export function grantValhallaBossRewards(
     dropLabels.push(`${itemName(VALHALLA_EMBLEM_ID)}×${fc.emblem}`);
     addItem(userId, SILENT_PAGE_ID, fc.silentPage, { pending: true });
     dropLabels.push(`${itemName(SILENT_PAGE_ID)}×${fc.silentPage}`);
-    const gearId = pickValhallaGear('either');
+    const gearId = pickValhallaGear('either', 'valhalla');
     dropLabels.push(grantValhallaEquipment(userId, gearId));
 
     setStoryFlag(userId, `${fc.storyFlagPrefix}:${monsterId}`);
@@ -100,9 +111,16 @@ export function grantValhallaBossRewards(
   }
 
   if (roll(rollRate(rp.armorRateMin, rp.armorRateMax))) {
-    dropLabels.push(grantValhallaEquipment(userId, pickValhallaGear('armor')));
-  } else if (roll(rollRate(rp.accessoryRateMin, rp.accessoryRateMax))) {
-    dropLabels.push(grantValhallaEquipment(userId, pickValhallaGear('accessory')));
+    dropLabels.push(grantValhallaEquipment(userId, pickValhallaGear('armor', 'valhalla')));
+  }
+  if (roll(rollRate(rp.accessoryRateMin, rp.accessoryRateMax))) {
+    dropLabels.push(grantValhallaEquipment(userId, pickValhallaGear('accessory', 'valhalla')));
+  }
+  if (roll(rollRate(rp.oldKingArmorRateMin, rp.oldKingArmorRateMax))) {
+    dropLabels.push(grantValhallaEquipment(userId, pickValhallaGear('armor', 'old_king')));
+  }
+  if (roll(rollRate(rp.oldKingAccessoryRateMin, rp.oldKingAccessoryRateMax))) {
+    dropLabels.push(grantValhallaEquipment(userId, pickValhallaGear('accessory', 'old_king')));
   }
 
   if (roll(rp.silentPageRate)) {

@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import { computeSrcBaseStats } from '../../systems/enhanceSystem';
+import { MAX_SRC_WEAPON_LEVEL } from './weaponTierBalanceMaster';
 
 const SRC_WEAPONS = [
   { id: 'src_twilight', base: 'wpn_unique_twilight', srcItem: 'wpn_src_twilight', name: 'Src: 黄昏剣', jobs: ['剣士', '剣豪', '魔剣士', '星剣士'], skill: 'skill_twilight_combo', plus10: '敵HP50%以下で追撃', manifest: { gold: 5000, materials: [{ id: 'src_primordial', qty: 3 }, { id: 'mat_hourglass_shard', qty: 5 }] } },
@@ -21,13 +22,16 @@ function upgradeReqs(level: number): { gold: number; materials: { id: string; qt
   if (level <= 3) return { gold: 1000 * level, materials: [{ id: 'src_upg_shard', qty: level * 2 }, { id: 'upg_stone', qty: level }], desc: '基礎性能上昇' };
   if (level <= 6) return { gold: 3000 * level, materials: [{ id: 'src_upg_core', qty: level }, { id: 'upg_fine_stone', qty: level }], desc: '固有スキル強化' };
   if (level <= 9) return { gold: 5000 * level, materials: [{ id: 'src_star_scar_crystal', qty: level - 6 }, { id: 'raid_valhalla_plate', qty: level - 6 }], desc: '追加パッシブ解放' };
-  return { gold: 50000, materials: [{ id: 'src_valhalla_core', qty: 1 }, { id: 'src_old_king_echo', qty: 1 }, { id: 'src_machina_core', qty: 1 }, { id: 'src_star_mark_full', qty: 1 }], desc: '最終効果解放' };
+  if (level === 10) return { gold: 50000, materials: [{ id: 'src_valhalla_core', qty: 1 }, { id: 'src_old_king_echo', qty: 1 }, { id: 'src_machina_core', qty: 1 }, { id: 'src_star_mark_full', qty: 1 }], desc: '最終効果解放' };
+  if (level <= 12) return { gold: 8000 * level, materials: [{ id: 'src_upg_core', qty: 2 }, { id: 'upg_rare_stone', qty: 2 }], desc: '極限性能上昇' };
+  if (level <= 14) return { gold: 12000 * level, materials: [{ id: 'src_star_scar_crystal', qty: 2 }, { id: 'raid_deep_core', qty: 2 }, { id: 'upg_deep_core_stone', qty: 1 }], desc: '最終性能強化' };
+  return { gold: 80000, materials: [{ id: 'src_valhalla_core', qty: 1 }, { id: 'src_old_king_echo', qty: 1 }, { id: 'upg_old_king_stone', qty: 3 }], desc: '最終段階強化（+15）' };
 }
 
 export function seedSrcWeapons(db: Database.Database): void {
   const ts = new Date().toISOString();
   const insItem = db.prepare(`INSERT INTO items (id, name, category, rarity, description, source_text, usage_text, sell_price, tradeable, created_at) VALUES (?, ?, 'equipment', 'Src', ?, 'Src化', '装備', 0, 0, ?)`);
-  const insEq = db.prepare(`INSERT INTO equipment (item_id, slot, series_id, weapon_type, attack_bonus, magic_bonus, defense_bonus, spirit_bonus, speed_bonus, hp_bonus, mp_bonus, special_effect_json, skill_id, max_upgrade_level, is_unique, src_weapon_id) VALUES (?, 'weapon', NULL, ?, ?, ?, 0, 0, 0, 0, 0, NULL, ?, 10, 0, ?)`);
+  const insEq = db.prepare(`INSERT INTO equipment (item_id, slot, series_id, weapon_type, attack_bonus, magic_bonus, defense_bonus, spirit_bonus, speed_bonus, hp_bonus, mp_bonus, special_effect_json, skill_id, max_upgrade_level, is_unique, src_weapon_id) VALUES (?, 'weapon', NULL, ?, ?, ?, 0, 0, 0, 0, 0, NULL, ?, ?, 0, ?)`);
   const insSrc = db.prepare(`INSERT INTO src_weapons (id, base_item_id, src_item_id, name, jobs_json, innate_skill_id, plus10_effect, manifest_requirements_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
   const insUpg = db.prepare(`INSERT INTO src_weapon_upgrades (src_weapon_id, target_src_level, gold_cost, material_requirements_json, effect_description) VALUES (?, ?, ?, ?, ?)`);
 
@@ -38,12 +42,32 @@ export function seedSrcWeapons(db: Database.Database): void {
     const mag = computeSrcBaseStats(0, baseEq?.magic_bonus ?? 0).mag;
 
     insItem.run(s.srcItem, s.name, `${s.name} — 伝承武器`, ts);
-    insEq.run(s.srcItem, wtype, atk, mag, s.skill, s.id);
+    insEq.run(s.srcItem, wtype, atk, mag, s.skill, MAX_SRC_WEAPON_LEVEL, s.id);
     insSrc.run(s.id, s.base, s.srcItem, s.name, JSON.stringify(s.jobs), s.skill, s.plus10, JSON.stringify(s.manifest));
 
-    for (let lv = 1; lv <= 10; lv++) {
+    for (let lv = 1; lv <= MAX_SRC_WEAPON_LEVEL; lv++) {
       const req = upgradeReqs(lv);
       insUpg.run(s.id, lv, req.gold, JSON.stringify(req.materials), req.desc);
+    }
+  }
+}
+
+/** 既存DB — Src武器 max_upgrade_level=15 と +11〜+15 強化行 */
+export function ensureSrcWeaponLevel15(db: Database.Database): void {
+  db.prepare(`
+    UPDATE equipment SET max_upgrade_level = ?
+    WHERE item_id IN (SELECT src_item_id FROM src_weapons)
+  `).run(MAX_SRC_WEAPON_LEVEL);
+
+  const insUpg = db.prepare(`
+    INSERT OR IGNORE INTO src_weapon_upgrades (src_weapon_id, target_src_level, gold_cost, material_requirements_json, effect_description)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  const srcIds = db.prepare('SELECT id FROM src_weapons').all() as Array<{ id: string }>;
+  for (const { id } of srcIds) {
+    for (let lv = 1; lv <= MAX_SRC_WEAPON_LEVEL; lv++) {
+      const req = upgradeReqs(lv);
+      insUpg.run(id, lv, req.gold, JSON.stringify(req.materials), req.desc);
     }
   }
 }

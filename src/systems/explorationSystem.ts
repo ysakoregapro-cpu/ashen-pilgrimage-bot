@@ -13,6 +13,7 @@ import {
   getAreaLootTier, rollChestLoot, resolveEquipSlot, pickEquipmentFromAreaPool, pickMaterialFromPool,
 } from './equipmentDropSystem';
 import { buildEffectiveRewardPool, pickTownLoot } from './townLootSystem';
+import { rollValhallaExploreSeriesDrop } from './valhallaSeriesDropSystem';
 
 export function getAreasForTown(townId: string) {
   return getDb().prepare('SELECT * FROM exploration_areas WHERE town_id = ? ORDER BY recommended_min_level').all(townId);
@@ -106,6 +107,12 @@ export function exploreArea(userId: string, areaId: string): {
         };
       }
       const lootTier = getAreaLootTier(area.recommended_min_level, area.town_id);
+      const rareValhalla = rollValhallaExploreSeriesDrop(areaId, area.town_id);
+      if (rareValhalla && canDropEquipment(userId, rareValhalla, area.recommended_min_level)) {
+        addItem(userId, rareValhalla, 1, { pending: true, rollSource: 'valhalla_reward', valhallaOrRaid: true });
+        const item = getDb().prepare('SELECT name FROM items WHERE id = ?').get(rareValhalla) as { name: string };
+        return { type: 'treasure', message: `${statusPrefix}${prefix}古い箱の奥に${item.name}が眠っていた。` };
+      }
       const chestRoll = rollChestLoot(lootTier);
       if (chestRoll.kind === 'material') {
         const itemId = pickMaterialFromPool(pool);

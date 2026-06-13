@@ -46,6 +46,8 @@ function main() {
   assert(rp.accessoryRateMin >= 0.08 && rp.accessoryRateMax <= 0.15, 'accessory rate out of spec');
   assert(rp.urLotteryRateMin >= 0.01 && rp.urLotteryRateMax <= 0.03, 'UR lottery rate out of spec');
   assert(rp.affixRerollAssistRateMin >= 0.005 && rp.affixRerollAssistRateMax <= 0.015, 'affix assist rate out of spec');
+  assert(rp.oldKingArmorRateMin >= 0.03 && rp.oldKingArmorRateMax <= 0.06, 'old king armor rate out of spec');
+  assert(rp.oldKingAccessoryRateMin >= 0.01 && rp.oldKingAccessoryRateMax <= 0.03, 'old king accessory rate out of spec');
 
   const fcPage = rows.find((r) => r.first_clear_or_repeat === 'first_clear' && r.item_id === SILENT_PAGE_ID);
   assert(!!fcPage && fcPage.drop_rate === '100%', 'audit: first clear silent page 100%');
@@ -55,6 +57,7 @@ function main() {
   assert(!!rpPage && rpPage.drop_rate === '4%', 'audit: repeat silent page 4%');
   assert(rows.some((r) => r.item_id === '(valhalla_armor)'), 'audit: valhalla armor in repeat');
   assert(rows.some((r) => r.item_id === '(valhalla_accessory)'), 'audit: valhalla accessory in repeat');
+  assert(rows.some((r) => r.item_id === '(old_king_armor)'), 'audit: old king armor in repeat');
   assert(rows.some((r) => r.item_id === UR_LOTTERY_SHARD_ID), 'audit: UR lottery shard');
   assert(rows.some((r) => r.item_id === AFFIX_REROLL_ASSIST_ID), 'audit: affix reroll assist');
 

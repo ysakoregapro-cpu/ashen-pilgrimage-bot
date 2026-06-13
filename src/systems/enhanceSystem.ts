@@ -1,4 +1,4 @@
-const RARITY_MAX: Record<string, number> = { N: 5, R: 5, SR: 7, SSR: 10, UR: 15, Uni: 7, Src: 10 };
+const RARITY_MAX: Record<string, number> = { N: 5, R: 5, SR: 7, SSR: 10, UR: 15, Uni: 7, Src: 15 };
 const RARITY_GOLD_MULT: Record<string, number> = { N: 1.0, R: 1.0, SR: 1.5, SSR: 2.0, UR: 3.0, Uni: 2.0 };
 
 export type EnhanceReq = { stoneId: string; stoneName: string; stoneQty: number; goldCost: number };
@@ -24,11 +24,13 @@ export function calcUniUpgradePctBonus(upgradeLevel: number): number {
   return bonus;
 }
 
-/** Src — +1〜+5: 15%/lv、+6〜+10: 24%/lv */
+/** Src — +1〜+5: 15%/lv、+6〜+10: 24%/lv、+11〜+15: 5%/lv（UR+15との見た目整合） */
 export function calcSrcLevelPctBonus(srcLevel: number): number {
   let bonus = 0;
   for (let lv = 1; lv <= srcLevel; lv++) {
-    bonus += lv <= 5 ? 0.15 : 0.24;
+    if (lv <= 5) bonus += 0.15;
+    else if (lv <= 10) bonus += 0.24;
+    else bonus += 0.05;
   }
   return bonus;
 }
@@ -39,7 +41,7 @@ export function calcUpgradePctBonus(rarity: string, upgradeLevel: number, srcLev
   return upgradeLevel * STANDARD_UPGRADE_PCT_PER_LEVEL;
 }
 
-/** Uni基礎値から Src +0 基礎（UR未強化よりやや弱い） */
+/** Uni基礎値から Src +0 基礎（UR+0よりやや弱い・完成時にUR+15覚醒IVを上回る） */
 export function computeSrcBaseStats(uniAtk: number, uniMag: number): { atk: number; mag: number } {
   return {
     atk: uniAtk > 0 ? Math.round(uniAtk * 1.34) : 0,

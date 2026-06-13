@@ -75,21 +75,11 @@ const AREA_POOL_ADDITIONS: Record<string, Array<{ item_id: string; weight: numbe
     { item_id: 'arm_set_black_lamp_legs', weight: 5 },
     { item_id: 'arm_set_black_lamp_feet', weight: 5 },
   ],
-  area_broken_throne: [
-    { item_id: 'arm_set_old_king_head', weight: 5 },
-    { item_id: 'arm_set_old_king_body', weight: 5 },
-  ],
-  area_ash_boulevard: [
-    { item_id: 'arm_set_old_king_arms', weight: 5 },
-    { item_id: 'arm_set_old_king_legs', weight: 5 },
-    { item_id: 'arm_set_old_king_feet', weight: 4 },
-  ],
+  area_broken_throne: [],
+  area_ash_boulevard: [],
   area_valhalla_outer: [
-    { item_id: 'arm_set_valhalla_head', weight: 4 },
-    { item_id: 'arm_set_valhalla_body', weight: 4 },
-    { item_id: 'arm_set_valhalla_arms', weight: 4 },
-    { item_id: 'arm_set_valhalla_legs', weight: 4 },
-    { item_id: 'arm_set_valhalla_feet', weight: 4 },
+    { item_id: 'arm_set_valhalla_head', weight: 1 },
+    { item_id: 'arm_set_valhalla_body', weight: 1 },
   ],
   area_deep_core: [
     { item_id: 'arm_set_valhalla_head', weight: 5 },

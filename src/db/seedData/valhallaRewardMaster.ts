@@ -1,5 +1,12 @@
 /** Phase2.6 — ヴァルハラボス周回報酬テーブル */
 
+import {
+  OLD_KING_SERIES_ACCESSORY_IDS,
+  OLD_KING_SERIES_ARMOR_IDS,
+  VALHALLA_SERIES_ACCESSORY_IDS,
+  VALHALLA_SERIES_ARMOR_IDS,
+} from './valhallaSeriesDropMaster';
+
 export const VALHALLA_EMBLEM_ID = 'valhalla_emblem';
 export const SILENT_PAGE_ID = 'boss_silent_page';
 export const UR_LOTTERY_SHARD_ID = 'mat_ur_lottery_shard';
@@ -53,20 +60,27 @@ export const VALHALLA_REPEAT_REWARDS = {
   urLotteryRateMax: 0.03,
   affixRerollAssistRateMin: 0.005,
   affixRerollAssistRateMax: 0.015,
+  oldKingArmorRateMin: 0.03,
+  oldKingArmorRateMax: 0.06,
+  oldKingAccessoryRateMin: 0.01,
+  oldKingAccessoryRateMax: 0.03,
 } as const;
 
+/** 初回/ヴァルハラ本命枠（旧王は別レート） */
+export const VALHALLA_SERIES_ARMOR_DROP_IDS = VALHALLA_SERIES_ARMOR_IDS;
+export const VALHALLA_SERIES_ACCESSORY_DROP_IDS = VALHALLA_SERIES_ACCESSORY_IDS;
+export const OLD_KING_SERIES_ARMOR_DROP_IDS = OLD_KING_SERIES_ARMOR_IDS;
+export const OLD_KING_SERIES_ACCESSORY_DROP_IDS = OLD_KING_SERIES_ACCESSORY_IDS;
+
+/** @deprecated 互換 — ヴァルハラ+旧王（初回以外は個別レート推奨） */
 export const VALHALLA_ARMOR_DROP_IDS = [
-  'arm_set_valhalla_head', 'arm_set_valhalla_body', 'arm_set_valhalla_arms',
-  'arm_set_valhalla_legs', 'arm_set_valhalla_feet',
-  'arm_set_iron_snow_head', 'arm_set_iron_snow_body', 'arm_set_iron_snow_arms',
-  'arm_set_iron_snow_legs', 'arm_set_iron_snow_feet',
-  'arm_set_old_king_head', 'arm_set_old_king_body', 'arm_set_old_king_arms',
-  'arm_set_old_king_legs', 'arm_set_old_king_feet',
+  ...VALHALLA_SERIES_ARMOR_DROP_IDS,
+  ...OLD_KING_SERIES_ARMOR_DROP_IDS,
 ] as const;
 
 export const VALHALLA_ACCESSORY_DROP_IDS = [
-  'acc_valhalla_necklace',
-  'acc_old_king_seal',
+  ...VALHALLA_SERIES_ACCESSORY_DROP_IDS,
+  ...OLD_KING_SERIES_ACCESSORY_DROP_IDS,
   'acc_raid_random',
 ] as const;
 
@@ -110,6 +124,8 @@ export function buildValhallaRewardAuditRows(): ValhallaRewardRow[] {
     { reward_context: 'valhalla_boss', first_clear_or_repeat: 'repeat', reward_type: 'material', item_id: '(pool)', item_name: '高級素材', amount_min: rp.materialCountMin, amount_max: rp.materialCountMax, drop_rate: '100%', notes: 'rep/upg/valhalla素材' },
     { reward_context: 'valhalla_boss', first_clear_or_repeat: 'repeat', reward_type: 'equipment', item_id: '(valhalla_armor)', item_name: 'ヴァルハラ防具', amount_min: 1, amount_max: 1, drop_rate: '15-25%', notes: 'Phase2.5 affix' },
     { reward_context: 'valhalla_boss', first_clear_or_repeat: 'repeat', reward_type: 'equipment', item_id: '(valhalla_accessory)', item_name: 'ヴァルハラアクセ', amount_min: 1, amount_max: 1, drop_rate: '8-15%', notes: 'Phase2.5 affix' },
+    { reward_context: 'valhalla_boss', first_clear_or_repeat: 'repeat', reward_type: 'equipment', item_id: '(old_king_armor)', item_name: '旧王防具', amount_min: 1, amount_max: 1, drop_rate: '3-6%', notes: '希少上振れ・Phase2.5 affix' },
+    { reward_context: 'valhalla_boss', first_clear_or_repeat: 'repeat', reward_type: 'equipment', item_id: '(old_king_accessory)', item_name: '旧王アクセ', amount_min: 1, amount_max: 1, drop_rate: '1-3%', notes: '希少上振れ・Phase2.5 affix' },
     { reward_context: 'valhalla_boss', first_clear_or_repeat: 'repeat', reward_type: 'boss_material', item_id: SILENT_PAGE_ID, item_name: '無答の守護者の頁', amount_min: 1, amount_max: 1, drop_rate: `${rp.silentPageRate * 100}%`, notes: '再戦4%設計' },
     { reward_context: 'valhalla_boss', first_clear_or_repeat: 'repeat', reward_type: 'boss_material', item_id: UR_LOTTERY_SHARD_ID, item_name: 'UR抽選の欠片', amount_min: 1, amount_max: 1, drop_rate: '1-3%', notes: '将来UR抽選' },
     { reward_context: 'valhalla_boss', first_clear_or_repeat: 'repeat', reward_type: 'boss_material', item_id: AFFIX_REROLL_ASSIST_ID, item_name: '特性再抽選の触媒', amount_min: 1, amount_max: 1, drop_rate: '0.5-1.5%', notes: '将来再抽選' },

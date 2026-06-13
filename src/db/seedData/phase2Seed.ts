@@ -9,6 +9,7 @@ import { getMonsterThreatTier } from '../../systems/combatMath';
 import { buildEffectiveRewardPool } from '../../systems/townLootSystem';
 import { TOWN_POOL_MARKER } from './townLootPools';
 import { ensureDropBalanceSeed } from './dropBalanceSeed';
+import { ensureSrcWeaponLevel15 } from './srcWeapons';
 
 const STORY_BOSS_MONSTER_IDS = new Set(Object.values(STORY_BOSS_MONSTERS));
 
@@ -443,6 +444,7 @@ function ensureForgeProgressionSeed(db: Database.Database, ts: string): void {
 
   applyUniWeaponBalance(db);
   applySrcWeaponBalance(db);
+  ensureSrcWeaponLevel15(db);
   ensureDropBalanceSeed(db);
 
   const areasWithCinder = db.prepare(`

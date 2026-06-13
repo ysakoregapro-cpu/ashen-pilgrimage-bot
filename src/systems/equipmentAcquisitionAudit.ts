@@ -1,5 +1,11 @@
 import type Database from 'better-sqlite3';
 import { AREAS } from '../db/seedData/areas';
+import {
+  OLD_KING_SERIES_ACCESSORY_IDS,
+  OLD_KING_SERIES_ARMOR_IDS,
+  VALHALLA_SERIES_ACCESSORY_IDS,
+  VALHALLA_SERIES_ARMOR_IDS,
+} from '../db/seedData/valhallaSeriesDropMaster';
 import { STARTER_WEAPON_IDS } from '../db/seedData/jobStarterWeapons';
 import {
   EXCLUDED_EQUIPMENT,
@@ -124,6 +130,19 @@ function buildRouteIndex(db: Database.Database): Map<string, RouteHit[]> {
         add(r, { kind: 'valhalla', label: `ヴァルハラ：${a.name}` });
       }
     }
+  }
+
+  for (const id of VALHALLA_SERIES_ARMOR_IDS) {
+    add(id, { kind: 'valhalla', label: 'ヴァルハラボス再戦（防具15-25%）' });
+  }
+  for (const id of VALHALLA_SERIES_ACCESSORY_IDS) {
+    add(id, { kind: 'valhalla', label: 'ヴァルハラボス再戦（アクセ8-15%）' });
+  }
+  for (const id of OLD_KING_SERIES_ARMOR_IDS) {
+    add(id, { kind: 'valhalla', label: 'ヴァルハラボス再戦（旧王防具3-6%）' });
+  }
+  for (const id of OLD_KING_SERIES_ACCESSORY_IDS) {
+    add(id, { kind: 'valhalla', label: 'ヴァルハラボス再戦（旧王アクセ1-3%）' });
   }
 
   return routes;

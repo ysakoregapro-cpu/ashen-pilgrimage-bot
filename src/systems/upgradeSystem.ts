@@ -7,6 +7,7 @@ import { nowIso, DURABILITY_ORDER, type DurabilityState } from '../types';
 import {
   getEnhanceRequirement, getMaxUpgradeLevel, formatEnhanceDiff, formatEnhancePreview,
 } from './enhanceSystem';
+import { MAX_SRC_WEAPON_LEVEL } from '../db/seedData/weaponTierBalanceMaster';
 
 export { getEnhanceRequirement, formatEnhancePreview } from './enhanceSystem';
 
@@ -154,7 +155,7 @@ export function getSrcUpgradeInfo(userId: string, inventoryId: number): string {
   if (!row?.src_weapon_id) return 'Src武器ではありません。';
 
   const nextLevel = row.src_level + 1;
-  if (nextLevel > 10) return `「${row.name}」はSrc+10が最大です。`;
+  if (nextLevel > MAX_SRC_WEAPON_LEVEL) return `「${row.name}」はSrc+${MAX_SRC_WEAPON_LEVEL}が最大です。`;
 
   const upg = getDb().prepare('SELECT * FROM src_weapon_upgrades WHERE src_weapon_id = ? AND target_src_level = ?')
     .get(row.src_weapon_id, nextLevel) as { gold_cost: number; material_requirements_json: string; effect_description: string } | undefined;
@@ -180,7 +181,7 @@ export function enhanceSrcWeapon(userId: string, inventoryId: number): { success
   if (!row?.src_weapon_id) return { success: false, message: 'Src武器ではありません。' };
 
   const nextLevel = row.src_level + 1;
-  if (nextLevel > 10) return { success: false, message: '最大強化済みです。' };
+  if (nextLevel > MAX_SRC_WEAPON_LEVEL) return { success: false, message: '最大強化済みです。' };
 
   const upg = getDb().prepare('SELECT * FROM src_weapon_upgrades WHERE src_weapon_id = ? AND target_src_level = ?')
     .get(row.src_weapon_id, nextLevel) as { gold_cost: number; material_requirements_json: string; effect_description: string };

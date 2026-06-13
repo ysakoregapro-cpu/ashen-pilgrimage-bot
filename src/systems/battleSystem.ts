@@ -23,6 +23,7 @@ import { incrementWeeklyProgress } from './weeklySystem';
 import { getUsableBattleSkills, isUsableBattleSkill, skillTypeLabel, scalingLabel, type SkillRow } from './skillSystem';
 import { grantBattleJobExp, grantDirectBattleJobExp, getJobProgressText } from './jobLevelSystem';
 import { grantValhallaBossRewards, isValhallaBossMonster } from './valhallaRewardSystem';
+import { rollValhallaExploreSeriesDrop } from './valhallaSeriesDropSystem';
 import { afterJobExpGranted } from './jobProgressionSystem';
 import { handleTrialVictory, isTrialBattleSession, parseTrialBaseJob } from './trialBattleSystem';
 import { roll, uuid, randomInt, weightedChoice } from '../utils/random';
@@ -1256,6 +1257,14 @@ function resolveVictory(
     addItem(userId, SRC_FORGE_MATERIAL_ID, 1, { pending: true });
     const mat = getDb().prepare('SELECT name FROM items WHERE id = ?').get(SRC_FORGE_MATERIAL_ID) as { name: string };
     dropMsgs.push(mat.name);
+  }
+  if (areaRow?.town_id === 'valhalla_fortress' && session.area_id
+    && !(session.is_boss && isValhallaBossMonster(session.monster_id))) {
+    const rareId = rollValhallaExploreSeriesDrop(session.area_id, areaRow.town_id);
+    if (rareId) {
+      grantBattleEquipmentDrop(userId, rareId, session, state);
+      dropMsgs.push((getDb().prepare('SELECT name FROM items WHERE id = ?').get(rareId) as { name: string }).name);
+    }
   }
   if (session.is_boss) incrementWeeklyProgress(userId, 'boss_kills');
   incrementWeeklyProgress(userId, 'explore_count');
