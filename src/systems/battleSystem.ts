@@ -21,7 +21,8 @@ import { clampCombatAffixMultiplier, getEquippedCombatAffixMods } from './equipm
 import { applyDefeat, applyTrialDefeat } from './defeatSystem';
 import { incrementWeeklyProgress } from './weeklySystem';
 import { getUsableBattleSkills, isUsableBattleSkill, skillTypeLabel, scalingLabel, type SkillRow } from './skillSystem';
-import { grantBattleJobExp, getJobProgressText } from './jobLevelSystem';
+import { grantBattleJobExp, grantDirectBattleJobExp, getJobProgressText } from './jobLevelSystem';
+import { grantValhallaBossRewards, isValhallaBossMonster } from './valhallaRewardSystem';
 import { afterJobExpGranted } from './jobProgressionSystem';
 import { handleTrialVictory, isTrialBattleSession, parseTrialBaseJob } from './trialBattleSystem';
 import { roll, uuid, randomInt, weightedChoice } from '../utils/random';
@@ -1046,6 +1047,73 @@ function hasBossFirstKill(userId: string, monsterId: string): boolean {
   return row.c === 0;
 }
 
+function resolveValhallaBossVictory(
+  sessionId: string,
+  userId: string,
+  session: SessionRow,
+  monster: MonsterRow,
+  state: BattleState,
+  enemyState: EnemyStateJson | undefined,
+  wasFirstKill: boolean,
+) {
+  const es = enemyState ?? state.enemyState ?? loadEnemyState(session);
+  const firstClear = wasFirstKill && !state.isRematch;
+  const vr = grantValhallaBossRewards(userId, session, state, { firstClear });
+  const levelResult = addExp(userId, vr.exp);
+  const jobResults = grantDirectBattleJobExp(userId, vr.jobExp);
+  for (const jr of jobResults) {
+    afterJobExpGranted(userId, jr.jobName);
+  }
+  addGold(userId, vr.gold);
+  incrementWeeklyProgress(userId, 'boss_kills');
+  incrementWeeklyProgress(userId, 'explore_count');
+
+  const lines: string[] = [];
+  const battleTail = state.log.filter((l) => !l.includes('勝利') && !/打ち倒した|すべて倒した/.test(l)).slice(-4);
+  if (battleTail.length) {
+    lines.push('**戦闘の終わり**', ...battleTail, '');
+  }
+  lines.push('🔵 ' + (es.partySize > 1 ? '敵をすべて倒した。' : monster.name + 'を倒した。'));
+  lines.push('');
+  lines.push('**得たもの**');
+  if (firstClear) lines.push('・**初回撃破報酬**');
+  lines.push(`・経験値 +${vr.exp}`);
+  for (const jr of jobResults) {
+    if (jr.expGained > 0) lines.push('・' + jr.jobName + '経験 +' + jr.expGained);
+  }
+  lines.push('・' + vr.gold + 'G');
+  if (vr.dropLabels.length) lines.push('・' + vr.dropLabels.join('、'));
+  lines.push('');
+  if (levelResult.leveledUp && levelResult.levelUpMessage) {
+    lines.push(levelResult.levelUpMessage);
+    lines.push('レベルアップによりHP/MPが回復した。');
+    lines.push('');
+  }
+  lines.push(`Lv${levelResult.newLevel + 1} まであと ${levelResult.expToNext} EXP`);
+  for (const jr of jobResults) {
+    if (jr.leveledUp) lines.push('✦ ' + jr.jobName + ' Lv' + jr.newLevel + 'へ深まった。');
+    else if (jr.expGained > 0 && jr.newLevel < 70) lines.push(getJobProgressText(userId, jr.jobName));
+  }
+
+  const skillLearned: Array<{ jobName: string; skills: string[] }> = [];
+  const jobLeveledUp: string[] = [];
+  for (const jr of jobResults) {
+    if (jr.newSkills.length) skillLearned.push({ jobName: jr.jobName, skills: jr.newSkills });
+    if (jr.leveledUp) jobLeveledUp.push(jr.jobName);
+  }
+
+  pushLog(state, 'info', '勝利。');
+  return {
+    done: true,
+    status: 'victory' as BattleStatus,
+    message: lines.join('\n'),
+    sessionId,
+    isRematch: state.isRematch ?? false,
+    skillLearned: skillLearned.length ? skillLearned : undefined,
+    jobLeveledUp: jobLeveledUp.length ? jobLeveledUp : undefined,
+  };
+}
+
 function resolveVictory(
   sessionId: string,
   userId: string,
@@ -1074,6 +1142,10 @@ function resolveVictory(
       sessionId,
       isRematch: false,
     };
+  }
+
+  if (session.is_boss && isValhallaBossMonster(session.monster_id)) {
+    return resolveValhallaBossVictory(sessionId, userId, session, monster, state, enemyState, wasFirstKill);
   }
 
   const player = requirePlayer(userId);

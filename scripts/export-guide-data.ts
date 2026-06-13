@@ -22,6 +22,8 @@ import { BASIC_MAIN_JOBS, PHASE2_SUB_JOBS, PHASE2_ADVANCED_MAIN_JOBS } from '../
 import { AREAS } from '../src/db/seedData/areas';
 import { buildDropEconomyRows, getNamedHighRarityAudits } from './audit/dropEconomyIndex';
 import { writeCsv } from './audit/reportWriter';
+import { buildValhallaRewardAuditRows } from '../src/db/seedData/valhallaRewardMaster';
+import { SILENT_PAGE_USAGE, VALHALLA_EXCHANGE_TABLE } from '../src/db/seedData/valhallaExchangeMaster';
 
 const GUIDE_DIR = path.join(process.cwd(), 'reports', 'guide');
 
@@ -242,6 +244,29 @@ function main() {
   ].map(cell));
   writeCsv('guide/trials.csv', trialHeaders, trialRows);
 
+  // --- valhalla_rewards.csv ---
+  const valhallaRewardHeaders = [
+    'reward_context', 'first_clear_or_repeat', 'reward_type', 'item_id', 'item_name',
+    'amount_min', 'amount_max', 'drop_rate', 'notes',
+  ];
+  const valhallaRewardRows = buildValhallaRewardAuditRows().map((r) => [
+    r.reward_context, r.first_clear_or_repeat, r.reward_type, r.item_id, r.item_name,
+    String(r.amount_min), String(r.amount_max), r.drop_rate, r.notes,
+  ]);
+  writeCsv('guide/valhalla_rewards.csv', valhallaRewardHeaders, valhallaRewardRows);
+
+  // --- valhalla_exchange.csv ---
+  const valhallaExchangeHeaders = [
+    'exchange_id', 'cost_valhalla_emblem', 'cost_silent_page', 'receive_type',
+    'receive_item_id', 'receive_item_name', 'receive_amount', 'notes', 'ui_implemented',
+  ];
+  const valhallaExchangeRows = VALHALLA_EXCHANGE_TABLE.map((e) => [
+    e.exchange_id, String(e.cost_valhalla_emblem), String(e.cost_silent_page), e.receive_type,
+    e.receive_item_id, e.receive_item_name, String(e.receive_amount), e.notes,
+    e.ui_implemented ? 'YES' : 'NO',
+  ]);
+  writeCsv('guide/valhalla_exchange.csv', valhallaExchangeHeaders, valhallaExchangeRows);
+
   const readme = `# Guide Data Export
 
 Generated: ${new Date().toISOString()}
@@ -256,6 +281,8 @@ Generated: ${new Date().toISOString()}
 | drop_routes.csv | 探索pool・名指し高レア・ボス経路 |
 | job_unlocks.csv | 基本9 / サブ9 / 上級9 の解放条件 |
 | trials.csv | 現身の試練9種 |
+| valhalla_rewards.csv | ヴァルハラボス初回/再戦報酬・無答の頁 |
+| valhalla_exchange.csv | ヴァルハラ徽章交換表（UI未実装） |
 
 ## 見方（攻略用）
 
@@ -278,6 +305,14 @@ Generated: ${new Date().toISOString()}
 - **理論値**: 7.0%×2スキル×デバフ無しは夢のまた夢 — 周回厳選の目標値。
 - **セット統一 vs 混成**: SSR/URセット5部位は安定強度。ランダム混成神個体は理論上セット超え可能だが確率は極小。
 - **set_bonus_evaluation**: SSR/URシリーズは Phase2.5 で再調整済（\`reports/set-bonus-balance-audit.md\` 参照）。
+
+## Phase2.6 ヴァルハラボス周回報酬
+
+- **valhalla_rewards.csv**: 初回撃破（頁100%・徽章10・装備1）/ 再戦（徽章4〜8・素材・装備確率・頁4%）。
+- **valhalla_exchange.csv**: 徽章10〜300の交換段階。150+頁3（UR抽選）/ 300+頁1（特性保護）は将来UI。
+- **無答の守護者の頁**: Src最終強化・UR覚醒・特性保護・UR抽選・上位レイド解放（多くは将来Phase）。
+- **ヴァルハラ vs レイド**: ヴァルハラ=防具/アクセ厳選・徽章・素材。レイド=UR武器・レイド専用装備・最上位素材。
+- **silent_page_usage**: ${SILENT_PAGE_USAGE.map((u) => `${u.use}(${u.cost_pages}${u.implemented ? '' : '・未実装'})`).join(' / ')}
 `;
   fs.writeFileSync(path.join(GUIDE_DIR, 'README.md'), readme, 'utf8');
 
@@ -288,6 +323,8 @@ Generated: ${new Date().toISOString()}
   console.log(`drop_routes: ${dropRouteRows.length}`);
   console.log(`job_unlocks: ${jobRows.length}`);
   console.log(`trials: ${trialRows.length}`);
+  console.log(`valhalla_rewards: ${valhallaRewardRows.length}`);
+  console.log(`valhalla_exchange: ${valhallaExchangeRows.length}`);
   console.log(`→ reports/guide/*.csv + README.md`);
 }
 

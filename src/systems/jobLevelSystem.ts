@@ -106,6 +106,20 @@ export function grantBattleJobExp(userId: string, monsterExp: number): JobExpRes
   return results;
 }
 
+/** ヴァルハラボス等 — 設計値のJob経験を直接付与（メイン100%・サブ40%） */
+export function grantDirectBattleJobExp(userId: string, targetJobExp: number): JobExpResult[] {
+  const player = requirePlayer(userId);
+  const results: JobExpResult[] = [];
+
+  if (player.main_job !== '未選択') {
+    results.push(addJobExp(userId, player.main_job, Math.floor(targetJobExp * JOB_EXP_RATE_MAIN), true));
+  }
+  if (player.sub_job) {
+    results.push(addJobExp(userId, player.sub_job, Math.floor(targetJobExp * JOB_EXP_RATE_SUB), false));
+  }
+  return results;
+}
+
 export function unlockSkillsAtLevel(userId: string, jobName: string, level: number): string[] {
   const unlocks = (JOB_SKILL_UNLOCKS[jobName] ?? []).filter((u) => u.level === level);
   const db = getDb();

@@ -2,6 +2,7 @@ import { getDb } from '../db/database';
 import { createBattle, getActiveBattle } from './battleSystem';
 import { REMATCH_MATERIAL_BOSSES } from '../db/seedData/forgeMaster';
 import { STORY_BOSS_MONSTERS } from '../db/seedData/storyData';
+import { VALHALLA_BOSS_MONSTER_IDS, VALHALLA_BOSS_REMATCH_META } from '../db/seedData/valhallaRewardMaster';
 
 export type BossRematchCategory = 'story' | 'material';
 
@@ -24,6 +25,18 @@ export function getRematchableBosses(userId: string): Array<{ monsterId: string;
       name: cfg.label,
       category: 'material',
       hint: cfg.areaHint,
+    });
+  }
+
+  for (const monsterId of VALHALLA_BOSS_MONSTER_IDS) {
+    if (seen.has(monsterId) || !hasDefeatedMonster(userId, monsterId)) continue;
+    seen.add(monsterId);
+    const meta = VALHALLA_BOSS_REMATCH_META[monsterId];
+    out.push({
+      monsterId,
+      name: meta.label,
+      category: 'material',
+      hint: meta.areaHint,
     });
   }
 
@@ -52,7 +65,7 @@ export function startBossRematch(userId: string, monsterId: string): { ok: boole
   if (!check.ok) return { ok: false, message: check.reason ?? '再戦できません。' };
   const battleId = createBattle(userId, monsterId, null, { isBoss: true, isRematch: true });
   const name = (getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(monsterId) as { name: string }).name;
-  return { ok: true, battleId, message: `**${name}** との再戦が始まった。\n初回報酬はなく、素材ドロップが主目的だ。` };
+  return { ok: true, battleId, message: `**${name}** との再戦が始まった。\n初回報酬はなく、徽章・素材・装備厳選が主目的だ。` };
 }
 
 export function formatRematchBossList(userId: string): string {

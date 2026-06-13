@@ -10,6 +10,10 @@ export { FORMAL_ITEM_PURPOSE_KINDS } from './itemPurposeMaster';
 /** 通常探索 town pool から除外（legacy・reserved・boss専用） */
 export const NORMAL_EXPLORE_POOL_EXCLUDED = new Set([
   'boss_silent_page',
+  'valhalla_emblem',
+  'mat_ur_lottery_shard',
+  'mat_affix_reroll_assist',
+  'mat_affix_slot_protect',
   'mat_starfall_obsidian',
   'mat_black_lantern_cinder',
   'wpn_unique_silence',

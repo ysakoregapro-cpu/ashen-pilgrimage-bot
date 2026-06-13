@@ -12,7 +12,7 @@ import { runEquipmentAcquisitionAudit } from '../src/systems/equipmentAcquisitio
 const GUIDE_DIR = path.join(process.cwd(), 'reports', 'guide');
 const REQUIRED = [
   'items.csv', 'equipment.csv', 'equipment_sets.csv', 'drop_routes.csv',
-  'job_unlocks.csv', 'trials.csv', 'README.md',
+  'job_unlocks.csv', 'trials.csv', 'valhalla_rewards.csv', 'valhalla_exchange.csv', 'README.md',
 ];
 const ITEM_HEADERS = [
   'item_id', 'name', 'rarity', 'purpose', 'category', 'effect_summary', 'value_sell_price',
@@ -80,6 +80,15 @@ function main() {
   const dropText = drops.rows.map((r) => r.join(',')).join('\n');
   assert(dropText.includes('boss_silent_page'), 'drop_routes missing boss_silent_page');
   assert(dropText.includes('wpn_black_iron_blade'), 'drop_routes missing wpn_black_iron_blade');
+
+  const valhallaRewards = parseCsv('valhalla_rewards.csv');
+  assert(valhallaRewards.headers.includes('reward_context'), 'valhalla_rewards.csv missing reward_context');
+  assert(valhallaRewards.rows.some((r) => r.includes('boss_silent_page')), 'valhalla_rewards missing silent page');
+  assert(valhallaRewards.rows.some((r) => r.includes('valhalla_emblem')), 'valhalla_rewards missing emblem');
+
+  const valhallaExchange = parseCsv('valhalla_exchange.csv');
+  assert(valhallaExchange.rows.length >= 9, 'valhalla_exchange.csv should have 9+ rows');
+  assert(valhallaExchange.rows.some((r) => r.includes('vex_ur_lottery')), 'valhalla_exchange missing UR lottery');
 
   const legacyRows = equipment.rows.filter((r) => r[24] && r[24] !== 'NO');
   assert(legacyRows.length >= 1, 'equipment.csv should mark legacy/excluded rows');
