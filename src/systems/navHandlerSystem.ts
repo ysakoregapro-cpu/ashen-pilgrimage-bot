@@ -3,7 +3,7 @@ import {
   mapInventoryRowToEquipmentSelect,
 } from './equipmentLabelSystem';
 import { getEquippableItems } from './equipmentSystem';
-import { buildPrepEquipSelectOptions } from './prepSystem';
+import { buildPrepSlotSelectComponents } from './prepSystem';
 import { buildUpgradeSelectPayload } from './upgradeConfirmSystem';
 import { buildExploreList, buildTownHub } from './townActionSystem';
 import { getFacility } from './facilitySystem';
@@ -20,6 +20,7 @@ import { getCurrentTown } from './townSystem';
 import { requirePlayer } from './playerSystem';
 import { calcMaxBuyable } from './shopSystem';
 import type { EquipmentSlot } from '../types';
+import { SLOT_LABELS } from '../types';
 
 /** Parse `nav:back:{context}:{payload}` from full custom_id (session-stripped). */
 export function parseNavBackId(base: string): { context: string; payload: string } | null {
@@ -67,13 +68,9 @@ export function buildNavBackPayload(userId: string, base: string): UiPayload | n
 
   if (parsed.context === 'prep') {
     const slot = parsed.payload as EquipmentSlot;
-    const pickOpts = buildPrepEquipSelectOptions(userId, slot);
     return {
-      embeds: [townHubEmbed('装備変更', `**${slot}** の装備候補`)],
-      components: [
-        selectMenu('prep:equip', '装備を選ぶ', pickOpts),
-        selectMenu('detail:inv', '詳細を見る', pickOpts.filter((o) => !o.value.startsWith('none'))),
-      ],
+      embeds: [townHubEmbed('装備変更', `**${SLOT_LABELS[slot] ?? slot}** の装備候補`)],
+      components: buildPrepSlotSelectComponents(userId, slot),
     };
   }
 

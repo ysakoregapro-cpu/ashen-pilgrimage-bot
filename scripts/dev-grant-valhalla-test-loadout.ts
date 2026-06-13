@@ -18,6 +18,8 @@ import { runEquipmentAcquisitionAudit } from '../src/systems/equipmentAcquisitio
 import { recalculatePlayerStats, getPlayer } from '../src/systems/playerSystem';
 import { totalExpToReachLevel } from '../src/systems/expSystem';
 import { unlockSubJob } from '../src/systems/jobProgressionSystem';
+import { getSelectableSubJobs, canStartTrial } from '../src/systems/jobProgressionSystem';
+import { getJobLevel } from '../src/systems/jobLevelSystem';
 import { setStoryFlag } from '../src/systems/storySystem';
 import { nowIso } from '../src/types';
 
@@ -34,6 +36,7 @@ export type Args = {
   unlockTrials: boolean;
   trialsUncleared: boolean;
   apply: boolean;
+  verifyOnly: boolean;
 };
 
 function parseArgs(argv: string[]): Args {
@@ -60,6 +63,7 @@ function parseArgs(argv: string[]): Args {
     unlockTrials: has('--unlock-trials'),
     trialsUncleared: has('--trials-uncleared'),
     apply: has('--apply'),
+    verifyOnly: has('--verify'),
   };
 }
 
@@ -102,6 +106,94 @@ function planChanges(db: ReturnType<typeof getDb>, args: Args) {
   };
 }
 
+function ensureAllSubJobUnlocks(db: ReturnType<typeof getDb>, userId: string, ts: string): void {
+  for (const baseJob of Object.keys(JOB_TRIO_MAP)) {
+    const sub = JOB_TRIO_MAP[baseJob]!.sub;
+    db.prepare(`
+      INSERT INTO player_sub_job_unlocks (user_id, sub_job, unlocked_at, unlock_source)
+      VALUES (?, ?, ?, 'dev_valhalla_test_loadout')
+      ON CONFLICT(user_id, sub_job) DO UPDATE SET unlock_source = excluded.unlock_source
+    `).run(userId, sub, ts);
+    unlockSubJob(userId, sub, 'dev_valhalla_test_loadout');
+  }
+}
+
+export type EquipmentVerifyResult = {
+  weapons: number;
+  armor: number;
+  accessories: number;
+  totalDistinct: number;
+  expectedPlayable: number;
+  missingIds: string[];
+  extraExcluded: string[];
+};
+
+export function verifyEquipmentInventory(db: ReturnType<typeof getDb>, userId: string): EquipmentVerifyResult {
+  const playable = getPlayableEquipmentIds(db);
+  const ownedRows = db.prepare(`
+    SELECT DISTINCT pi.item_id, e.slot FROM player_inventory pi
+    JOIN items i ON pi.item_id = i.id
+    JOIN equipment e ON pi.item_id = e.item_id
+    WHERE pi.user_id = ? AND i.category = 'equipment'
+  `).all(userId) as Array<{ item_id: string; slot: string }>;
+  const owned = new Set(ownedRows.map((r) => r.item_id));
+  const missingIds = playable.filter((id) => !owned.has(id));
+  const extraExcluded = ownedRows.filter((r) => EXCLUDED_EQUIPMENT[r.item_id]).map((r) => r.item_id);
+
+  const weapons = ownedRows.filter((r) => r.slot === 'weapon').length;
+  const armor = ownedRows.filter((r) => ['head', 'body', 'arms', 'legs', 'feet'].includes(r.slot)).length;
+  const accessories = ownedRows.filter((r) => r.slot === 'accessory1' || r.slot === 'accessory2').length;
+
+  return {
+    weapons,
+    armor,
+    accessories,
+    totalDistinct: owned.size,
+    expectedPlayable: playable.length,
+    missingIds,
+    extraExcluded,
+  };
+}
+
+function printEquipmentVerify(db: ReturnType<typeof getDb>, userId: string): void {
+  const v = verifyEquipmentInventory(db, userId);
+  console.log(`equipment weapons/armor/accessories (distinct item_id): ${v.weapons}/${v.armor}/${v.accessories}`);
+  console.log(`equipment total distinct: ${v.totalDistinct} / expected playable ${v.expectedPlayable}`);
+  if (v.missingIds.length) {
+    console.log(`missing equipment (${v.missingIds.length}): ${v.missingIds.slice(0, 20).join(', ')}${v.missingIds.length > 20 ? '…' : ''}`);
+  } else {
+    console.log('missing equipment: none');
+  }
+  if (v.extraExcluded.length) {
+    console.warn(`WARN: legacy/excluded in inventory: ${v.extraExcluded.join(', ')}`);
+  }
+  const accRaidOwned = ownedHas(db, userId, 'acc_raid_random');
+  const accRaidPlayable = getPlayableEquipmentIds(db).includes('acc_raid_random');
+  console.log(`acc_raid_random: playable=${accRaidPlayable ? 'YES' : 'NO'}, owned=${accRaidOwned ? 'YES' : 'NO'} (collection purpose, included when obtainable)`);
+}
+
+function ownedHas(db: ReturnType<typeof getDb>, userId: string, itemId: string): boolean {
+  return !!db.prepare('SELECT 1 FROM player_inventory WHERE user_id = ? AND item_id = ? LIMIT 1').get(userId, itemId);
+}
+
+function printJobUiVerify(userId: string): void {
+  const selectableSubs = getSelectableSubJobs(userId).filter((s) => !s.locked);
+  console.log(`UI selectable sub jobs: ${selectableSubs.length} (${selectableSubs.map((s) => s.name).join(', ') || 'none'})`);
+  for (const job of PHASE2_SUB_JOBS) {
+    const lv = getJobLevel(userId, job)?.job_level ?? 0;
+    if (lv !== 70) console.warn(`WARN: sub ${job} UI job level ${lv} (expected 70)`);
+  }
+  for (const job of BASIC_MAIN_JOBS) {
+    const lv = getJobLevel(userId, job)?.job_level ?? 0;
+    if (lv !== 70) console.warn(`WARN: main ${job} UI job level ${lv} (expected 70)`);
+  }
+  let trialsOk = 0;
+  for (const base of Object.keys(JOB_TRIO_MAP)) {
+    if (canStartTrial(userId, base).ok) trialsOk++;
+  }
+  console.log(`UI trial challengable (canStartTrial): ${trialsOk}/${Object.keys(JOB_TRIO_MAP).length}`);
+}
+
 function applyChanges(db: ReturnType<typeof getDb>, args: Args): void {
   const ts = nowIso();
   const totalExp = totalExpToReachLevel(args.level);
@@ -118,6 +210,8 @@ function applyChanges(db: ReturnType<typeof getDb>, args: Args): void {
     db.prepare('DELETE FROM player_advanced_job_unlocks WHERE user_id = ?').run(args.userId);
   }
 
+  ensureAllSubJobUnlocks(db, args.userId, ts);
+
   for (const baseJob of Object.keys(JOB_TRIO_MAP)) {
     db.prepare(`
       INSERT INTO player_job_levels (user_id, job_name, job_level, job_exp, is_main, is_sub, unlocked_at, updated_at)
@@ -126,7 +220,6 @@ function applyChanges(db: ReturnType<typeof getDb>, args: Args): void {
     `).run(args.userId, baseJob, args.mainJobLevel, ts, ts);
 
     const sub = JOB_TRIO_MAP[baseJob]!.sub;
-    unlockSubJob(args.userId, sub, 'dev_valhalla_test_loadout');
     db.prepare(`
       INSERT INTO player_job_levels (user_id, job_name, job_level, job_exp, is_main, is_sub, unlocked_at, updated_at)
       VALUES (?, ?, ?, 0, 0, 1, ?, ?)
@@ -212,7 +305,7 @@ function printSummary(db: ReturnType<typeof getDb>, args: Args, label: string) {
   console.log(`valhalla_unlocked: ${valhalla ? 'YES' : 'NO'}`);
 }
 
-export { parseArgs, planChanges, applyChanges, type Args };
+export { parseArgs, planChanges, applyChanges };
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -228,7 +321,8 @@ function main() {
   }
 
   console.log('# dev-grant-valhalla-test-loadout');
-  console.log(`mode: ${args.apply ? 'APPLY' : 'DRY-RUN'}`);
+  const mode = args.verifyOnly ? 'VERIFY' : args.apply ? 'APPLY' : 'DRY-RUN';
+  console.log(`mode: ${mode}`);
   console.log(`target userId: ${args.userId} (required key)`);
   console.log(`player name (DB): ${plan.player.name}`);
   if (args.expectedHandle) {
@@ -250,7 +344,15 @@ function main() {
   console.log(`- trials unlock flags: ${args.unlockTrials}`);
   console.log(`- trials uncleared (delete advanced unlocks): ${args.trialsUncleared}`);
   console.log('- auto equip: NO');
-  console.log('- legacy/excluded: excluded via equipmentClassification');
+  console.log('- legacy/excluded: excluded via equipmentClassification (wpn_unique_silence excluded)');
+  console.log('- acc_raid_random: included when equipment audit current_obtainable=YES');
+
+  if (args.verifyOnly) {
+    console.log('\n## Verify (read-only)');
+    printEquipmentVerify(db, args.userId);
+    printJobUiVerify(args.userId);
+    return;
+  }
 
   if (!args.apply) {
     console.log('\nDRY-RUN complete — no DB changes. Pass --apply to write.');
@@ -259,6 +361,9 @@ function main() {
 
   applyChanges(db, args);
   printSummary(db, args, 'After apply');
+  console.log('\n## Post-apply verify');
+  printEquipmentVerify(db, args.userId);
+  printJobUiVerify(args.userId);
   console.log('\nAPPLY complete.');
 }
 

@@ -28,6 +28,7 @@ import {
   AWAKENING_MAX_HINT, KAI_UNI_MATERIAL_HINT, isMaxAwakening,
 } from '../db/seedData/awakeningMaster';
 import { isJobStarterWeapon } from '../db/seedData/jobStarterWeapons';
+import { formatUpgradeTag, isSrcStageEquipment } from './equipmentLabelSystem';
 import { isInventoryItemUsableOutOfBattle } from './inventoryUseSystem';
 import { ButtonBuilder, ButtonStyle, ActionRowBuilder, type MessageActionRowComponentBuilder } from 'discord.js';
 
@@ -252,6 +253,11 @@ function formatSeriesBlock(userId: string, seriesId: string | null, slot: string
   ].join('\n');
 }
 
+function inlineUpgradeSuffix(rarity: string, upgradeLevel: number, srcLevel: number): string {
+  const tag = formatUpgradeTag({ rarity, upgrade_level: upgradeLevel, src_level: srcLevel });
+  return tag !== '+0' ? ` ${tag}` : '';
+}
+
 function formatPermFlags(userId: string, inventoryId: number | null, itemId: string, category: string): string {
   const lines: string[] = [];
   if (inventoryId != null) {
@@ -338,7 +344,7 @@ export function getEquipmentComparison(userId: string, inventoryId: number): str
     const stats = effectiveStats(target);
     const lines = [
       `**${SLOT_LABELS[target.slot as keyof typeof SLOT_LABELS] ?? target.slot}** は未装備。`,
-      `確認中: ${target.name}${target.upgrade_level ? ` +${target.upgrade_level}` : ''}${target.src_level ? ` Src+${target.src_level}` : ''}`,
+      `確認中: ${target.name}${inlineUpgradeSuffix(target.rarity, target.upgrade_level, target.src_level)}`,
       '',
       '**この装備の実効ボーナス:**',
     ];
@@ -353,8 +359,8 @@ export function getEquipmentComparison(userId: string, inventoryId: number): str
   const equippedStats = effectiveStats(equippedRow);
 
   const lines = [
-    `現在装備: ${equippedRow.name}${equippedRow.upgrade_level ? ` +${equippedRow.upgrade_level}` : ''}${equippedRow.src_level ? ` Src+${equippedRow.src_level}` : ''}`,
-    `確認中: ${target.name}${target.upgrade_level ? ` +${target.upgrade_level}` : ''}${target.src_level ? ` Src+${target.src_level}` : ''}`,
+    `現在装備: ${equippedRow.name}${inlineUpgradeSuffix(equippedRow.rarity, equippedRow.upgrade_level, equippedRow.src_level)}`,
+    `確認中: ${target.name}${inlineUpgradeSuffix(target.rarity, target.upgrade_level, target.src_level)}`,
     '',
     '**差分（実効ボーナス）:**',
   ];
@@ -455,7 +461,7 @@ function buildEquipmentDetail(userId: string, inventoryId: number): string {
         weapon_type: wtype, slot,
       }, upg + 1, srcLv, rarity)}`;
     }
-  } else if (srcLv > 0) {
+  } else if (isSrcStageEquipment({ rarity, src_level: srcLv })) {
     enhanceBlock += `\nSrc +${srcLv}`;
   }
 
@@ -478,7 +484,7 @@ function buildEquipmentDetail(userId: string, inventoryId: number): string {
   const meta = row.metadata_json as string | null;
   const kaiUnique = meta?.includes('kai_unique');
   const typeTags: string[] = [];
-  if (rarity === 'Src' || srcLv > 0) typeTags.push('Src武器');
+  if (rarity === 'Src') typeTags.push('Src武器');
   else if (rarity === 'Uni' || (row.is_unique as number) || kaiUnique) typeTags.push('Uni武器');
   const reqLv = (row.required_level as number) ?? 1;
   const reqJob = row.required_job as string | null;
@@ -487,7 +493,7 @@ function buildEquipmentDetail(userId: string, inventoryId: number): string {
   const sellPrice = isOwner ? getInventorySellPrice(row.item_id as string, upg, dur, row.metadata_json as string | null) : 0;
 
   const sections = [
-    `${RARITY_EMOJI[rarity as Rarity] ?? ''} **${name}**${upg ? ` +${upg}` : ''}${srcLv ? ` Src+${srcLv}` : ''}${typeTags.length ? `（${typeTags.join('・')}）` : ''}`,
+    `${RARITY_EMOJI[rarity as Rarity] ?? ''} **${name}**${inlineUpgradeSuffix(rarity, upg, srcLv)}${typeTags.length ? `（${typeTags.join('・')}）` : ''}`,
     `種別: ${slot === 'weapon' ? '武器' : '防具'}${wtype ? ` / ${WEAPON_TYPE_LABELS[wtype] ?? wtype}` : ''}`,
     `レアリティ: ${rarity} | 部位: ${SLOT_LABELS[slot as keyof typeof SLOT_LABELS] ?? slot}`,
     `属性: ${ELEMENT_LABELS[element]}`,

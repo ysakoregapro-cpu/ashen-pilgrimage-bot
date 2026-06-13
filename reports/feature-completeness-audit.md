@@ -1,6 +1,6 @@
 # Feature Completeness Audit
 
-Generated: 2026-06-13T07:37:12.414Z
+Generated: 2026-06-13T08:17:06.300Z
 
 | id | category | classification | notes |
 |---|---|---|---|

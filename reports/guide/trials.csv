@@ -1,0 +1,10 @@
+trial_id,trial_name,base_job,advanced_job,unlock_condition,required_job_level,enemy_id,enemy_name,difficulty_summary,reward_summary,clear_flag,notes
+trial_剣士,黄昏の現身,剣士,黄昏剣聖,JobLv70+valhalla,70,trial_剣士,黄昏の現身,solo trial battle,unlock 黄昏剣聖,advanced_unlock:黄昏剣聖,
+trial_重騎士,白銀の現身,重騎士,白銀城塞騎士,JobLv70+valhalla,70,trial_重騎士,白銀の現身,solo trial battle,unlock 白銀城塞騎士,advanced_unlock:白銀城塞騎士,
+trial_狩人,残響の現身,狩人,残響弓王,JobLv70+valhalla,70,trial_狩人,残響の現身,solo trial battle,unlock 残響弓王,advanced_unlock:残響弓王,
+trial_魔術師,星灰の現身,魔術師,星灰大魔導,JobLv70+valhalla,70,trial_魔術師,星灰の現身,solo trial battle,unlock 星灰大魔導,advanced_unlock:星灰大魔導,
+trial_祈祷師,聖祈の現身,祈祷師,巡礼聖祈師,JobLv70+valhalla,70,trial_祈祷師,聖祈の現身,solo trial battle,unlock 巡礼聖祈師,advanced_unlock:巡礼聖祈師,
+trial_斥候,影渡りの現身,斥候,影渡りの夜王,JobLv70+valhalla,70,trial_斥候,影渡りの現身,solo trial battle,unlock 影渡りの夜王,advanced_unlock:影渡りの夜王,
+trial_機工師,深層機工の現身,機工師,深層機工卿,JobLv70+valhalla,70,trial_機工師,深層機工の現身,solo trial battle,unlock 深層機工卿,advanced_unlock:深層機工卿,
+trial_格闘士,灰拳の現身,格闘士,灰拳闘王,JobLv70+valhalla,70,trial_格闘士,灰拳の現身,solo trial battle,unlock 灰拳闘王,advanced_unlock:灰拳闘王,
+trial_巡礼者,星巡の現身,巡礼者,星巡の導き手,JobLv70+valhalla,70,trial_巡礼者,星巡の現身,solo trial battle,unlock 星巡の導き手,advanced_unlock:星巡の導き手,

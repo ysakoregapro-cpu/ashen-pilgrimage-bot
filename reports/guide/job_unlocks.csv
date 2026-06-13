@@ -1,0 +1,28 @@
+job_id,job_name,job_type,unlock_condition,required_job,required_level,trial_required,advanced_job,notes
+job_剣士,剣士,main,start / selectable,,1,NO,黄昏剣聖,sub: 刃走り
+job_刃走り,刃走り,sub,base JobLv20,剣士,20,NO,,
+job_黄昏剣聖,黄昏剣聖,advanced,trial JobLv70+valhalla,剣士,70,YES,黄昏剣聖,
+job_重騎士,重騎士,main,start / selectable,,1,NO,白銀城塞騎士,sub: 城壁番
+job_城壁番,城壁番,sub,base JobLv20,重騎士,20,NO,,
+job_白銀城塞騎士,白銀城塞騎士,advanced,trial JobLv70+valhalla,重騎士,70,YES,白銀城塞騎士,
+job_狩人,狩人,main,start / selectable,,1,NO,残響弓王,sub: 矢痕読み
+job_矢痕読み,矢痕読み,sub,base JobLv20,狩人,20,NO,,
+job_残響弓王,残響弓王,advanced,trial JobLv70+valhalla,狩人,70,YES,残響弓王,
+job_魔術師,魔術師,main,start / selectable,,1,NO,星灰大魔導,sub: 灰術士
+job_灰術士,灰術士,sub,base JobLv20,魔術師,20,NO,,
+job_星灰大魔導,星灰大魔導,advanced,trial JobLv70+valhalla,魔術師,70,YES,星灰大魔導,
+job_祈祷師,祈祷師,main,start / selectable,,1,NO,巡礼聖祈師,sub: 灯守
+job_灯守,灯守,sub,base JobLv20,祈祷師,20,NO,,
+job_巡礼聖祈師,巡礼聖祈師,advanced,trial JobLv70+valhalla,祈祷師,70,YES,巡礼聖祈師,
+job_斥候,斥候,main,start / selectable,,1,NO,影渡りの夜王,sub: 影足
+job_影足,影足,sub,base JobLv20,斥候,20,NO,,
+job_影渡りの夜王,影渡りの夜王,advanced,trial JobLv70+valhalla,斥候,70,YES,影渡りの夜王,
+job_機工師,機工師,main,start / selectable,,1,NO,深層機工卿,sub: 歯車工
+job_歯車工,歯車工,sub,base JobLv20,機工師,20,NO,,
+job_深層機工卿,深層機工卿,advanced,trial JobLv70+valhalla,機工師,70,YES,深層機工卿,
+job_格闘士,格闘士,main,start / selectable,,1,NO,灰拳闘王,sub: 勁打者
+job_勁打者,勁打者,sub,base JobLv20,格闘士,20,NO,,
+job_灰拳闘王,灰拳闘王,advanced,trial JobLv70+valhalla,格闘士,70,YES,灰拳闘王,
+job_巡礼者,巡礼者,main,start / selectable,,1,NO,星巡の導き手,sub: 繋ぎ手
+job_繋ぎ手,繋ぎ手,sub,base JobLv20,巡礼者,20,NO,,
+job_星巡の導き手,星巡の導き手,advanced,trial JobLv70+valhalla,巡礼者,70,YES,星巡の導き手,

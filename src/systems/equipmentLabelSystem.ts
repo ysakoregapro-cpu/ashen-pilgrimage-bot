@@ -17,8 +17,13 @@ export type OwnedEquipmentSelectRow = {
 
 export const EQUIP_NONE_VALUE = 'none';
 
-export function formatUpgradeTag(row: Pick<OwnedEquipmentSelectRow, 'upgrade_level' | 'src_level'>): string {
-  if (row.src_level > 0) return `Src+${row.src_level}`;
+/** Src段階表示はレア度 Src のみ（upgrade_level と混同しない） */
+export function isSrcStageEquipment(row: Pick<OwnedEquipmentSelectRow, 'rarity' | 'src_level'>): boolean {
+  return row.rarity === 'Src' && (row.src_level ?? 0) > 0;
+}
+
+export function formatUpgradeTag(row: Pick<OwnedEquipmentSelectRow, 'upgrade_level' | 'src_level' | 'rarity'>): string {
+  if (isSrcStageEquipment(row)) return `Src+${row.src_level}`;
   return `+${row.upgrade_level ?? 0}`;
 }
 

@@ -681,15 +681,12 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
   }
 
   if (prefix === 'prep' && action === 'slot') {
-    const { buildPrepEquipSelectOptions } = await import('./systems/prepSystem');
+    const { buildPrepSlotSelectComponents } = await import('./systems/prepSystem');
     const slot = value as import('./types').EquipmentSlot;
-    const pickOpts = buildPrepEquipSelectOptions(userId, slot);
+    const { SLOT_LABELS } = await import('./types');
     await sendSelectResultLog(interaction, {
-      embeds: [townHubEmbed('装備変更', `**${value}** の装備候補`)],
-      components: [
-        selectMenu('prep:equip', '装備を選ぶ', pickOpts),
-        selectMenu('detail:inv', '詳細を見る', pickOpts.filter((o) => !o.value.startsWith('none'))),
-      ],
+      embeds: [townHubEmbed('装備変更', `**${SLOT_LABELS[slot] ?? value}** の装備候補`)],
+      components: buildPrepSlotSelectComponents(userId, slot),
     });
     return;
   }
@@ -708,23 +705,18 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
     }
 
     const invId = Number(value);
-    const { buildEquipmentDetailView } = await import('./systems/itemDetailSystem');
     const slotRow = getDb().prepare(`
       SELECT e.slot FROM player_inventory pi
       JOIN equipment e ON pi.item_id = e.item_id
       WHERE pi.id = ? AND pi.user_id = ?
     `).get(invId, userId) as { slot: string } | undefined;
     const equipSlot = slotRow?.slot as import('./types').EquipmentSlot | undefined;
-    const { buildEquipChangeConfirmRows } = await import('./systems/equipConfirmSystem');
-    const payload = buildEquipmentDetailView(userId, invId, { compare: true, context: 'equip', slot: equipSlot });
-    if (equipSlot) {
-      payload.components = prependConfirmNavigation(payload.components, buildEquipChangeConfirmRows(invId, equipSlot, 'prep'));
-    } else {
-      payload.components.unshift(new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId(`prep:confirm_equip:${invId}`).setLabel('この装備に変更').setStyle(ButtonStyle.Success),
-      ));
+    if (!equipSlot) {
+      await sendSelectResultLog(interaction, { embeds: [errorEmbed('装備が見つかりません。')], components: nextActionButtons('equip') });
+      return;
     }
-    await sendSelectResultLog(interaction, payload);
+    const { buildPrepEquipConfirmView } = await import('./systems/prepSystem');
+    await sendSelectResultLog(interaction, buildPrepEquipConfirmView(userId, invId, equipSlot));
     return;
   }
 

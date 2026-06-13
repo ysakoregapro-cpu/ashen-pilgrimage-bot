@@ -1,15 +1,15 @@
 # Component Handler Audit
 
-Generated: 2026-06-13T07:37:14.581Z
+Generated: 2026-06-13T08:17:08.284Z
 
 Coop recruit duplicate custom_ids after sanitize: 0
 
 | custom_id | handler | classification | notes |
 |---|---|---|---|
-| coop:join:mqc1lnbk_85kopt7s | index.ts:coop | implemented_and_reachable | coop recruit join — handleCoopRecruitButton |
-| coop:leave:mqc1lnbk_85kopt7s | index.ts:coop | implemented_and_reachable |  |
-| coop:start:mqc1lnbk_85kopt7s | index.ts:coop | implemented_and_reachable |  |
-| coop:cancel:mqc1lnbk_85kopt7s | index.ts:coop | implemented_and_reachable |  |
+| coop:join:mqc30ybd_vqukteyw | index.ts:coop | implemented_and_reachable | coop recruit join — handleCoopRecruitButton |
+| coop:leave:mqc30ybd_vqukteyw | index.ts:coop | implemented_and_reachable |  |
+| coop:start:mqc30ybd_vqukteyw | index.ts:coop | implemented_and_reachable |  |
+| coop:cancel:mqc30ybd_vqukteyw | index.ts:coop | implemented_and_reachable |  |
 | coop:join:sample | index.ts:coop | implemented_and_reachable | coop recruit join — handleCoopRecruitButton |
 | coop:leave:sample | index.ts:coop | implemented_and_reachable |  |
 | coop:start:sample | index.ts:coop | implemented_and_reachable |  |

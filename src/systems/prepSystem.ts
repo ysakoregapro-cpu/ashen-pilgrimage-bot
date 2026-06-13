@@ -2,11 +2,19 @@ import { getDb } from '../db/database';
 import { equipItem, getEquipped, getEquippableItems, unequipSlot } from './equipmentSystem';
 import {
   buildEquipChangeSelectOptions,
+  formatOwnedEquipmentLabel,
+  formatUpgradeTag,
   mapInventoryRowToEquipmentSelect,
   type OwnedEquipmentSelectRow,
 } from './equipmentLabelSystem';
 import { recalculatePlayerStats, requirePlayer } from './playerSystem';
 import { buildActiveSetBonusSection } from './setBonusDisplaySystem';
+import { buildEquipChangeConfirmRows } from './equipConfirmSystem';
+import { buildEquipmentDetailView } from './itemDetailSystem';
+import { prependConfirmNavigation } from '../utils/navigationComponents';
+import type { UiPayload } from '../utils/townUi';
+import type { ActionRowBuilder, MessageActionRowComponentBuilder } from 'discord.js';
+import { safeSelectMenu, selectMenu } from '../utils/embeds';
 import { SLOT_LABELS, type EquipmentSlot } from '../types';
 
 const PREP_SLOTS: EquipmentSlot[] = [
@@ -97,9 +105,12 @@ export function unequipWithDiff(userId: string, slot: EquipmentSlot): { ok: bool
   const after = getStatSnapshot(userId);
   const lines = [`**${SLOT_LABELS[slot] ?? slot}**の装備を外しました。`, ''];
   if (oldEq?.name) {
-    const upg = (oldEq as { src_level?: number }).src_level && (oldEq as { src_level: number }).src_level > 0
-      ? ` Src+${(oldEq as { src_level: number }).src_level}`
-      : oldEq.upgrade_level > 0 ? ` +${oldEq.upgrade_level}` : '';
+    const tag = formatUpgradeTag({
+      rarity: (oldEq as { rarity?: string }).rarity ?? 'N',
+      upgrade_level: oldEq.upgrade_level ?? 0,
+      src_level: (oldEq as { src_level?: number }).src_level ?? 0,
+    });
+    const upg = tag !== '+0' ? ` ${tag}` : '';
     lines.push('**外した装備:**', `${oldEq.name}${upg}`, '');
   } else {
     lines.push(msg, '');
@@ -122,7 +133,7 @@ export function getPrepSlotOptions(userId: string, slot: EquipmentSlot) {
     const row = mapInventoryRowToEquipmentSelect({ ...i, slot });
     return {
       inventoryId: i.id,
-      label: row.name,
+      label: formatOwnedEquipmentLabel(row),
       description: canEquip ? `[${i.rarity}]` : `Lv${reqLv}必要`,
       disabled: !canEquip,
       row,
@@ -135,6 +146,31 @@ export function buildPrepEquipSelectOptions(userId: string, slot: EquipmentSlot)
     .filter((o) => !o.disabled)
     .map((o) => o.row);
   return buildEquipChangeSelectOptions(slot, rows);
+}
+
+/** 身支度所スロット選択 UI — detail:inv は候補0件でも落ちない */
+export function buildPrepSlotSelectComponents(
+  userId: string,
+  slot: EquipmentSlot,
+): ActionRowBuilder<MessageActionRowComponentBuilder>[] {
+  const pickOpts = buildPrepEquipSelectOptions(userId, slot);
+  const detailOpts = pickOpts.filter((o) => !o.value.startsWith('none'));
+  const components: ActionRowBuilder<MessageActionRowComponentBuilder>[] = [
+    selectMenu('prep:equip', '装備を選ぶ', pickOpts),
+  ];
+  const detailRow = safeSelectMenu('detail:inv', '詳細を見る', detailOpts);
+  if (detailRow) components.push(detailRow);
+  return components;
+}
+
+/** 装備候補選択後の確認 UI（compare + confirm nav） */
+export function buildPrepEquipConfirmView(userId: string, inventoryId: number, slot: EquipmentSlot): UiPayload {
+  const payload = buildEquipmentDetailView(userId, inventoryId, { compare: true, context: 'equip', slot });
+  payload.components = prependConfirmNavigation(
+    payload.components,
+    buildEquipChangeConfirmRows(inventoryId, slot, 'prep'),
+  );
+  return payload;
 }
 
 export function formatCurrentEquipment(userId: string): string {

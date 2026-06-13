@@ -4,6 +4,7 @@ import { getInventoryByCategory } from '../systems/inventorySystem';
 import { buildInventoryDetailPickView } from '../systems/itemDetailSystem';
 import { baseEmbed, errorEmbed, itemLine } from '../utils/embeds';
 import { safeDefer, safeEdit } from '../utils/interaction';
+import { formatUpgradeTag } from '../systems/equipmentLabelSystem';
 import type { Rarity } from '../types';
 
 export const data = new SlashCommandBuilder()
@@ -32,7 +33,8 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   }
 
   const lines = rows.slice(0, 25).map((i) => {
-    const upg = i.src_level > 0 ? ` Src+${i.src_level}` : i.upgrade_level > 0 ? ` +${i.upgrade_level}` : '';
+    const tag = formatUpgradeTag({ rarity: i.rarity, upgrade_level: i.upgrade_level, src_level: i.src_level });
+    const upg = tag !== '+0' ? ` ${tag}` : '';
     const flags = [i.is_equipped ? '装備中' : ''].filter(Boolean).join(', ');
     return itemLine(i.name, i.rarity as Rarity, `x${i.quantity}${upg}${flags ? ` (${flags})` : ''}`);
   });

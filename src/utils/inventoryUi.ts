@@ -12,6 +12,7 @@ import { nextActionButtons } from './nextActionButtons';
 import {
   formatOwnedEquipmentDescription,
   formatOwnedEquipmentLabel,
+  formatUpgradeTag,
   mapInventoryRowToEquipmentSelect,
 } from '../systems/equipmentLabelSystem';
 
@@ -196,7 +197,8 @@ export function buildInventorySummaryText(userId: string): string {
   const preview = getInventoryListItems(userId, { page: 0, pageSize: 15 }).items;
   if (preview.length) {
     lines.push('', preview.map((i) => {
-      const upg = i.src_level > 0 ? ` Src+${i.src_level}` : i.upgrade_level > 0 ? ` +${i.upgrade_level}` : '';
+      const tag = formatUpgradeTag({ rarity: i.rarity, upgrade_level: i.upgrade_level, src_level: i.src_level });
+      const upg = tag !== '+0' ? ` ${tag}` : '';
       const qty = i.quantity > 1 ? ` x${i.quantity}` : '';
       return `${i.name}${qty}${upg}${i.is_equipped ? '（装備中）' : ''}`;
     }).join('\n'));

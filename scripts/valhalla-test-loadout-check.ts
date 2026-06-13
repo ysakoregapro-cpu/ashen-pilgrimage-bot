@@ -9,7 +9,11 @@ import { MAX_AWAKENING_LEVEL, AWAKENING_ELIGIBLE_RARITIES } from '../src/db/seed
 import { totalExpToReachLevel } from '../src/systems/expSystem';
 import { EXCLUDED_EQUIPMENT } from '../src/db/seedData/equipmentClassification';
 import { runEquipmentAcquisitionAudit } from '../src/systems/equipmentAcquisitionAudit';
-import { applyChanges, planChanges, type Args } from './dev-grant-valhalla-test-loadout';
+import { applyChanges, planChanges, verifyEquipmentInventory, type Args } from './dev-grant-valhalla-test-loadout';
+import { JOB_TRIO_MAP } from '../src/db/seedData/jobProgressionMaster';
+import { getSelectableSubJobs, canStartTrial } from '../src/systems/jobProgressionSystem';
+import { getJobLevel } from '../src/systems/jobLevelSystem';
+import { getUnlockedAdvancedJobs } from '../src/systems/jobProgressionSystem';
 
 const TEST_USER = 'valhalla-loadout-check-user';
 const fails: string[] = [];
@@ -121,13 +125,39 @@ function main() {
   `).get(TEST_USER);
   assert(!!val, 'valhalla not unlocked');
 
+  const subUnlocks = db.prepare(`
+    SELECT COUNT(*) c FROM player_sub_job_unlocks WHERE user_id = ?
+  `).get(TEST_USER) as { c: number };
+  assert(subUnlocks.c === PHASE2_SUB_JOBS.length, `sub unlock rows ${subUnlocks.c} !== ${PHASE2_SUB_JOBS.length}`);
+
+  const selectableSubs = getSelectableSubJobs(TEST_USER).filter((s) => !s.locked);
+  assert(selectableSubs.length === PHASE2_SUB_JOBS.length, `UI selectable subs ${selectableSubs.length} !== ${PHASE2_SUB_JOBS.length}`);
+
+  for (const job of [...BASIC_MAIN_JOBS, ...PHASE2_SUB_JOBS]) {
+    const lv = getJobLevel(TEST_USER, job)?.job_level ?? 0;
+    assert(lv === 70, `UI getJobLevel ${job} = ${lv} (expected 70)`);
+  }
+
+  let trialsOk = 0;
+  for (const base of Object.keys(JOB_TRIO_MAP)) {
+    if (canStartTrial(TEST_USER, base).ok) trialsOk++;
+  }
+  assert(trialsOk === Object.keys(JOB_TRIO_MAP).length, `canStartTrial ${trialsOk}/${Object.keys(JOB_TRIO_MAP).length}`);
+
+  assert(getUnlockedAdvancedJobs(TEST_USER).length === 0, 'advanced jobs should stay locked');
+
+  const eqVerify = verifyEquipmentInventory(db, TEST_USER);
+  assert(eqVerify.missingIds.length === 0, `missing equipment after apply: ${eqVerify.missingIds.slice(0, 5).join(', ')}`);
+  assert(eqVerify.weapons >= 81, `weapons owned ${eqVerify.weapons} < 81`);
+  assert(eqVerify.armor >= 90, `armor owned ${eqVerify.armor} < 90`);
+
   console.log('## valhalla-test-loadout-check\n');
   if (fails.length) {
     console.error('FAIL');
     for (const f of fails) console.error(`- ${f}`);
     process.exit(1);
   }
-  console.log(`OK — dry-run no-op; apply sets Lv80/999999G; ${BASIC_MAIN_JOBS.length}+${PHASE2_SUB_JOBS.length} jobs Lv70; playable gear max enhance/awaken; trials unlocked uncleared`);
+  console.log(`OK — dry-run no-op; apply Lv80; 9+9 jobs Lv70 UI-verified; subs/trials selectable; ${eqVerify.totalDistinct} playable gear; trials uncleared`);
 }
 
 main();

@@ -4,6 +4,7 @@ import { checkEquipRequirements } from './prepSystem';
 import { nowIso, SLOT_LABELS, type EquipmentSlot } from '../types';
 
 import { buildActiveSetBonusSection } from './setBonusDisplaySystem';
+import { formatUpgradeTag } from './equipmentLabelSystem';
 
 const EQUIPPABLE_SLOTS: EquipmentSlot[] = [
   'weapon', 'head', 'body', 'arms', 'legs', 'feet', 'accessory1', 'accessory2', 'sub',
@@ -78,7 +79,12 @@ export function formatEquipmentDisplay(userId: string): string {
   for (const s of EQUIPPABLE_SLOTS) {
     const eq = equipped.find((e) => e.slot === s);
     if (eq?.name) {
-      const upg = eq.src_level > 0 ? ` Src+${eq.src_level}` : eq.upgrade_level > 0 ? ` +${eq.upgrade_level}` : '';
+      const tag = formatUpgradeTag({
+        rarity: eq.rarity ?? 'N',
+        upgrade_level: eq.upgrade_level,
+        src_level: eq.src_level,
+      });
+      const upg = tag !== '+0' ? ` ${tag}` : '';
       lines.push(`**${SLOT_LABELS[s]}**: ${eq.name}${upg} (${eq.durability_state})`);
     } else {
       lines.push(`**${SLOT_LABELS[s]}**: —`);

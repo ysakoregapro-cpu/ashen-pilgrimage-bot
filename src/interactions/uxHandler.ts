@@ -61,7 +61,7 @@ async function runExploreAction(interaction: ButtonInteraction, userId: string, 
 }
 
 async function handlePrepBack(interaction: ButtonInteraction, userId: string, base: string): Promise<void> {
-  const { PREP_SLOTS, buildPrepEquipSelectOptions, formatCurrentEquipment } = await import('../systems/prepSystem');
+  const { PREP_SLOTS, buildPrepSlotSelectComponents, formatCurrentEquipment } = await import('../systems/prepSystem');
   const { townHubEmbed } = await import('../utils/townUi');
   const { selectMenu } = await import('../utils/embeds');
   const slotLabels: Record<string, string> = {
@@ -86,12 +86,11 @@ async function handlePrepBack(interaction: ButtonInteraction, userId: string, ba
 
   if (base.startsWith('prep:back:slot:')) {
     const slot = base.slice('prep:back:slot:'.length) as import('../types').EquipmentSlot;
-    const pickOpts = buildPrepEquipSelectOptions(userId, slot);
+    const { buildPrepSlotSelectComponents } = await import('../systems/prepSystem');
     await sendJourneyLog(interaction, {
       embeds: [townHubEmbed('装備変更', `**${slotLabels[slot] ?? slot}** の装備候補`)],
       components: [
-        selectMenu('prep:equip', '装備を選ぶ', pickOpts),
-        selectMenu('detail:inv', '詳細を見る', pickOpts.filter((o) => !o.value.startsWith('none'))),
+        ...buildPrepSlotSelectComponents(userId, slot),
         ...nextActionButtons('equip'),
       ],
     });
