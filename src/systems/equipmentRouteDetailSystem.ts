@@ -36,6 +36,7 @@ import {
 import { buildEffectiveRewardPool } from './townLootSystem';
 import { getShopCatalog } from './shopSystem';
 import { resolveShopBuyPrice, getItemPricing } from './itemValueSystem';
+import { formatForgeRouteDisplayLines, getForgeRouteDisplay } from './equipmentForgeRouteSystem';
 
 export type EquipmentRouteKind =
   | 'shop'
@@ -487,11 +488,12 @@ function buildRouteIndex(db: ReturnType<typeof getDb>): RouteIndex {
     base_item_id: string; src_item_id: string; name: string;
   }>;
   for (const s of srcRows) {
+    const baseName = (db.prepare('SELECT name FROM items WHERE id = ?').get(s.base_item_id) as { name: string } | undefined)?.name ?? s.base_item_id;
     addRoute(index, s.src_item_id, {
       kind: 'forge',
       sourceName: 'Src変質',
       explicitRate: '—',
-      notes: [`基礎: ${s.name}`],
+      notes: [`派生元: ${baseName}`],
       repeatable: true,
     });
   }
@@ -712,8 +714,11 @@ export function formatEquipmentRouteLines(equipmentId: string): string[] {
 
   const order: SectionKey[] = [
     'shop', 'explore', 'enemy_drop', 'boss_first_clear', 'boss_rematch',
-    'exchange', 'forge', 'special',
+    'exchange', 'special',
   ];
+
+  const forgeLines = formatForgeRouteDisplayLines(equipmentId);
+  const hasDetailedForge = forgeLines.length > 0;
 
   const out: string[] = [];
   for (const sec of order) {
@@ -754,6 +759,17 @@ export function formatEquipmentRouteLines(equipmentId: string): string[] {
     out.push('');
   }
 
+  if (hasDetailedForge) {
+    out.push(...forgeLines);
+  } else {
+    const forgeList = grouped.get('forge');
+    if (forgeList?.length) {
+      out.push(SECTION_LABELS.forge);
+      for (const r of forgeList.slice(0, 10)) out.push(...formatRouteDetail(r));
+      out.push('');
+    }
+  }
+
   while (out.length && out[out.length - 1] === '') out.pop();
   return out;
 }
@@ -766,12 +782,16 @@ export function getEquipmentRouteSectionFlags(equipmentId: string): {
   hasBossRematch: boolean;
   hasValhallaBoss: boolean;
   hasExchange: boolean;
+  hasForgeDisplay: boolean;
+  hasMaterialSources: boolean;
+  selfReferenceBug: boolean;
   hasNoneSections: boolean;
   legacyOrUnavailable: boolean;
 } {
   const routes = getEquipmentRouteDetails(equipmentId);
   const lines = formatEquipmentRouteLines(equipmentId);
   const kinds = new Set(routes.map((r) => r.kind));
+  const forge = getForgeRouteDisplay(equipmentId);
   return {
     hasShop: kinds.has('shop'),
     hasExplore: kinds.has('explore'),
@@ -779,6 +799,9 @@ export function getEquipmentRouteSectionFlags(equipmentId: string): {
     hasBossRematch: kinds.has('boss_rematch') || kinds.has('valhalla_boss'),
     hasValhallaBoss: kinds.has('valhalla_boss'),
     hasExchange: kinds.has('exchange_random') || kinds.has('exchange_select'),
+    hasForgeDisplay: lines.some((l) => l.includes('【強化/変質】')),
+    hasMaterialSources: lines.some((l) => l.includes('【素材入手先】')),
+    selfReferenceBug: forge?.selfReferenceBug ?? false,
     hasNoneSections: lines.some((l) => l === '・なし'),
     legacyOrUnavailable: kinds.has('unavailable'),
   };

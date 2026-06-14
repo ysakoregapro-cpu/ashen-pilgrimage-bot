@@ -1,6 +1,6 @@
 # Phase2 Final Sanity Check
 
-Generated: 2026-06-14T14:46:07.545Z
+Generated: 2026-06-14T15:10:37.107Z
 
 ## Required files
 - ✓ src/systems/jobUiSystem.ts
@@ -45,6 +45,8 @@ Generated: 2026-06-14T14:46:07.545Z
 - ✓ scripts/equipment-menu-pagination-audit.ts
 - ✓ src/systems/equipmentRouteDetailSystem.ts
 - ✓ scripts/equipment-route-detail-probability-audit.ts
+- ✓ scripts/weapon-direct-drop-coverage-audit.ts
+- ✓ scripts/equipment-forge-route-display-audit.ts
 - ✓ scripts/armor-command-route-audit.ts
 - ✓ scripts/inn-pricing-progression-check.ts
 - ✓ scripts/trial-battle-reward-audit.ts
@@ -86,6 +88,9 @@ Generated: 2026-06-14T14:46:07.545Z
 - rescue break clamp: OK
 - rescue atk balance: OK
 - equipment route detail: OK
+- forge route display: OK
+- weapon title no dup: OK
+- armor title no dup: OK
 - mp cost design audit: OK
 
 ## Dangerous file check

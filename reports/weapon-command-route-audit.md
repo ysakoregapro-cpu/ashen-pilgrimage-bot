@@ -1,6 +1,6 @@
 # weapon-command-route-audit
 
-Generated: 2026-06-14T14:48:34.740Z
+Generated: 2026-06-14T15:17:26.013Z
 
 DB unavailable
 

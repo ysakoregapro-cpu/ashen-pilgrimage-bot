@@ -32,7 +32,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 export function buildWeaponCategoryView(): UiPayload {
   const cats = getWeaponBookCategories();
   return {
-    embeds: [baseEmbed('灰星巡礼録 | 武器図鑑', 'ジョブ / 武器系統を選んでください。')],
+    embeds: [baseEmbed('武器図鑑', 'ジョブ / 武器系統を選んでください。')],
     components: [
       selectMenu('weapon:cat', '系統を選ぶ', cats.map((c) => ({
         label: c.label.slice(0, 100),
@@ -68,7 +68,7 @@ export function buildWeaponListView(categoryId: string, page = 0): UiPayload {
   });
 
   return {
-    embeds: [baseEmbed('灰星巡礼録 | 武器図鑑', view.embedText)],
+    embeds: [baseEmbed('武器図鑑', view.embedText)],
     components: view.components,
   };
 }
@@ -95,7 +95,7 @@ export function buildWeaponDetailView(itemId: string, categoryId?: string): UiPa
   const catId = categoryId ?? getWeaponBookCategories().find((c) => weaponsInCategory(c.id).some((x) => x.item_id === itemId))?.id ?? 'other';
 
   return {
-    embeds: [baseEmbed('灰星巡礼録 | 武器図鑑', body.slice(0, 4000))],
+    embeds: [baseEmbed('武器図鑑', body.slice(0, 4000))],
     components: [
       selectMenu('weapon:cat', '系統に戻る', getWeaponBookCategories().slice(0, 25).map((c) => ({
         label: c.label.slice(0, 100), value: c.id,

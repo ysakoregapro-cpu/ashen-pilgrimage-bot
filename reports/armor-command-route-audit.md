@@ -1,6 +1,6 @@
 # armor-command-route-audit
 
-Generated: 2026-06-14T14:48:36.480Z
+Generated: 2026-06-14T15:17:28.826Z
 
 DB unavailable
 

@@ -32,7 +32,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
 export function buildArmorCategoryView(): UiPayload {
   const cats = getArmorBookCategories();
   return {
-    embeds: [baseEmbed('灰星巡礼録 | 防具図鑑', 'シリーズまたは分類を選んでください。')],
+    embeds: [baseEmbed('防具図鑑', 'シリーズまたは分類を選んでください。')],
     components: [
       selectMenu('armor:cat', 'シリーズを選ぶ', cats.slice(0, 25).map((c) => ({
         label: c.label.slice(0, 100),
@@ -71,7 +71,7 @@ export function buildArmorListView(categoryId: string, page = 0): UiPayload {
   });
 
   return {
-    embeds: [baseEmbed('灰星巡礼録 | 防具図鑑', view.embedText)],
+    embeds: [baseEmbed('防具図鑑', view.embedText)],
     components: view.components,
   };
 }
@@ -99,7 +99,7 @@ export function buildArmorDetailView(itemId: string, categoryId?: string): UiPay
   const catId = categoryId ?? findArmorCategoryId(itemId);
 
   return {
-    embeds: [baseEmbed('灰星巡礼録 | 防具図鑑', body.slice(0, 4000))],
+    embeds: [baseEmbed('防具図鑑', body.slice(0, 4000))],
     components: [
       selectMenu('armor:cat', '分類に戻る', getArmorBookCategories().slice(0, 25).map((c) => ({
         label: c.label.slice(0, 100), value: c.id,

@@ -62,6 +62,11 @@ function main() {
     if (!w.legacy && !text.includes('【ボス再戦】')) {
       result.fails.push(`${w.item_id}: missing boss rematch section`);
     }
+    if ((w.rarity === 'Uni' || w.rarity === 'Src') && !w.legacy) {
+      if (!flags.hasForgeDisplay) result.fails.push(`${w.item_id}: missing forge section`);
+      if (!flags.hasMaterialSources) result.fails.push(`${w.item_id}: missing material sources`);
+      if (flags.selfReferenceBug) result.fails.push(`${w.item_id}: self reference in forge`);
+    }
 
     rows.push([
       w.item_id, w.name, w.rarity, w.required_job ?? w.weapon_type ?? '—',

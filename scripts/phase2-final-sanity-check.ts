@@ -52,6 +52,8 @@ const REQUIRED_FILES = [
   'scripts/equipment-menu-pagination-audit.ts',
   'src/systems/equipmentRouteDetailSystem.ts',
   'scripts/equipment-route-detail-probability-audit.ts',
+  'scripts/weapon-direct-drop-coverage-audit.ts',
+  'scripts/equipment-forge-route-display-audit.ts',
   'scripts/armor-command-route-audit.ts',
   'scripts/inn-pricing-progression-check.ts',
   'scripts/trial-battle-reward-audit.ts',
@@ -96,6 +98,9 @@ const CODE_CHECKS: Array<{ label: string; file: string; pattern: RegExp }> = [
   { label: 'rescue break clamp', file: 'src/systems/coop/coopBattleSystem.ts', pattern: /clampEnemyBreak/ },
   { label: 'rescue atk balance', file: 'src/systems/coop/rescueBattleBalance.ts', pattern: /RESCUE_ATK_MULT_BY_PLAYERS/ },
   { label: 'equipment route detail', file: 'src/systems/equipmentRouteDetailSystem.ts', pattern: /getEquipmentRouteDetails/ },
+  { label: 'forge route display', file: 'src/systems/equipmentForgeRouteSystem.ts', pattern: /formatForgeRouteDisplayLines/ },
+  { label: 'weapon title no dup', file: 'src/commands/weapon.ts', pattern: /baseEmbed\('武器図鑑'/ },
+  { label: 'armor title no dup', file: 'src/commands/armor.ts', pattern: /baseEmbed\('防具図鑑'/ },
   { label: 'mp cost design audit', file: 'scripts/skill-mp-cost-design-audit.ts', pattern: /skill-mp-cost-design-audit/ },
 ];
 
