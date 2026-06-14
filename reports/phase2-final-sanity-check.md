@@ -1,6 +1,6 @@
 # Phase2 Final Sanity Check
 
-Generated: 2026-06-14T13:51:28.482Z
+Generated: 2026-06-14T14:46:07.545Z
 
 ## Required files
 - ✓ src/systems/jobUiSystem.ts
@@ -33,12 +33,18 @@ Generated: 2026-06-14T13:51:28.482Z
 - ✓ scripts/rescue-target-monster-audit.ts
 - ✓ scripts/rescue-skill-target-audit.ts
 - ✓ scripts/rescue-hp-scaling-audit.ts
+- ✓ scripts/rescue-action-lock-audit.ts
+- ✓ scripts/rescue-reward-display-audit.ts
+- ✓ scripts/rescue-battle-balance-audit.ts
+- ✓ scripts/rescue-break-system-audit.ts
+- ✓ scripts/rescue-ui-refresh-audit.ts
 - ✓ scripts/exploration-sustain-balance-audit.ts
 - ✓ scripts/gold-income-balance-audit.ts
 - ✓ scripts/inn-price-cap-audit.ts
 - ✓ scripts/defeat-gold-penalty-audit.ts
 - ✓ scripts/equipment-menu-pagination-audit.ts
-- ✓ scripts/weapon-command-route-audit.ts
+- ✓ src/systems/equipmentRouteDetailSystem.ts
+- ✓ scripts/equipment-route-detail-probability-audit.ts
 - ✓ scripts/armor-command-route-audit.ts
 - ✓ scripts/inn-pricing-progression-check.ts
 - ✓ scripts/trial-battle-reward-audit.ts
@@ -74,6 +80,12 @@ Generated: 2026-06-14T13:51:28.482Z
 - trial repeat clear gold: OK
 - trial victory processor: OK
 - no mage 15% mp discount: OK
+- rescue action lock: OK
+- rescue turn in buttons: OK
+- rescue UI refresh: OK
+- rescue break clamp: OK
+- rescue atk balance: OK
+- equipment route detail: OK
 - mp cost design audit: OK
 
 ## Dangerous file check

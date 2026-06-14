@@ -124,10 +124,14 @@ export function buildCoopRecruitButtons(
 }
 
 export function buildCoopBattleEmbed(battleId: string): EmbedBuilder {
-  const body = formatCoopBattleStatus(battleId);
   const battle = getCoopBattle(battleId);
+  const body = formatCoopBattleStatus(battleId);
   const color = battle?.status === 'victory' ? 0x44aa66 : battle?.status === 'defeat' ? 0x666677 : 0x4488cc;
-  return new EmbedBuilder().setTitle('協力戦').setDescription(body).setColor(color);
+  const title = battle?.mode === 'rescue'
+    ? (battle.status === 'victory' ? '灰星巡礼録 | 救難完了' : battle.status === 'defeat' ? '灰星巡礼録 | 救難失敗' : '灰星巡礼録 | 救難戦闘')
+    : '協力戦';
+  const desc = battle?.mode === 'rescue' ? `対象: ${JSON.parse(battle.enemy_json).name}\n${body}` : body;
+  return new EmbedBuilder().setTitle(title).setDescription(desc).setColor(color);
 }
 
 export function buildCoopBattleButtons(battleId: string, userId: string): ActionRowBuilder<ButtonBuilder>[] {
@@ -140,12 +144,13 @@ export function buildCoopBattleButtons(battleId: string, userId: string): Action
   const self = participants.find((p) => p.user_id === userId);
   if (!self || self.defeated || self.hp <= 0) return [];
 
+  const turn = battle.turn_count;
   return [
     new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`coop:act:${battleId}:attack`).setLabel('攻撃').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId(`coop:act:${battleId}:defend`).setLabel('防御').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`coop:act:${battleId}:skill_menu`).setLabel('スキル').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId(`coop:act:${battleId}:item_menu`).setLabel('アイテム').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`coop:act:${battleId}:${turn}:attack`).setLabel('攻撃').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId(`coop:act:${battleId}:${turn}:defend`).setLabel('防御').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`coop:act:${battleId}:${turn}:skill_menu`).setLabel('スキル').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId(`coop:act:${battleId}:${turn}:item_menu`).setLabel('アイテム').setStyle(ButtonStyle.Success),
     ),
   ];
 }
@@ -165,8 +170,9 @@ export function buildCoopSkillMenu(battleId: string, userId: string): ActionRowB
 
   if (!skills.length) return null;
 
+  const turn = battle.turn_count;
   const menu = new StringSelectMenuBuilder()
-    .setCustomId(`coop:skill:${battleId}`)
+    .setCustomId(`coop:skill:${battleId}:${turn}`)
     .setPlaceholder('使う技を選ぶ')
     .addOptions(skills.map((s) => ({
       label: s.name.slice(0, 100),
@@ -178,6 +184,8 @@ export function buildCoopSkillMenu(battleId: string, userId: string): ActionRowB
 }
 
 export function buildCoopItemMenu(battleId: string, userId: string): ActionRowBuilder<StringSelectMenuBuilder> | null {
+  const battle = getCoopBattle(battleId);
+  if (!battle) return null;
   const rows = getDb().prepare(`
     SELECT pi.id, i.name, pi.quantity FROM player_inventory pi
     JOIN items i ON pi.item_id = i.id
@@ -186,7 +194,7 @@ export function buildCoopItemMenu(battleId: string, userId: string): ActionRowBu
   if (!rows.length) return null;
 
   const menu = new StringSelectMenuBuilder()
-    .setCustomId(`coop:item:${battleId}`)
+    .setCustomId(`coop:item:${battleId}:${battle.turn_count}`)
     .setPlaceholder('使うアイテムを選ぶ')
     .addOptions(rows.map((r) => ({
       label: `${r.name} x${r.quantity}`.slice(0, 100),
@@ -204,6 +212,7 @@ export function buildCoopTargetButtons(
 ): ActionRowBuilder<ButtonBuilder>[] {
   const battle = getCoopBattle(battleId);
   if (!battle) return [];
+  const turn = battle.turn_count;
   const participants = JSON.parse(battle.participant_states_json) as Array<{ user_id: string; hp: number; defeated: boolean }>;
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
@@ -214,7 +223,7 @@ export function buildCoopTargetButtons(
       .map((p) => {
         const nameRow = getDb().prepare('SELECT name FROM players WHERE user_id = ?').get(p.user_id) as { name: string } | undefined;
         return new ButtonBuilder()
-          .setCustomId(`coop:target:${battleId}:item:${actionRef}:ally:${p.user_id}`)
+          .setCustomId(`coop:target:${battleId}:${turn}:item:${actionRef}:ally:${p.user_id}`)
           .setLabel(allyButtonLabel(p.user_id, userId, nameRow?.name))
           .setStyle(ButtonStyle.Primary);
       });
@@ -230,7 +239,7 @@ export function buildCoopTargetButtons(
     const enemy = JSON.parse(battle.enemy_json) as { name: string };
     rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
-        .setCustomId(`coop:target:${battleId}:skill:${actionRef}:enemy:boss`)
+        .setCustomId(`coop:target:${battleId}:${turn}:skill:${actionRef}:enemy:boss`)
         .setLabel(enemy.name.slice(0, 80) || '敵')
         .setStyle(ButtonStyle.Danger),
     ));
@@ -240,7 +249,7 @@ export function buildCoopTargetButtons(
   if (side === 'self') {
     rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
-        .setCustomId(`coop:target:${battleId}:skill:${actionRef}:auto:confirm`)
+        .setCustomId(`coop:target:${battleId}:${turn}:skill:${actionRef}:auto:confirm`)
         .setLabel('自分')
         .setStyle(ButtonStyle.Success),
     ));
@@ -252,7 +261,7 @@ export function buildCoopTargetButtons(
     if (tt === 'all_allies') {
       rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId(`coop:target:${battleId}:skill:${actionRef}:auto:confirm`)
+          .setCustomId(`coop:target:${battleId}:${turn}:skill:${actionRef}:auto:confirm`)
           .setLabel('味方全体')
           .setStyle(ButtonStyle.Success),
       ));
@@ -264,7 +273,7 @@ export function buildCoopTargetButtons(
       .map((p) => {
         const nameRow = getDb().prepare('SELECT name FROM players WHERE user_id = ?').get(p.user_id) as { name: string } | undefined;
         return new ButtonBuilder()
-          .setCustomId(`coop:target:${battleId}:skill:${actionRef}:ally:${p.user_id}`)
+          .setCustomId(`coop:target:${battleId}:${turn}:skill:${actionRef}:ally:${p.user_id}`)
           .setLabel(allyButtonLabel(p.user_id, userId, nameRow?.name))
           .setStyle(ButtonStyle.Primary);
       });

@@ -2,7 +2,10 @@ import { getDb } from '../db/database';
 import { JOB_STARTER_WEAPONS } from '../db/seedData/jobStarterWeapons';
 import { EXCLUDED_EQUIPMENT } from '../db/seedData/equipmentClassification';
 import { runEquipmentAcquisitionAudit } from './equipmentAcquisitionAudit';
-import { buildAcquisitionHintLines } from './itemDetailSystem';
+import {
+  formatEquipmentRouteLines,
+  clearEquipmentRouteDetailCache,
+} from './equipmentRouteDetailSystem';
 import { SLOT_LABELS } from '../types';
 
 export type RouteBookEntry = {
@@ -204,37 +207,10 @@ export function formatRouteProbability(rate: string): string {
 }
 
 export function buildEquipmentRouteLines(itemId: string): string[] {
-  const db = getDb();
-  const ex = EXCLUDED_EQUIPMENT[itemId];
-  if (ex?.classification === 'legacy') {
-    return ['現在通常入手不可'];
-  }
-
-  const hints = buildAcquisitionHintLines(itemId);
-  if (hints.length) return hints;
-
-  const audit = loadAudit(db);
-  const row = audit.rows.find((r) => r.item_id === itemId);
-  if (!row) return ['入手経路データなし'];
-  if (row.current_obtainable === 'NO' && row.should_be_obtainable === 'NO') {
-    return ['現在通常入手不可'];
-  }
-  if (!row.current_sources) return ['現在の通常プレイでは入手できません。'];
-
-  return row.current_sources.split(' / ').map((s) => {
-    const [kind, label] = s.split(':');
-    if (kind === 'shop') return `・ショップ: ${label}`;
-    if (kind === 'area_pool') return `・探索: ${label.replace('探索：', '')}`;
-    if (kind === 'monster_drop') return `・敵討伐: ${label.replace('魔物：', '')}`;
-    if (kind === 'boss_drop') return `・ボス: ${label}`;
-    if (kind === 'kai_forge') return `・変質/伝承: ${label}`;
-    if (kind === 'src_forge') return `・Src変質: ${label}`;
-    if (kind === 'valhalla') return `・ヴァルハラ: ${label}`;
-    if (kind === 'raid') return `・レイド: ${label}`;
-    if (kind === 'start') return `・${label}`;
-    return `・${label || s}`;
-  });
+  return formatEquipmentRouteLines(itemId);
 }
+
+export { getEquipmentRouteDetails, formatEquipmentRouteLines } from './equipmentRouteDetailSystem';
 
 export function formatWeaponFamilyLabel(entry: RouteBookEntry): string {
   const cat = WEAPON_CATEGORIES.find((c) => c.id === weaponCategoryId(entry));
@@ -278,4 +254,5 @@ export function listAllArmorIds(): string[] {
 
 export function clearRouteBookCache(): void {
   cachedAudit = null;
+  clearEquipmentRouteDetailCache();
 }

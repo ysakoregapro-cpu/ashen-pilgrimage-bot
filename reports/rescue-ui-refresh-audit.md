@@ -1,0 +1,9 @@
+# rescue-ui-refresh-audit
+
+Generated: 2026-06-14T14:48:50.462Z
+
+## DB unavailable for runtime case
+
+| case_id | turn | action_input_count | uses_edit | posts_new_ui_on_turn_advance | old_buttons_rejected | latest_ui_contains_status | shows_waiting_count | log_growth_controlled | match_ok | balance_note |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| static_code_checks | N/A | N/A | N/A | N/A | YES | YES | YES | YES | YES | OK | maintPostNew=true |

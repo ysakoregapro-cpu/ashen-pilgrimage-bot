@@ -110,6 +110,7 @@ function computeRewards(
       return {
         exp: Math.floor(enemy.exp_reward * 0.35 * survMult),
         gold: Math.floor(enemy.gold_reward * 0.3 * survMult),
+        jobExp: Math.floor(enemy.exp_reward * 0.18 * survMult),
         items: [],
         survived,
         role: 'leader',
@@ -117,13 +118,21 @@ function computeRewards(
     }
     const allowed = rescueHelperRewardAllowed(participant.user_id, leaderId);
     if (!allowed) {
-      return { exp: Math.floor(enemy.exp_reward * 0.1), gold: 0, items: [], survived, role: 'helper_capped' };
+      return {
+        exp: Math.floor(enemy.exp_reward * 0.1),
+        gold: 0,
+        jobExp: Math.floor(enemy.exp_reward * 0.05),
+        items: [],
+        survived,
+        role: 'helper_capped',
+      };
     }
     const items: CoopRewardPayload['items'] = [];
     if (roll(0.15)) items.push({ itemId: 'mat_iron_scrap', qty: randomInt(1, 2), label: '鉄くず' });
     return {
       exp: Math.floor(enemy.exp_reward * 0.25 * survMult),
       gold: Math.floor(enemy.gold_reward * 0.2 * survMult),
+      jobExp: Math.floor(enemy.exp_reward * 0.12 * survMult),
       items,
       survived,
       role: 'helper',
@@ -227,10 +236,16 @@ export function grantCoopBattleRewards(
       lines.push(`<@${p.user_id}> (${surv}) — ${reward.skipReason ?? '報酬なし'}`);
       continue;
     }
+    const parts: string[] = [];
+    if (reward.exp > 0) parts.push(`EXP +${reward.exp}`);
+    if (reward.jobExp && reward.jobExp > 0) parts.push(`Job EXP +${reward.jobExp}`);
+    if (reward.gold > 0) parts.push(`Gold +${reward.gold}`);
     const itemText = reward.dropLabels?.length
       ? reward.dropLabels.join('、')
-      : reward.items.map((i) => i.label ?? i.itemId).join(', ');
-    lines.push(`<@${p.user_id}> (${surv}) EXP+${reward.exp} / ${reward.gold}G${itemText ? ` / ${itemText}` : ''}`);
+      : reward.items.map((i) => `${i.label ?? i.itemId} ×${i.qty}`).join(', ');
+    if (itemText) parts.push(`入手: ${itemText}`);
+    if (!parts.length) parts.push('報酬なし');
+    lines.push(`<@${p.user_id}> (${surv}) ${parts.join(' / ')}`);
     if (reward.role === 'helper_capped') lines.push('  ※本日の救難報酬上限');
   }
 

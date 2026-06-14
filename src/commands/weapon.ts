@@ -88,7 +88,6 @@ export function buildWeaponDetailView(itemId: string, categoryId?: string): UiPa
     '【主な性能】',
     formatEquipmentStatSummary(w),
     '',
-    '【入手経路】',
     ...routes,
     w.legacy ? '\n※ 現在の通常プレイでは入手できない装備です。' : '',
   ].filter(Boolean).join('\n');

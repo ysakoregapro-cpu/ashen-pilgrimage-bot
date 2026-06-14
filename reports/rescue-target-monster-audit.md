@@ -1,18 +1,9 @@
 # rescue-target-monster-audit
 
-Generated: 2026-06-14T13:27:08.234Z
+Generated: 2026-06-14T14:48:38.222Z
 
-## Summary
-
-- cases: 3
-- fails: 0
-
-## Notes
-
-- mon_bandit は fallback のみ（通常 battle_session / monster_id 必須）
+## DB unavailable
 
 | case_id | source_monster_id | source_monster_name | recruit_target_monster_id | recruit_target_name | battle_monster_id | battle_monster_name | uses_fallback | match_ok | balance_note |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| mon_furnace_defense | mon_furnace_defense | 炉心防衛ユニット | mon_furnace_defense | 炉心防衛ユニット | mon_furnace_defense | 炉心防衛ユニット | NO | OK | explicit |
-| mon_deep_core_boss | mon_deep_core_boss | 深層炉心核 | mon_deep_core_boss | 深層炉心核 | mon_deep_core_boss | 深層炉心核 | NO | OK | explicit |
-| mon_bandit | mon_bandit | 野盗見習い | mon_bandit | 野盗見習い | mon_bandit | 野盗見習い | NO | OK | explicit |
+|  |

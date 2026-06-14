@@ -4,7 +4,7 @@ import { uuid, randomInt, roll } from '../../utils/random';
 import { formatBattleLine } from '../../utils/formatters';
 import { requirePlayer, recalculatePlayerStats } from '../playerSystem';
 import { getSkill, type SkillRow } from '../skillSystem';
-import { calcPlayerDamageToEnemy, calcEnemyDamageToPlayer } from '../combatMath';
+import { calcPlayerDamageToEnemy, calcEnemyDamageToPlayer, getMonsterThreatTier } from '../combatMath';
 import { getPlayerElementResistances, applyPlayerElementResist } from '../elementSystem';
 import { removeItem } from '../inventorySystem';
 import {
@@ -34,12 +34,18 @@ import {
   getCoopMembers,
   parseCoopContext,
   completeCoopRecruit,
+  getRecommendedLevel,
 } from './coopRecruitSystem';
 import {
   resolveRescueMonsterId,
   scaledRescueEnemyHp,
   getMonsterBaseHpForRescue,
 } from './rescueMonsterContext';
+import {
+  averageParticipantLevel,
+  computeRescueEnemyAttack,
+  rescueLevelGapAtkBonus,
+} from './rescueBattleBalance';
 
 export type CoopBattleRow = {
   id: string;
@@ -89,6 +95,30 @@ function defaultMeta(leaderId: string): CoopBattleMeta {
     raidHeavyPending: false,
     leader_id: leaderId,
   };
+}
+
+function clampEnemyBreak(enemy: CoopEnemyState, meta: CoopBattleMeta): void {
+  if (meta.enemyBroken) {
+    enemy.break = 0;
+    return;
+  }
+  enemy.break = Math.max(0, Math.min(enemy.break, enemy.break_max));
+}
+
+function addEnemyBreak(enemy: CoopEnemyState, meta: CoopBattleMeta, amount: number): void {
+  if (meta.enemyBroken || amount <= 0) return;
+  enemy.break += amount;
+  clampEnemyBreak(enemy, meta);
+  checkBreak(enemy, meta);
+}
+
+function formatBreakLine(enemy: CoopEnemyState, meta: CoopBattleMeta): string {
+  if (meta.enemyBroken) {
+    const hits = meta.breakRemainingHits > 0 ? `（強化残${meta.breakRemainingHits}）` : '';
+    return `**BREAK中**${hits}`;
+  }
+  clampEnemyBreak(enemy, meta);
+  return `ブレイク ${Math.floor(enemy.break)}/${enemy.break_max}`;
 }
 
 function pushLog(meta: CoopBattleMeta, type: string, text: string): void {
@@ -195,6 +225,14 @@ export function createCoopBattleFromRecruit(recruitId: string): { ok: boolean; m
   }
 
   const atkMult = recruit.mode === 'raid' ? 1.15 : recruit.mode === 'valhalla_coop' ? 1.08 : 1.05;
+  const participantLevels = members.map((m) => requirePlayer(m.user_id).level);
+  const recommendedLevel = getRecommendedLevel(recruit.mode, ctx);
+  let rescueDamageMult = 1;
+  let enemyAttack = Math.floor(monster.attack * atkMult);
+  if (recruit.mode === 'rescue') {
+    enemyAttack = computeRescueEnemyAttack(monster.attack, count, recommendedLevel, participantLevels);
+    rescueDamageMult = enemyAttack / Math.max(1, monster.attack);
+  }
   const enemy: CoopEnemyState = {
     monster_id: monster.id,
     name: monster.name,
@@ -202,7 +240,7 @@ export function createCoopBattleFromRecruit(recruitId: string): { ok: boolean; m
     max_hp: enemyMaxHp,
     break: 0,
     break_max: breakMaxForMode(recruit.mode, monster.break_max, count),
-    attack: Math.floor(monster.attack * atkMult),
+    attack: enemyAttack,
     magic: monster.magic,
     defense: monster.defense,
     spirit: monster.spirit,
@@ -212,6 +250,8 @@ export function createCoopBattleFromRecruit(recruitId: string): { ok: boolean; m
   };
 
   const meta = defaultMeta(recruit.leader_id);
+  meta.recommended_level = recommendedLevel;
+  if (recruit.mode === 'rescue') meta.rescue_damage_mult = rescueDamageMult;
   pushLog(meta, 'info', `${monster.name}との協力戦が始まった。（${count}人）`);
 
   const id = uuid();
@@ -274,6 +314,14 @@ export function submitCoopAction(
     if (!opts.target) return { ok: false, message: '対象を選んでください。', needsTarget: true };
   }
 
+  const existing = getStoredAction(battleId, userId, battle.turn_count);
+  if (existing) {
+    return {
+      ok: false,
+      message: '行動はすでに登録済みです。\n次のターン開始まで変更できません。',
+    };
+  }
+
   const targetJson = opts?.target ? JSON.stringify(opts.target) : null;
   const now = nowIso();
 
@@ -281,12 +329,6 @@ export function submitCoopAction(
     getDb().prepare(`
       INSERT INTO coop_battle_actions (battle_id, user_id, turn_count, action_type, skill_id, item_id, target_json, submitted_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(battle_id, user_id, turn_count) DO UPDATE SET
-        action_type = excluded.action_type,
-        skill_id = excluded.skill_id,
-        item_id = excluded.item_id,
-        target_json = excluded.target_json,
-        submitted_at = excluded.submitted_at
     `).run(battleId, userId, battle.turn_count, actionType, opts?.skillId ?? null, opts?.itemId?.toString() ?? null, targetJson, now);
   } catch {
     return { ok: false, message: '行動の登録に失敗しました。' };
@@ -402,9 +444,8 @@ function resolveCoopTurnLocked(battleId: string): { ok: boolean; message: string
     if (act.action_type === 'attack') {
       const dmg = applyPlayerDamage(p, enemy, meta, false, 1);
       enemy.hp -= dmg;
-      enemy.break += dmg * 0.35;
+      addEnemyBreak(enemy, meta, dmg * 0.35);
       pushLog(meta, 'player_attack', `<@${p.user_id}> の攻撃。\n　**${dmg}** ダメージ。`);
-      checkBreak(enemy, meta);
       continue;
     }
 
@@ -438,16 +479,19 @@ function resolveCoopTurnLocked(battleId: string): { ok: boolean; message: string
   let message = '';
 
   if (enemy.hp <= 0) {
+    const { grantCoopBattleRewards, applyRescueLeaderRecovery } = require('./coopRewardSystem') as typeof import('./coopRewardSystem');
+    const rewardMsg = grantCoopBattleRewards(battleId, participants, enemy, meta.leader_id, mode);
+    if (mode === 'rescue') applyRescueLeaderRecovery(meta.leader_id, participants);
+    meta.reward_summary = rewardMsg;
     getDb().prepare(`
       UPDATE coop_battle_sessions SET enemy_json = ?, participant_states_json = ?, status_json = ?, status = 'victory', resolving_lock = NULL, updated_at = ?
       WHERE id = ?
     `).run(JSON.stringify(enemy), JSON.stringify(participants), JSON.stringify(meta), nowIso(), battleId);
     completeCoopRecruit(battle.recruit_id);
-    const { grantCoopBattleRewards, applyRescueLeaderRecovery } = require('./coopRewardSystem') as typeof import('./coopRewardSystem');
-    const rewardMsg = grantCoopBattleRewards(battleId, participants, enemy, meta.leader_id, mode);
-    if (mode === 'rescue') applyRescueLeaderRecovery(meta.leader_id, participants);
     finished = true;
-    message = `勝利！\n${rewardMsg}`;
+    message = mode === 'rescue'
+      ? `救難成功！\n${enemy.name}を退けた。\n\n${rewardMsg}`
+      : `勝利！\n${rewardMsg}`;
   } else if (alive.length === 0) {
     getDb().prepare(`
       UPDATE coop_battle_sessions SET enemy_json = ?, participant_states_json = ?, status_json = ?, status = 'defeat', resolving_lock = NULL, updated_at = ?
@@ -478,7 +522,7 @@ function resolveCoopTurnLocked(battleId: string): { ok: boolean; message: string
         .run(st, battle.recruit_id, m.user_id);
     }
     releaseResolveLock(battleId, 'active');
-    message = formatCoopTurnSummary(enemy, participants, meta, nextTurn);
+    message = formatCoopTurnSummary(enemy, participants, meta, nextTurn, mode, battleId, nextTurn);
   }
 
   return { ok: true, message, finished };
@@ -497,12 +541,14 @@ function applyPlayerDamage(
   if (meta.breakRemainingHits > 0) {
     dmg = Math.floor(dmg * meta.playerBreakDamageMult);
     meta.breakRemainingHits--;
+    if (meta.breakRemainingHits <= 0) meta.enemyBroken = false;
   }
   return Math.max(1, dmg);
 }
 
 function checkBreak(enemy: CoopEnemyState, meta: CoopBattleMeta): void {
-  if (enemy.break >= enemy.break_max && !meta.enemyBroken) {
+  if (meta.enemyBroken) return;
+  if (enemy.break >= enemy.break_max) {
     meta.enemyBroken = true;
     meta.breakRemainingHits = 2;
     meta.enemyNextAtkReduceActive = true;
@@ -574,16 +620,15 @@ function applyCoopSkill(
   if (effect === 'mag_buff') { caster.magBuff += 0.2; pushLog(meta, 'player_skill', `<@${caster.user_id}> 魔力強化`); return; }
   if (effect === 'atk_buff') { caster.atkBuff += 0.2; pushLog(meta, 'player_skill', `<@${caster.user_id}> 攻撃強化`); return; }
   if (effect === 'def_buff') { caster.defBuff += 0.15; pushLog(meta, 'player_heal', `<@${caster.user_id}> 防御強化`); return; }
-  if (effect === 'scan') { pushLog(meta, 'player_skill', `<@${caster.user_id}> 弱点看破`); enemy.break += 10; checkBreak(enemy, meta); return; }
+  if (effect === 'scan') { pushLog(meta, 'player_skill', `<@${caster.user_id}> 弱点看破`); addEnemyBreak(enemy, meta, 10); return; }
 
   const aoeMult = (skill.target_type === 'all_enemies' || skill.target_type === 'all') ? 0.72 : 1;
   const hits = skill.hits ?? 1;
 
   if (skill.power <= 0 && (skill.break_power > 0 || skill.status_effect)) {
     if (skill.break_power > 0) {
-      enemy.break += skill.break_power;
+      addEnemyBreak(enemy, meta, skill.break_power);
       pushLog(meta, 'break', `<@${caster.user_id}> ${skill.name} ブレイク+${skill.break_power}`);
-      checkBreak(enemy, meta);
     }
     applyCoopStatusEffect(caster, enemy, meta, skill, mode, fx);
     return;
@@ -603,12 +648,12 @@ function applyCoopSkill(
     if (meta.breakRemainingHits > 0) {
       dmg = Math.floor(dmg * meta.playerBreakDamageMult);
       meta.breakRemainingHits--;
+      if (meta.breakRemainingHits <= 0) meta.enemyBroken = false;
     }
     enemy.hp -= dmg;
-    enemy.break += (skill.break_power ?? 0) + dmg * 0.25;
+    addEnemyBreak(enemy, meta, (skill.break_power ?? 0) + dmg * 0.25);
     const critTag = result.crit ? '（会心）' : '';
     pushLog(meta, isMag ? 'player_skill' : 'player_attack', `<@${caster.user_id}> ${skill.name}${hits > 1 ? `(${i + 1})` : ''} **${dmg}**${critTag}`);
-    checkBreak(enemy, meta);
   }
 
   applyCoopStatusEffect(caster, enemy, meta, skill, mode, fx);
@@ -744,7 +789,7 @@ function resolveEnemyTurn(
 
   if (mode === 'raid' && playerCount >= 4 && roll(0.35)) {
     for (const p of livingParticipants(participants)) {
-      dealEnemyHit(p, participants, enemy, meta, atkMult, heavy, 0.55);
+      dealEnemyHit(p, participants, enemy, meta, mode, atkMult, heavy, 0.55);
     }
     pushLog(meta, 'enemy_attack', `${enemy.name}の全体攻撃！`);
     return;
@@ -753,13 +798,17 @@ function resolveEnemyTurn(
   if (mode === 'raid' && playerCount >= 3 && roll(0.25)) {
     const targets = livingParticipants(participants).slice(0, 2);
     for (const p of targets) {
-      dealEnemyHit(p, participants, enemy, meta, atkMult, heavy, 1);
+      dealEnemyHit(p, participants, enemy, meta, mode, atkMult, heavy, 1);
     }
     return;
   }
 
   const target = pickEnemyTarget(participants);
-  dealEnemyHit(target, participants, enemy, meta, atkMult, heavy, 1);
+  dealEnemyHit(target, participants, enemy, meta, mode, atkMult, heavy, 1);
+}
+
+function rescueUnderlevelHitMult(recommendedLevel: number, playerLevel: number): number {
+  return rescueLevelGapAtkBonus(recommendedLevel, playerLevel);
 }
 
 function dealEnemyHit(
@@ -767,6 +816,7 @@ function dealEnemyHit(
   participants: CoopParticipantState[],
   enemy: CoopEnemyState,
   meta: CoopBattleMeta,
+  mode: CoopMode,
   atkMult: number,
   heavy: boolean,
   mult: number,
@@ -780,13 +830,22 @@ function dealEnemyHit(
   }
 
   const takenMult = actualTarget.defending ? (heavy ? 0.35 : 0.45) : (heavy ? 1.2 : 1);
+  const playerLevel = requirePlayer(actualTarget.user_id).level;
+  const monsterLevel = meta.recommended_level ?? 10;
+  const threat = getMonsterThreatTier(enemy.monster_id, { forceBoss: mode === 'raid' });
+  let hitMult = mult;
+  if (mode === 'rescue') {
+    hitMult *= rescueUnderlevelHitMult(monsterLevel, playerLevel);
+  }
   const raw = calcEnemyDamageToPlayer({
-    attack: Math.floor(enemy.attack * atkMult * mult),
+    attack: Math.floor(enemy.attack * atkMult * hitMult),
     playerDefense: actualTarget.defense,
     playerMaxHp: actualTarget.max_hp,
-    threatTier: 'boss',
+    threatTier: threat,
     takenMult,
     heavy,
+    playerLevel,
+    monsterLevel,
   });
   const mit = applyPlayerElementResist(raw, enemy.element, getPlayerElementResistances(actualTarget.user_id));
   actualTarget.hp -= mit.damage;
@@ -805,17 +864,67 @@ function formatCoopTurnSummary(
   participants: CoopParticipantState[],
   meta: CoopBattleMeta,
   turn: number,
+  mode: CoopMode,
+  battleId: string,
+  turnCount: number,
 ): string {
+  return formatRescueBattleBody(enemy, participants, meta, turn, mode, battleId, turnCount, 0);
+}
+
+export function hasUserSubmittedAction(battleId: string, userId: string, turnCount?: number): boolean {
+  const battle = getCoopBattle(battleId);
+  if (!battle) return false;
+  const turn = turnCount ?? battle.turn_count;
+  return !!getStoredAction(battleId, userId, turn);
+}
+
+function formatRescueBattleBody(
+  enemy: CoopEnemyState,
+  participants: CoopParticipantState[],
+  meta: CoopBattleMeta,
+  turn: number,
+  mode: CoopMode,
+  battleId: string,
+  turnCount: number,
+  pending: number,
+): string {
+  const submitted = participants.filter((p) => !p.defeated && p.hp > 0
+    && getStoredAction(battleId, p.user_id, turnCount)).length;
+  const waiting = participants.filter((p) => !p.defeated && p.hp > 0
+    && !getStoredAction(battleId, p.user_id, turnCount)).length;
+
   const party = participants.map((p) => {
-    const tag = p.defeated || p.hp <= 0 ? '💀' : `HP${p.hp}/${p.max_hp}`;
-    return `<@${p.user_id}> ${tag}`;
+    if (p.defeated || p.hp <= 0) return `<@${p.user_id}> 戦闘不能/見守り`;
+    const act = getStoredAction(battleId, p.user_id, turnCount);
+    return `<@${p.user_id}> HP${p.hp}/${p.max_hp} MP${p.mp}/${p.max_mp} ${act ? '入力済' : '未入力'}`;
   }).join('\n');
-  return [
-    `ターン${turn}`,
-    `**${enemy.name}** HP:${Math.max(0, enemy.hp)}/${enemy.max_hp} ブレイク:${Math.floor(enemy.break)}/${enemy.break_max}`,
+
+  const lines = [
+    `**Turn ${turn}**`,
+    '',
+    '【敵】',
+    `${enemy.name}`,
+    `HP ${Math.max(0, enemy.hp)}/${enemy.max_hp}`,
+    formatBreakLine(enemy, meta),
+    '',
+    '【参加者】',
     party,
-    meta.log[meta.log.length - 1] ?? '',
-  ].join('\n');
+    '',
+    `入力済 ${submitted}人 / 未入力 ${waiting}人`,
+  ];
+
+  if (pending > 0) lines.push(`残り${pending}人の入力待ち。`);
+
+  const recent = meta.log.slice(-3);
+  if (recent.length) {
+    lines.push('', '【直近ログ】', ...recent);
+  }
+
+  if (meta.reward_summary) {
+    lines.push('', '【参加者報酬】', meta.reward_summary.replace(/^\*\*報酬\*\*\n?/, ''));
+  }
+
+  return lines.join('\n');
 }
 
 export function formatCoopBattleStatus(battleId: string): string {
@@ -825,20 +934,28 @@ export function formatCoopBattleStatus(battleId: string): string {
   const participants = parseParticipants(battle.participant_states_json);
   const meta = parseMeta(battle.status_json);
   const pending = getPendingActionCount(battleId, battle.turn_count);
+  const mode = battle.mode as CoopMode;
+
+  if (mode === 'rescue') {
+    return formatRescueBattleBody(enemy, participants, meta, battle.turn_count, mode, battleId, battle.turn_count, pending);
+  }
+
   const telegraph = meta.raidTelegraph ? '\n⚠️ **大技予兆中**' : '';
   const party = participants.map((p) => {
     if (p.defeated || p.hp <= 0) return `<@${p.user_id}> 戦闘不能/見守り`;
     const act = getStoredAction(battleId, p.user_id, battle.turn_count);
     return `<@${p.user_id}> HP${p.hp}/${p.max_hp} MP${p.mp}/${p.max_mp}${act ? ' ✓' : ''}`;
   }).join('\n');
-  return [
+  const parts = [
     `**${enemy.name}** HP:${Math.max(0, enemy.hp)}/${enemy.max_hp}`,
-    `ブレイク ${Math.floor(enemy.break)}/${enemy.break_max} | ターン${battle.turn_count}${telegraph}`,
+    `${formatBreakLine(enemy, meta)} | ターン${battle.turn_count}${telegraph}`,
     `行動待ち: ${pending}人`,
     party,
     '',
     ...(meta.log.slice(-4)),
-  ].join('\n');
+  ];
+  if (meta.reward_summary) parts.push('', meta.reward_summary);
+  return parts.join('\n');
 }
 
 export function cleanupStaleCoopBattles(): number {
@@ -855,16 +972,81 @@ export function getActiveCoopBattleIds(): string[] {
     .map((r) => r.id);
 }
 
-export function validateCoopBattleAction(battleId: string, userId: string): { ok: boolean; message: string } {
+export function validateCoopBattleAction(
+  battleId: string,
+  userId: string,
+  expectedTurn?: number,
+): { ok: boolean; message: string } {
   const battle = getCoopBattle(battleId);
   if (!battle) return { ok: false, message: 'この戦闘は終了しています。' };
   if (['victory', 'defeat', 'expired'].includes(battle.status)) {
     return { ok: false, message: 'この戦闘は終了しています。' };
   }
   if (battle.status === 'resolving') return { ok: false, message: '現在ターン処理中です。' };
+  if (expectedTurn != null && expectedTurn !== battle.turn_count) {
+    return { ok: false, message: 'このターンの入力はすでに終了しています。\n最新の戦闘UIから操作してください。' };
+  }
   const participants = parseParticipants(battle.participant_states_json);
   const self = participants.find((p) => p.user_id === userId);
   if (!self) return { ok: false, message: '参加者ではありません。' };
   if (self.defeated || self.hp <= 0) return { ok: false, message: '戦闘不能のため行動できません。' };
+  if (getStoredAction(battleId, userId, battle.turn_count)) {
+    return { ok: false, message: '行動はすでに登録済みです。\n次のターン開始まで変更できません。' };
+  }
   return { ok: true, message: '' };
+}
+
+/** 監査用 — 救難ブレイク加算シミュレーション */
+export function simulateCoopBreakGain(
+  breakValue: number,
+  breakMax: number,
+  gain: number,
+  enemyBroken: boolean,
+): {
+  beforeBreak: number;
+  breakGain: number;
+  afterBreak: number;
+  breakThreshold: number;
+  displayedBreak: string;
+  breakTriggered: boolean;
+  overflowClampedOrReset: boolean;
+} {
+  const enemy: CoopEnemyState = {
+    monster_id: 'audit',
+    name: '監査',
+    hp: 100,
+    max_hp: 100,
+    attack: 10,
+    magic: 10,
+    defense: 10,
+    spirit: 10,
+    break: breakValue,
+    break_max: breakMax,
+    element: null,
+    exp_reward: 0,
+    gold_reward: 0,
+  };
+  const meta: CoopBattleMeta = {
+    log: [],
+    enemyBroken,
+    breakRemainingHits: enemyBroken ? 2 : 0,
+    playerBreakDamageMult: 1.5,
+    enemyNextAtkReduceActive: false,
+    enemyNextAtkReducePct: 0,
+    raidTelegraph: false,
+    raidHeavyPending: false,
+    leader_id: 'audit',
+  };
+  const before = enemy.break;
+  addEnemyBreak(enemy, meta, gain);
+  clampEnemyBreak(enemy, meta);
+  return {
+    beforeBreak: before,
+    breakGain: gain,
+    afterBreak: enemy.break,
+    breakThreshold: breakMax,
+    displayedBreak: formatBreakLine(enemy, meta),
+    breakTriggered: meta.enemyBroken && !enemyBroken,
+    overflowClampedOrReset: before + gain > breakMax || meta.enemyBroken,
+  };
 }

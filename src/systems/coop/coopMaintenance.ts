@@ -55,7 +55,11 @@ async function runCoopPollTick(): Promise<void> {
         status: string; turn_count: number;
       } | undefined;
       if (after && (after.status !== before?.status || after.turn_count !== before?.turn_count)) {
-        await syncBattleChannelMessage(battleId);
+        const battle = getDb().prepare('SELECT mode FROM coop_battle_sessions WHERE id = ?').get(battleId) as { mode: string } | undefined;
+        const turnAdvanced = after.turn_count !== before?.turn_count;
+        await syncBattleChannelMessage(battleId, {
+          postNewOnTurnAdvance: battle?.mode === 'rescue' && turnAdvanced && after.status === 'active',
+        });
       }
     }
   } catch {

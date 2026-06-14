@@ -245,11 +245,15 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
   const value = interaction.values[0]!;
 
   if (prefix === 'coop' && action === 'skill') {
-    await handleCoopSkillSelect(interaction, extra!);
+    const battleId = base.split(':')[2]!;
+    const turn = Number(base.split(':')[3]);
+    await handleCoopSkillSelect(interaction, battleId, Number.isFinite(turn) ? turn : undefined);
     return;
   }
   if (prefix === 'coop' && action === 'item') {
-    await handleCoopItemSelect(interaction, extra!);
+    const battleId = base.split(':')[2]!;
+    const turn = Number(base.split(':')[3]);
+    await handleCoopItemSelect(interaction, battleId, Number.isFinite(turn) ? turn : undefined);
     return;
   }
 

@@ -92,7 +92,6 @@ export function buildArmorDetailView(itemId: string, categoryId?: string): UiPay
     '【主な性能】',
     formatEquipmentStatSummary(a),
     '',
-    '【入手経路】',
     ...routes,
     a.legacy ? '\n※ 現在の通常プレイでは入手できない装備です。' : '',
   ].filter(Boolean).join('\n');

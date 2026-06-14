@@ -101,10 +101,11 @@ export async function handleCoopRecruitButton(interaction: ButtonInteraction, op
 
 export async function handleCoopBattleButton(interaction: ButtonInteraction, parts: string[]): Promise<boolean> {
   const battleId = parts[2]!;
-  const action = parts[3]!;
+  const expectedTurn = Number(parts[3]);
+  const action = parts[4]!;
   const userId = interaction.user.id;
 
-  const valid = validateCoopBattleAction(battleId, userId);
+  const valid = validateCoopBattleAction(battleId, userId, Number.isFinite(expectedTurn) ? expectedTurn : undefined);
   if (!valid.ok) {
     await interaction.reply({ embeds: [errorEmbed(valid.message)], ephemeral: true });
     return true;
@@ -132,7 +133,7 @@ export async function handleCoopBattleButton(interaction: ButtonInteraction, par
 
   if (action === 'attack' || action === 'defend') {
     const result = submitCoopAction(battleId, userId, action as 'attack' | 'defend');
-    await replyCoopBattleAck(interaction, battleId, result.message);
+    await replyCoopBattleAck(interaction, battleId, result.message, result.resolve);
     return true;
   }
 
@@ -141,11 +142,18 @@ export async function handleCoopBattleButton(interaction: ButtonInteraction, par
 
 export async function handleCoopTargetButton(interaction: ButtonInteraction, parts: string[]): Promise<boolean> {
   const battleId = parts[2]!;
-  const kind = parts[3] as 'skill' | 'item';
-  const ref = parts[4]!;
-  const targetKind = parts[5];
-  const targetRef = parts[6];
+  const expectedTurn = Number(parts[3]);
+  const kind = parts[4] as 'skill' | 'item';
+  const ref = parts[5]!;
+  const targetKind = parts[6];
+  const targetRef = parts[7];
   const userId = interaction.user.id;
+
+  const valid = validateCoopBattleAction(battleId, userId, Number.isFinite(expectedTurn) ? expectedTurn : undefined);
+  if (!valid.ok) {
+    await interaction.reply({ embeds: [errorEmbed(valid.message)], ephemeral: true });
+    return true;
+  }
 
   let target: CoopActionTarget | undefined;
   if (targetKind === 'ally') {
@@ -166,13 +174,19 @@ export async function handleCoopTargetButton(interaction: ButtonInteraction, par
     itemId: kind === 'item' ? Number(ref) : undefined,
     target,
   });
-  await replyCoopBattleAck(interaction, battleId, result.message);
+  await replyCoopBattleAck(interaction, battleId, result.message, result.resolve);
   return true;
 }
 
-export async function handleCoopSkillSelect(interaction: StringSelectMenuInteraction, battleId: string): Promise<boolean> {
+export async function handleCoopSkillSelect(interaction: StringSelectMenuInteraction, battleId: string, expectedTurn?: number): Promise<boolean> {
   const skillId = interaction.values[0]!;
   const userId = interaction.user.id;
+
+  const valid = validateCoopBattleAction(battleId, userId, expectedTurn);
+  if (!valid.ok) {
+    await interaction.reply({ embeds: [errorEmbed(valid.message)], ephemeral: true });
+    return true;
+  }
   const skill = getSkill(skillId);
   if (!skill) {
     await interaction.reply({ embeds: [errorEmbed('その技は使えません。')], ephemeral: true });
@@ -196,11 +210,11 @@ export async function handleCoopSkillSelect(interaction: StringSelectMenuInterac
   }
 
   const result = submitCoopAction(battleId, userId, 'skill', { skillId, target });
-  await replyCoopBattleAck(interaction, battleId, result.message);
+  await replyCoopBattleAck(interaction, battleId, result.message, result.resolve);
   return true;
 }
 
-export async function handleCoopItemSelect(interaction: StringSelectMenuInteraction, battleId: string): Promise<boolean> {
+export async function handleCoopItemSelect(interaction: StringSelectMenuInteraction, battleId: string, expectedTurn?: number): Promise<boolean> {
   const itemId = Number(interaction.values[0]!);
   const userId = interaction.user.id;
   await interaction.reply({
@@ -215,14 +229,17 @@ async function replyCoopBattleAck(
   interaction: ButtonInteraction | StringSelectMenuInteraction,
   battleId: string,
   message: string,
+  turnResolved?: boolean,
 ): Promise<void> {
   const battle = getCoopBattle(battleId);
   const finished = battle && ['victory', 'defeat'].includes(battle.status);
   const short = finished
-    ? (battle.status === 'victory' ? '協力戦に勝利した！' : '協力戦に敗北した…')
-    : (message.includes('待ち') ? message : '行動を登録した。');
+    ? (battle.status === 'victory' ? '救難成功！報酬は戦闘欄を確認してください。' : '協力戦に敗北した…')
+    : (message.includes('登録済み') ? message : message.includes('待ち') ? message : '行動を登録した。');
   await interaction.reply({ embeds: [successEmbed(short)], ephemeral: true });
-  await syncBattleChannelMessage(battleId);
+  await syncBattleChannelMessage(battleId, {
+    postNewOnTurnAdvance: battle?.mode === 'rescue' && !!turnResolved && !finished,
+  });
 }
 
 export async function handleLegacyRaidDepart(interaction: ButtonInteraction, raidId: string, userId: string, startRaidFn: (id: string, uid: string) => { message: string; battleId?: string }): Promise<void> {

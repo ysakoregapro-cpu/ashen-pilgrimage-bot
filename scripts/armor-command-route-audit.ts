@@ -6,12 +6,17 @@ import {
   getArmorRouteBook,
   listAllArmorIds,
 } from '../src/systems/equipmentRouteBook';
+import { getEquipmentRouteSectionFlags } from '../src/systems/equipmentRouteDetailSystem';
+import { ensureDropBalanceSeed } from '../src/db/seedData/dropBalanceSeed';
+import { ensureMasterDataSeed } from '../src/db/seedData/masterDataSeed';
+import { ensurePhase2EquipmentRoutes } from '../src/db/seedData/ensurePhase2EquipmentRoutes';
 import { emptyResult, exitCheckResult, initAuditDb, writeMdCsvPair } from './balance/balanceHelpers';
 
 const HEADERS = [
   'armor_id', 'armor_name', 'rarity', 'series', 'slot', 'listed_in_command',
   'has_route_detail', 'explore_routes', 'enemy_drop_routes', 'boss_rematch_routes',
-  'shop_routes', 'special_routes', 'legacy_or_unavailable', 'balance_note',
+  'exchange_routes', 'shop_routes', 'special_routes', 'has_none_sections',
+  'legacy_or_unavailable', 'balance_note',
 ];
 
 function main() {
@@ -23,6 +28,9 @@ function main() {
     exitCheckResult('armor-command-route-audit', result);
     return;
   }
+  ensurePhase2EquipmentRoutes(init.db);
+  ensureDropBalanceSeed(init.db);
+  ensureMasterDataSeed(init.db);
 
   const armors = getArmorRouteBook();
   const listed = new Set<string>();
@@ -34,21 +42,30 @@ function main() {
   for (const a of armors) {
     const routes = buildEquipmentRouteLines(a.item_id);
     const text = routes.join('\n');
-    const explore = text.includes('探索') ? 'YES' : 'NO';
-    const enemy = text.includes('敵') || text.includes('魔物') ? 'YES' : 'NO';
-    const boss = text.includes('ボス') || text.includes('再戦') ? 'YES' : 'NO';
-    const shop = text.includes('ショップ') ? 'YES' : 'NO';
-    const special = text.includes('交換') || text.includes('ヴァルハラ') ? 'YES' : 'NO';
-    const legacy = a.legacy || text.includes('通常入手不可') ? 'YES' : 'NO';
+    const flags = getEquipmentRouteSectionFlags(a.item_id);
+    const explore = flags.hasExplore || text.includes('【探索】') ? 'YES' : 'NO';
+    const enemy = flags.hasEnemyDrop ? 'YES' : 'NO';
+    const boss = flags.hasBossRematch ? 'YES' : 'NO';
+    const exchange = flags.hasExchange ? 'YES' : 'NO';
+    const shop = flags.hasShop || text.includes('【ショップ】') ? 'YES' : 'NO';
+    const special = text.includes('【強化/変質】') || text.includes('【特殊】') || text.includes('【ヴァルハラ再戦報酬】') ? 'YES' : 'NO';
+    const legacy = a.legacy || flags.legacyOrUnavailable ? 'YES' : 'NO';
     const inCmd = listed.has(a.item_id) ? 'YES' : 'NO';
     const hasDetail = routes.length > 0 ? 'YES' : 'NO';
+    const noneSections = flags.hasNoneSections ? 'YES' : 'NO';
 
     if (inCmd === 'NO') result.fails.push(`${a.item_id}: not in command categories`);
     if (hasDetail === 'NO' && !a.legacy) result.warns.push(`${a.item_id}: no route lines`);
+    if (!a.legacy && !text.includes('【敵討伐】')) {
+      result.fails.push(`${a.item_id}: missing enemy drop section`);
+    }
+    if (!a.legacy && !text.includes('【ボス再戦】')) {
+      result.fails.push(`${a.item_id}: missing boss rematch section`);
+    }
 
     rows.push([
       a.item_id, a.name, a.rarity, a.series_id ?? '—', a.slot,
-      inCmd, hasDetail, explore, enemy, boss, shop, special, legacy,
+      inCmd, hasDetail, explore, enemy, boss, exchange, shop, special, noneSections, legacy,
       listed.has(a.item_id) ? 'ok' : 'missing',
     ]);
   }

@@ -1,4 +1,5 @@
 import type { Client, TextChannel } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
 import { getDb } from '../../db/database';
 import { getCoopRecruit } from './coopRecruitSystem';
 import { getCoopBattle } from './coopBattleSystem';
@@ -59,7 +60,10 @@ export async function syncRecruitChannelMessage(recruitId: string, viewerId?: st
   });
 }
 
-export async function syncBattleChannelMessage(battleId: string): Promise<void> {
+export async function syncBattleChannelMessage(
+  battleId: string,
+  opts?: { postNewOnTurnAdvance?: boolean },
+): Promise<void> {
   const battle = getCoopBattle(battleId);
   if (!battle) return;
   const recruit = getCoopRecruit(battle.recruit_id);
@@ -73,6 +77,23 @@ export async function syncBattleChannelMessage(battleId: string): Promise<void> 
   const components = finished
     ? buildCoopResultButtons(battle.recruit_id, battle.mode as CoopMode, battle.status)
     : buildCoopBattleButtons(battleId, leaderId);
+
+  if (opts?.postNewOnTurnAdvance && battle.mode === 'rescue' && !finished) {
+    const staleEmbed = new EmbedBuilder()
+      .setTitle('灰星巡礼録 | 救難戦闘（終了ターン）')
+      .setDescription('※このターンは終了しました。最新の戦闘UIから操作してください。')
+      .setColor(0x666666);
+    await safeEditMessage(channelId, messageId, { embeds: [staleEmbed], components: [] });
+
+    const channel = await fetchTextChannel(channelId);
+    if (channel) {
+      try {
+        const msg = await channel.send({ embeds: [embed], components });
+        setCoopBattleMessage(battleId, msg.id, channelId);
+        return;
+      } catch { /* fall through to edit */ }
+    }
+  }
 
   await safeEditMessage(channelId, messageId, { embeds: [embed], components });
 }
