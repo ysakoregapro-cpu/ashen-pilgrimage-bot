@@ -21,6 +21,7 @@ import {
 } from '../valhallaCoopSystem';
 import { getActiveBattle } from '../battleSystem';
 import { isValhallaBossMonster } from '../valhallaRewardSystem';
+import { enrichRescueContext, resolveRescueMonsterId } from './rescueMonsterContext';
 
 export type CoopRecruitRow = {
   id: string;
@@ -162,11 +163,14 @@ export function createCoopRecruit(
   const bossAreaId = mode === 'valhalla_coop' && context.monster_id
     ? getValhallaBossAreaId(context.monster_id)
     : null;
-  const ctx: CoopContext = {
+  let ctx: CoopContext = {
     ...context,
     monster_id: context.monster_id ?? (mode === 'raid' ? RAID_BOSS_ID : context.monster_id),
     area_id: context.area_id ?? (mode === 'raid' ? 'area_deep_core' : bossAreaId ?? context.area_id),
   };
+  if (mode === 'rescue') {
+    ctx = enrichRescueContext(ctx, leaderId);
+  }
 
   const db = getDb();
   db.prepare(`
@@ -320,16 +324,22 @@ export function completeCoopRecruit(recruitId: string): void {
 
 export function getRecommendedLevel(mode: CoopMode, context: CoopContext): number {
   if (mode === 'raid' || mode === 'valhalla_coop') return 80;
-  const monsterId = context.monster_id ?? 'mon_bandit';
-  const mon = getDb().prepare('SELECT level FROM monsters WHERE id = ?').get(monsterId) as { level: number } | undefined;
+  const resolved = resolveRescueMonsterId(context);
+  const mon = getDb().prepare('SELECT level FROM monsters WHERE id = ?').get(resolved.monsterId) as { level: number } | undefined;
   return mon?.level ?? 10;
 }
 
 export function getRecruitTargetLabel(mode: CoopMode, context: CoopContext): string {
-  const monsterId = context.monster_id ?? (mode === 'raid' ? RAID_BOSS_ID : 'mon_bandit');
-  const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(monsterId) as { name: string } | undefined;
-  if (mode === 'valhalla_coop') return `ヴァルハラ共闘: ${mon?.name ?? monsterId}`;
-  if (mode === 'raid') return `レイド: ${mon?.name ?? '深層炉心'}`;
-  if (context.area_label) return `救難: ${context.area_label} — ${mon?.name ?? '敵'}`;
-  return `救難: ${mon?.name ?? '敵'}`;
+  if (mode === 'valhalla_coop') {
+    const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(context.monster_id ?? '') as { name: string } | undefined;
+    return `ヴァルハラ共闘: ${mon?.name ?? context.monster_id ?? 'ボス'}`;
+  }
+  if (mode === 'raid') {
+    const mon = getDb().prepare('SELECT name FROM monsters WHERE id = ?').get(RAID_BOSS_ID) as { name: string } | undefined;
+    return `レイド: ${mon?.name ?? '深層炉心'}`;
+  }
+  const resolved = resolveRescueMonsterId(context);
+  const name = context.monster_name ?? resolved.monsterName;
+  if (context.area_label) return `救難: ${context.area_label} — ${name}`;
+  return `救難: ${name}`;
 }

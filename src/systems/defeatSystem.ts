@@ -4,6 +4,24 @@ import { losePendingRewards } from './inventorySystem';
 import { DURABILITY_ORDER, type DurabilityState } from '../types';
 import { nowIso } from '../types';
 import { randomInt } from '../utils/random';
+import { getHighestUnlockedTownTier } from './innSystem';
+
+export function defeatGoldLossCapForTownTier(townTier: number): number {
+  if (townTier >= 55) return 1500;
+  if (townTier >= 40) return 800;
+  if (townTier >= 20) return 300;
+  return 100;
+}
+
+function defeatGoldLossCap(userId: string): number {
+  return defeatGoldLossCapForTownTier(getHighestUnlockedTownTier(userId));
+}
+
+export function calcDefeatGoldLoss(userId: string, currentGold: number, isBoss: boolean): number {
+  const pct = isBoss ? 0.05 : 0.03 + Math.random() * 0.02;
+  const raw = Math.floor(currentGold * pct);
+  return Math.min(raw, defeatGoldLossCap(userId));
+}
 
 export function applyTrialDefeat(userId: string): string {
   const player = requirePlayer(userId);
@@ -18,8 +36,7 @@ export function applyTrialDefeat(userId: string): string {
 
 export function applyDefeat(userId: string, isBoss: boolean, _areaId: string | null): string {
   const player = requirePlayer(userId);
-  const goldLossPct = isBoss ? 0.05 : 0.03 + Math.random() * 0.02;
-  const goldLoss = Math.floor(player.gold * goldLossPct);
+  const goldLoss = calcDefeatGoldLoss(userId, player.gold, isBoss);
 
   const hasCharm = getDb().prepare(`
     SELECT pi.id AS inventory_id FROM player_inventory pi

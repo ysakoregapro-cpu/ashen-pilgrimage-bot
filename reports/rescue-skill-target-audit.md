@@ -1,0 +1,103 @@
+# rescue-skill-target-audit
+
+Generated: 2026-06-14T13:24:12.950Z
+
+## Summary
+
+- skills: 92
+- fails: 0
+
+| skill_id | skill_name | skill_type | target_type | battle_type | expected_target_side | actual_target_side | target_labels | duplicate_labels | match_ok | balance_note |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| bs_slash | 斬り払い | physical | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_parry | 受け流し | guard | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_double_slash | 二連斬 | physical | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_break_slash | 崩し斬り | break | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_sword_focus | 剣気集中 | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_ash_thrust | 灰燼突き | physical | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_counter_blade | 返し刃 | guard | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_twilight_combo | 黄昏連斬 | physical | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_sword_pressure | 剣圧解放 | break | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_star_sever | 星断ち | physical | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_twilight_sword_ultimate | 黄昏剣奥義 | special | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_shield_bash | 盾撃 | physical | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_shield_guard | 盾構え | guard | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_taunt | 挑発 | support | taunt | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_fortress | 城塞防御 | guard | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_silver_break | 白銀崩し | break | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_cover | かばう | guard | cover | rescue | ally/self | ally | 味方/自分 | NO | OK | ok |
+| bs_counter_shield | 反撃の盾 | physical | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_immovable_oath | 不動の誓い | guard | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_ancient_guard | 古王の守り | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_fortress_counter | 城塞反攻 | break | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_silver_fortress_ultimate | 白銀城塞奥義 | special | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_aim_shot | 狙い撃ち | technique | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_bind_arrow | 足止め矢 | debuff | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_trap | 罠設置 | break | single_enemy | rescue | ally/self | enemy | 敵 | NO | OK | ok |
+| bs_weak_shot | 弱点射撃 | technique | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_mist_clear | 霧払い | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_part_shot | 部位狙い | technique | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_tracker_eye | 追跡者の目 | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_dragon_bone_shot | 竜骨射ち | technique | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_star_shadow_arrow | 星影の矢 | technique | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_sure_aim | 必中の構え | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_echo_bow_ultimate | 残響弓奥義 | special | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_ash_fire | 灰火 | magic | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_ice_needle | 氷針 | magic | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_star_bullet | 星弾 | magic | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_magic_focus | 魔力集中 | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_deep_thunder | 深層雷 | magic | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_ash_circle | 灰術陣 | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_echo_blast | 残響爆破 | magic | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_star_fall | 星落とし | magic | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_magic_cycle | 魔力循環 | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_ash_crown_fire | 灰冠の火 | magic | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_deep_great_thunder | 深層大雷 | magic | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_stardust_storm | 星屑の嵐 | magic | all_enemies | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_star_ultimate | 星術奥義 | special | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_lamp_prayer | 灯火の祈り | divine | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_minor_heal | 小癒 | recovery | ally | rescue | enemy | ally | 味方/自分 | NO | OK | ok |
+| bs_guard_prayer | 守りの祈祷 | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_purify | 浄化 | support | all_allies | rescue | ally/self | ally | 味方/自分 | NO | OK | ok |
+| bs_quiet_ode | 静かな祝詞 | recovery | ally | rescue | enemy | ally | 味方/自分 | NO | OK | ok |
+| bs_spirit_focus | 精神集中 | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_lamp_wall | 灯火の壁 | guard | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_healing_lamp | 癒しの灯 | recovery | ally | rescue | enemy | ally | 味方/自分 | NO | OK | ok |
+| bs_revive_prayer | 蘇生の祈り | recovery | ally | rescue | enemy | ally | 味方/自分 | NO | OK | ok |
+| bs_binding_light | 繋ぎの光 | divine | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_silent_tune | 静寂の調律 | support | all_allies | rescue | ally/self | ally | 味方/自分 | NO | OK | ok |
+| bs_great_lamp | 大灯火 | recovery | ally | rescue | enemy | ally | 味方/自分 | NO | OK | ok |
+| bs_pilgrim_prayer_ultimate | 巡礼祈祷奥義 | special | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_shadow_strike | 影打ち | technique | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_poison_blade | 毒刃 | debuff | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_dark_walk | 闇歩き | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_backstab | 背面刺し | technique | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_weakness_sight | 弱点看破 | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_plunder | 奪取 | technique | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_shadow_stitch | 影縫い | debuff | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_black_fox_shadow | 黒狐絶影 | technique | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_afterimage | 残影 | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_blind_spot | 死角潜り | technique | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_shadow_pass_ultimate | 影渡り奥義 | special | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_mini_cannon | 小型砲撃 | machine | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_weak_scan | 弱点スキャン | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_field_repair | 応急修理 | recovery | self | rescue | enemy | self | 味方/自分 | NO | OK | ok |
+| bs_deep_pierce | 深層穿ち | break | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_turret_set | 砲台設置 | break | single_enemy | rescue | ally/self | enemy | 敵 | NO | OK | ok |
+| bs_core_bullet | 炉心弾 | machine | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_arc_jam | アーク干渉 | debuff | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_multi_aim | 多重照準 | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_deep_analysis | 深層解析 | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_control_volley | 制御弾幕 | machine | all_enemies | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_creation_cannon_ultimate | 創造砲奥義 | special | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_straight_punch | 正拳 | physical | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_spirit_shout | 気合 | support | self | rescue | enemy | self | 味方/自分 | NO | OK | ok |
+| bs_combo | 連打 | physical | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_armor_break | 破甲拳 | break | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_ukemi | 受け身 | guard | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_dragon_bone_crush | 竜骨砕き | break | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_ash_fist_rampage | 灰拳乱舞 | physical | all_enemies | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_blood_stance | 血潮の構え | support | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_taboo_combo | 破戒連撃 | physical | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |
+| bs_iron_body | 剛体 | guard | self | rescue | ally/self | self | 味方/自分 | NO | OK | ok |
+| bs_fist_king_ultimate | 拳闘王奥義 | special | single_enemy | rescue | enemy | enemy | 敵 | NO | OK | ok |

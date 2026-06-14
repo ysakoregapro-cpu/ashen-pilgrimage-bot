@@ -1,3 +1,3 @@
-# Weapon Route Audit (updated 2026-06-13T12:22:38.051Z)
+# Weapon Route Audit (updated 2026-06-14T13:50:37.330Z)
 
 See reports/weapon-acquisition-audit.md for full data.

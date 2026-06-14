@@ -123,13 +123,20 @@ function buildCategoryFilterRow(totalAll: number, activeCategory: InventoryCateg
   return row;
 }
 
-function buildPageNavRow(page: number, totalPages: number, category: InventoryCategory): ActionRowBuilder<ButtonBuilder> | null {
+function buildPageNavRow(
+  page: number,
+  totalPages: number,
+  category: InventoryCategory,
+  navMode: 'inventory' | 'detail' = 'inventory',
+): ActionRowBuilder<ButtonBuilder> | null {
   if (totalPages <= 1) return null;
   const row = new ActionRowBuilder<ButtonBuilder>();
   if (page > 0) {
     row.addComponents(
       new ButtonBuilder()
-        .setCustomId(`inventory:page:${page - 1}:${category}`)
+        .setCustomId(navMode === 'detail'
+          ? `detail:page:${page - 1}`
+          : `inventory:page:${page - 1}:${category}`)
         .setLabel('前のページ')
         .setStyle(ButtonStyle.Secondary),
     );
@@ -144,7 +151,9 @@ function buildPageNavRow(page: number, totalPages: number, category: InventoryCa
   if (page < totalPages - 1) {
     row.addComponents(
       new ButtonBuilder()
-        .setCustomId(`inventory:page:${page + 1}:${category}`)
+        .setCustomId(navMode === 'detail'
+          ? `detail:page:${page + 1}`
+          : `inventory:page:${page + 1}:${category}`)
         .setLabel('次のページ')
         .setStyle(ButtonStyle.Secondary),
     );
@@ -159,6 +168,7 @@ function buildInventoryComponents(
   selectId: string,
   selectPlaceholder: string,
   backButtons: ActionRowBuilder<MessageActionRowComponentBuilder>[],
+  pageNavMode: 'inventory' | 'detail' = 'inventory',
 ): ActionRowBuilder<MessageActionRowComponentBuilder>[] {
   const { items, totalPages } = getInventoryListItems(userId, { page, category });
   const { total: totalAll } = getInventoryListItems(userId, { page: 0, pageSize: 1 });
@@ -175,7 +185,7 @@ function buildInventoryComponents(
     }))));
   }
 
-  const pageRow = buildPageNavRow(page, totalPages, category);
+  const pageRow = buildPageNavRow(page, totalPages, category, pageNavMode);
   if (pageRow) components.push(pageRow);
 
   return [...components, ...backButtons];
@@ -242,7 +252,7 @@ export function buildInventoryPickView(userId: string, page = 0, category: Inven
   return {
     embeds: [baseEmbed('所持品の詳細', '品を選ぶと性能・入手・用途を確認できます。')],
     components: appendSelectNavigation(
-      buildInventoryComponents(userId, page, category, 'detail:inv', '詳細を見る品', []),
+      buildInventoryComponents(userId, page, category, 'detail:inv', '詳細を見る品', [], 'detail'),
       'detail',
       'inventory',
     ),

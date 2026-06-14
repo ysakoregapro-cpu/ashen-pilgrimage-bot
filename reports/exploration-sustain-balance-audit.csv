@@ -1,0 +1,13 @@
+area_id,area_name,level_band,enemy_sample,expected_damage_per_battle,hp_loss_percent_per_battle,expected_battles_before_rest,four_battle_survivable,balance_note
+area_star_outskirts,星原の外れ,early,mon_star_slime,7,4.0,17,OK,playerLv~8
+area_star_dust_path,星屑の草道,early,mon_star_slime,9,5.1,13,OK,playerLv~8
+area_old_cart,古道の荷車跡,early,mon_bandit,12,6.8,10,OK,playerLv~8
+area_old_training,古い訓練場,early,mon_training_doll,11,6.3,11,OK,playerLv~8
+area_rust_inn,朽ちた旅籠,early,mon_bandit,14,8.0,8,OK,playerLv~8
+area_twilight_coast,薄明の海岸,early,mon_wet_gull,13,7.4,9,OK,playerLv~8
+area_night_hill,夜歩きの丘,early,mon_night_shadow,27,15.3,4,OK,playerLv~8
+area_thief_path,盗賊の抜け道,early,mon_bandit,14,8.0,8,OK,playerLv~8
+area_broken_shrine,壊れた祠,early,mon_night_shadow,24,13.6,5,OK,playerLv~8
+area_stone_bridge,石積みの橋,early,mon_chip_wolf,10,5.7,12,OK,playerLv~8
+area_lighthouse_rocks,灯台下の岩場,early,mon_lighthouse_jelly,28,15.9,4,OK,playerLv~8
+area_rain_alley,雨音の路地,early,mon_grass_imp,11,6.3,11,OK,playerLv~8

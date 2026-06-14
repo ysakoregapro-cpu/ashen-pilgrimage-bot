@@ -13,6 +13,7 @@ import {
   getCoopMembers,
   resolveCoopRecruitIdForJoin,
 } from './coop/coopRecruitSystem';
+import { enrichRescueContext } from './coop/rescueMonsterContext';
 import type { CoopContext } from './coop/coopTypes';
 
 export function createRescueRequest(
@@ -21,18 +22,13 @@ export function createRescueRequest(
   type: 'battle' | 'preemptive' | 'explore',
   opts?: { battleId?: string; areaId?: string; isPreemptive?: boolean; areaLabel?: string; monsterId?: string },
 ): string {
-  const ctx: CoopContext = {
+  const ctx: CoopContext = enrichRescueContext({
     rescue_type: type,
     battle_session_id: opts?.battleId,
     area_id: opts?.areaId,
     area_label: opts?.areaLabel ?? opts?.areaId,
     monster_id: opts?.monsterId,
-  };
-
-  if (opts?.battleId) {
-    const sess = getDb().prepare('SELECT monster_id FROM battle_sessions WHERE id = ?').get(opts.battleId) as { monster_id: string } | undefined;
-    if (sess) ctx.monster_id = sess.monster_id;
-  }
+  }, requesterId);
 
   const result = createCoopRecruit(guildId, requesterId, 'rescue', ctx);
   if (!result.ok || !result.recruitId) throw new Error(result.message);

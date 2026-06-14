@@ -34,7 +34,11 @@ export type CoopActionType = 'attack' | 'skill' | 'defend' | 'item';
 export type CoopContext = {
   area_id?: string;
   monster_id?: string;
+  monster_name?: string;
   battle_session_id?: string;
+  source_enemy_hp?: number;
+  source_enemy_max_hp?: number;
+  monster_resolution?: 'explicit' | 'battle_session' | 'recent_battle' | 'fallback_legacy';
   rescue_type?: string;
   legacy_rescue_id?: string;
   legacy_raid_id?: string;
@@ -47,7 +51,7 @@ export const COOP_RECRUIT_TTL_MS = 30 * 60 * 1000;
 export const COOP_TURN_DEADLINE_MS = 90 * 1000;
 export const COOP_RESOLVE_LOCK_STALE_MS = 2 * 60 * 1000;
 
-export const RESCUE_HP_MULT: Record<number, number> = { 2: 1.6, 3: 2.2, 4: 2.8 };
+export const RESCUE_HP_MULT: Record<number, number> = { 1: 1.0, 2: 1.5, 3: 2.0, 4: 2.4 };
 export const RAID_HP_MULT: Record<number, number> = { 2: 1.8, 3: 2.6, 4: 3.4 };
 export const VALHALLA_COOP_HP_MULT: Record<number, number> = { 1: 1.0, 2: 1.8, 3: 2.5, 4: 3.1 };
 export const VALHALLA_COOP_BREAK_BONUS: Record<number, number> = { 2: 0.2, 3: 0.35, 4: 0.5 };

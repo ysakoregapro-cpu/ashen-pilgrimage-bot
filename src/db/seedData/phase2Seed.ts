@@ -105,10 +105,10 @@ function applyIdempotentAreaBalance(db: Database.Database): void {
     if (EARLY_AREA_TAGS.has(m.tag)) {
       hp = Math.floor(hp * 1.18);
       def = Math.floor(def * 1.08);
-      gold = Math.floor(gold * 1.2);
+      gold = Math.floor(gold * 1.85);
     } else if (MID_AREA_TAGS.has(m.tag)) {
       hp = Math.floor(hp * 1.12);
-      gold = Math.floor(gold * 1.2);
+      gold = Math.floor(gold * 1.55);
     }
     upd.run(hp, def, gold, m.id);
   }

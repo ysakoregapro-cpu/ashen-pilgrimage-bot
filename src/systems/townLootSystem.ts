@@ -128,7 +128,14 @@ export function pickTownLoot(
       recommended_min_level: number;
     } | undefined;
     const base = area?.recommended_min_level ?? 1;
-    return { kind: 'gold', amount: Math.floor(base * 3 + Math.random() * base * 2) };
+    const tier = getAreaRank(areaId);
+    let minG = 20;
+    let maxG = 80;
+    if (tier >= 5 || base >= 55) { minG = 200; maxG = 500; }
+    else if (tier >= 4 || base >= 40) { minG = 120; maxG = 300; }
+    else if (tier >= 3 || base >= 25) { minG = 60; maxG = 160; }
+    else if (tier >= 2 || base >= 12) { minG = 35; maxG = 100; }
+    return { kind: 'gold', amount: Math.floor(minG + Math.random() * (maxG - minG)) };
   }
   return { kind: 'item', itemId: pick.item_id };
 }

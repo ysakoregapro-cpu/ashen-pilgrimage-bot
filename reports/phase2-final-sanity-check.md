@@ -1,6 +1,6 @@
 # Phase2 Final Sanity Check
 
-Generated: 2026-06-13T13:34:04.208Z
+Generated: 2026-06-14T13:51:28.482Z
 
 ## Required files
 - ✓ src/systems/jobUiSystem.ts
@@ -30,6 +30,16 @@ Generated: 2026-06-13T13:34:04.208Z
 - ✓ scripts/skill-mp-cost-design-audit.ts
 - ✓ scripts/job-skill-rotation-mp-audit.ts
 - ✓ scripts/magic-job-mp-balance-audit.ts
+- ✓ scripts/rescue-target-monster-audit.ts
+- ✓ scripts/rescue-skill-target-audit.ts
+- ✓ scripts/rescue-hp-scaling-audit.ts
+- ✓ scripts/exploration-sustain-balance-audit.ts
+- ✓ scripts/gold-income-balance-audit.ts
+- ✓ scripts/inn-price-cap-audit.ts
+- ✓ scripts/defeat-gold-penalty-audit.ts
+- ✓ scripts/equipment-menu-pagination-audit.ts
+- ✓ scripts/weapon-command-route-audit.ts
+- ✓ scripts/armor-command-route-audit.ts
 - ✓ scripts/inn-pricing-progression-check.ts
 - ✓ scripts/trial-battle-reward-audit.ts
 - ✓ scripts/death-penalty-audit.ts

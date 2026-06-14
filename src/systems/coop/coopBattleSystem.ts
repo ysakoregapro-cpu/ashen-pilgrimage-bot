@@ -13,6 +13,7 @@ import {
   calcSkillHeal,
   resolveSkillEffectMeta,
 } from '../skillBattleCore';
+import { needsSkillTargetSelection } from '../skillTargetResolver';
 import {
   COOP_TURN_DEADLINE_MS,
   COOP_RESOLVE_LOCK_STALE_MS,
@@ -34,6 +35,11 @@ import {
   parseCoopContext,
   completeCoopRecruit,
 } from './coopRecruitSystem';
+import {
+  resolveRescueMonsterId,
+  scaledRescueEnemyHp,
+  getMonsterBaseHpForRescue,
+} from './rescueMonsterContext';
 
 export type CoopBattleRow = {
   id: string;
@@ -128,7 +134,16 @@ export function createCoopBattleFromRecruit(recruitId: string): { ok: boolean; m
   const members = getCoopMembers(recruitId);
   const count = members.length;
   const ctx = parseCoopContext(recruit.context_json);
-  const monsterId = ctx.monster_id ?? (recruit.mode === 'raid' ? RAID_BOSS_ID : 'mon_bandit');
+  const resolved = resolveRescueMonsterId(ctx);
+  const monsterId = recruit.mode === 'raid'
+    ? RAID_BOSS_ID
+    : recruit.mode === 'valhalla_coop'
+      ? (ctx.monster_id ?? resolved.monsterId)
+      : resolved.monsterId;
+
+  if (recruit.mode === 'rescue' && resolved.usesFallback) {
+    console.warn(`[rescue] battle start with fallback monster recruit=${recruitId}`);
+  }
 
   const monster = getDb().prepare('SELECT * FROM monsters WHERE id = ?').get(monsterId) as {
     id: string; name: string; hp: number; attack: number; magic: number; defense: number; spirit: number;
@@ -138,7 +153,17 @@ export function createCoopBattleFromRecruit(recruitId: string): { ok: boolean; m
 
   const mult = hpMult(recruit.mode, count);
   const hpExtra = recruit.mode === 'raid' ? 1.15 : recruit.mode === 'valhalla_coop' ? 1.0 : 1;
-  const enemyMaxHp = Math.floor(monster.hp * mult * hpExtra);
+  let enemyMaxHp: number;
+  let enemyCurrentHp: number;
+  if (recruit.mode === 'rescue') {
+    const baseHp = ctx.source_enemy_max_hp ?? getMonsterBaseHpForRescue(monster.id);
+    const scaled = scaledRescueEnemyHp(baseHp, count, ctx);
+    enemyMaxHp = scaled.maxHp;
+    enemyCurrentHp = scaled.currentHp;
+  } else {
+    enemyMaxHp = Math.floor(monster.hp * mult * hpExtra);
+    enemyCurrentHp = enemyMaxHp;
+  }
   const participants: CoopParticipantState[] = [];
 
   for (const m of members) {
@@ -173,7 +198,7 @@ export function createCoopBattleFromRecruit(recruitId: string): { ok: boolean; m
   const enemy: CoopEnemyState = {
     monster_id: monster.id,
     name: monster.name,
-    hp: enemyMaxHp,
+    hp: enemyCurrentHp,
     max_hp: enemyMaxHp,
     break: 0,
     break_max: breakMaxForMode(recruit.mode, monster.break_max, count),
@@ -279,10 +304,7 @@ export function submitCoopAction(
 }
 
 export function needsTargetSelection(skill: SkillRow | undefined, actionType: CoopActionType): boolean {
-  if (actionType === 'item') return true;
-  if (actionType !== 'skill' || !skill) return false;
-  const t = skill.target_type ?? 'single';
-  return !['self', 'all_enemies', 'all_allies', 'taunt'].includes(t);
+  return needsSkillTargetSelection(skill, { action: actionType === 'item' ? 'item' : 'skill', enemyCount: 1 });
 }
 
 export function autoDefendMissingActions(battleId: string): boolean {

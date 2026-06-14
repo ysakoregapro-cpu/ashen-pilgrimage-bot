@@ -9,6 +9,7 @@ import {
   toOwnedEquipmentSelectOption,
   type OwnedEquipmentSelectRow,
 } from './equipmentLabelSystem';
+import { OWNED_EQUIP_PAGE_SIZE, sortOwnedEquipmentByRarity } from './equipmentMenuPaging';
 import { formatRematchBossList, getRematchableBosses } from './bossRematchSystem';
 import { getUniqueWeapons } from './srcWeaponSystem';
 import { getJobs } from './jobSystem';
@@ -377,8 +378,15 @@ export function getUpgradeSelectOptions(userId: string, mode: string): OwnedEqui
   return filtered.map((i) => mapInventoryRowToEquipmentSelect(i));
 }
 
-export function getUpgradeSelectMenuOptions(userId: string, mode: string) {
-  return getUpgradeSelectOptions(userId, mode).slice(0, 25).map((r) => toOwnedEquipmentSelectOption(r));
+export function getUpgradeSelectMenuOptions(userId: string, mode: string, page = 0) {
+  const rows = getUpgradeSelectOptions(userId, mode);
+  const sorted = sortOwnedEquipmentByRarity(rows);
+  const start = page * OWNED_EQUIP_PAGE_SIZE;
+  return sorted.slice(start, start + OWNED_EQUIP_PAGE_SIZE).map((r) => toOwnedEquipmentSelectOption(r));
+}
+
+export function countUpgradeSelectOptions(userId: string, mode: string): number {
+  return getUpgradeSelectOptions(userId, mode).length;
 }
 
 export function getSrcUniqueOptions(userId: string) {

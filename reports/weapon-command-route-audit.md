@@ -1,0 +1,90 @@
+# weapon-command-route-audit
+
+Generated: 2026-06-14T13:49:54.071Z
+
+- weapons: 82
+
+| weapon_id | weapon_name | rarity | job_or_weapon_family | listed_in_command | has_route_detail | explore_routes | enemy_drop_routes | boss_rematch_routes | shop_routes | special_routes | legacy_or_unavailable | balance_note |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| wpn_unique_bind | 古びた繋ぎ糸 | Uni | bind | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_unique_old_hammer | 古炉の訓練槌 | Uni | hammer | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_unique_old_shield | 古王の割盾 | Uni | shield | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_unique_tuner | 壊れた調律器 | Uni | tuner | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_unique_star_scar | 星痕の古槍 | Uni | spear | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_unique_echo | 残響の古弓 | Uni | bow | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_unique_deep | 深層の砲筒 | Uni | cannon | YES | YES | YES | NO | NO | NO | YES | NO | ok |
+| wpn_unique_lamp | 灯火の古杖 | Uni | rod | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_unique_mirror | 灰鏡の刀 | Uni | dagger | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_unique_silver | 白銀の古槌 | Uni | hammer | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_unique_mist_lantern | 霧灯の星杖 | Uni | staff | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_unique_twilight | 黄昏の古剣 | Uni | sword | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_unique_black_fox | 黒狐の短刃 | Uni | dagger | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_valhalla_blade | ヴァルハラ・ブレード | UR | sword | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_old_king_staff | 旧王の魔杖 | UR | staff | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_starfall_judge | 星落ちの裁杖 | UR | staff | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_deep_cannon_regin | 深層砲レギン | UR | cannon | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_ash_wing_twin | 灰翼の双刃 | UR | dagger | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_core_spear_grau | 炉心槍グラウ | UR | spear | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_sky_bow_fress | 空塞弓フレス | UR | bow | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_zero_shield | 統治軍制式大盾・零式 | UR | shield | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_iron_snow_king_shield | 鉄雪王盾 | UR | shield | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_black_exec_sword | 黒灯処刑剣 | UR | sword | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_src_old_shield | Src: 古王盾 | Src | shield | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_src_star_scar | Src: 星痕槍 | Src | spear | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_src_echo | Src: 残響弓 | Src | bow | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_src_deep | Src: 深層砲 | Src | cannon | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_src_lamp | Src: 灯火杖 | Src | rod | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_src_mirror | Src: 灰鏡刀 | Src | dagger | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_src_silver | Src: 白銀槌 | Src | hammer | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_src_bind | Src: 繋ぎ糸 | Src | bind | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_src_tuner | Src: 調律器 | Src | tuner | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_src_mist_lantern | Src: 霧灯星杖 | Src | staff | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_src_silence | Src: 静寂聖印 | Src | seal | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_src_twilight | Src: 黄昏剣 | Src | sword | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_src_black_fox | Src: 黒狐刃 | Src | dagger | YES | YES | NO | NO | NO | NO | YES | NO | ok |
+| wpn_moon_spell_staff | 月下術杖 | SSR | staff | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_deep_cannon | 深層機構砲 | SSR | cannon | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_ash_knight_sword | 灰冠騎士剣 | SSR | sword | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_prayer_robe_weapon | 祈り縫いの聖衣 | SSR | robe | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_hollow_bell_bow | 空鐘の弓 | SSR | bow | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_dragon_pierce | 竜骨穿槍 | SSR | spear | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_iron_snow_greatshield | 鉄雪大盾 | SSR | shield | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_black_iron_blade | 黒鉄の処刑刃 | SSR | sword | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_starfall_spear | 星落ちの槍 | SR | spear | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_moon_staff_sr | 月読の杖 | SR | staff | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_silence_seal_sr | 沈黙の聖印 | SR | seal | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_ash_knight_shield | 灰騎士の大盾 | SR | shield | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_dragon_fist_sr | 竜骨の拳甲 | SR | fist | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_red_ash_axe_sr | 赤灰の戦斧 | SR | axe | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_mist_bow_sr | 霧払いの弓 | SR | bow | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_unique_silence | 静寂の聖印 | SR | seal | YES | YES | NO | NO | NO | NO | NO | YES | ok |
+| wpn_black_exec_blade | 黒灯の処刑刃 | SR | sword | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_old_road_dagger | 古道の短剣 | R | dagger | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_starfield_sword | 星原の剣 | R | sword | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_moon_rod | 月読の短杖 | R | rod | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_silence_seal | 沈黙の聖印 | R | seal | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_ash_spear | 灰冠の槍 | R | spear | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_silver_hammer | 白銀の槌 | R | hammer | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_glass_blade | 硝子沼の刃 | R | sword | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_dragon_fist | 竜骨の拳甲 | R | fist | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_twilight_bow | 薄明の弓 | R | bow | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_red_ash_axe | 赤灰の斧 | R | axe | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_iron_snow_shield | 鉄雪の盾 | R | shield | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_mist_staff | 霧払いの杖 | R | staff | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_black_lamp_twin | 黒灯りの双刃 | R | dagger | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_cracked_axe | ひび割れた斧 | N | axe | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_old_bow | 古い弓 | N | bow | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_old_road_knife | 古道のナイフ | N | dagger | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_mini_cannon | 小型機工砲 | N | cannon | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_traveler_sword | 旅人の剣 | N | sword | YES | YES | NO | NO | NO | NO | NO | NO | ok |
+| wpn_wood_axe | 木こりの斧 | N | axe | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_broken_wrap | 欠けた拳帯 | N | fist | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_leather_gauntlet | 皮巻きの拳甲 | N | fist | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_prayer_rod | 祈りの短杖 | N | rod | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_crude_spear | 粗末な槍 | N | spear | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_apprentice_staff | 見習い杖 | N | staff | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_training_shield | 訓練用大盾 | N | shield | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_training_hammer | 訓練用槌 | N | hammer | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_iron_scrap_barrel | 鉄屑の砲筒 | N | cannon | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_rust_dagger | 錆びた短剣 | N | dagger | YES | YES | YES | NO | NO | NO | NO | NO | ok |
+| wpn_rain_bow | 雨濡れの弓 | N | bow | YES | YES | YES | NO | NO | NO | NO | NO | ok |

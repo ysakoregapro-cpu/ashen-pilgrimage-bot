@@ -1,9 +1,9 @@
 # Boss Encounter Flow Audit
 
-Generated: 2026-06-13T12:30:13.532Z
+Generated: 2026-06-14T13:27:01.256Z
 
 Bosses tracked: 13
-Runtime checks: PASS
+Issues: 2
 
 | boss_id | boss_name | area_id | first_encounter_source | appears_in_exploration_before_clear | appears_in_exploration_after_clear | rematch_available_after_clear | first_clear_flag | rematch_reward_type | boss_ui_label | balance_note |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

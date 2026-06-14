@@ -55,6 +55,7 @@ function main() {
     issues.push('undefeated furnace keeper filtered out incorrectly');
   }
 
+  db.prepare(`DELETE FROM battle_sessions WHERE id = 'audit-furnace-win'`).run();
   db.prepare(`
     INSERT INTO battle_sessions (id, user_id, area_id, monster_id, player_hp, player_mp, enemy_hp, enemy_break, status_json, is_boss, is_raid, is_event_battle, can_flee, status, created_at, updated_at)
     VALUES ('audit-furnace-win', ?, 'area_iron_supply', 'mon_furnace_keeper', 100, 50, 0, 0, '{}', 1, 0, 0, 0, 'victory', datetime('now'), datetime('now'))
@@ -75,6 +76,7 @@ function main() {
     issues.push('undefeated boss in rematch menu');
   }
 
+  db.prepare(`DELETE FROM battle_sessions WHERE user_id = ? AND status = 'active'`).run(TEST_USER);
   const battleId = createBattle(TEST_USER, 'mon_star_slime', 'area_star_outskirts');
   const normalReply = buildBattleReply(battleId, TEST_USER);
   const normalEmbed = normalReply?.embeds[0]?.data;

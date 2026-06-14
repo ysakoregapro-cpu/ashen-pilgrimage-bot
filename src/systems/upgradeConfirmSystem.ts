@@ -16,13 +16,13 @@ import { getAwakeningInfo } from './awakeningSystem';
 import { getSrcUpgradeInfo } from './upgradeSystem';
 import { getSrcManifestInfo } from './srcWeaponSystem';
 import { getKaiUniqueInfo, getKaiSrcInfo, canKaiUnique, canKaiSrc } from './kaiForgeSystem';
-import { findFacilityInTown, getUpgradeSelectMenuOptions } from './facilitySystem';
+import { findFacilityInTown, getUpgradeSelectOptions } from './facilitySystem';
 import { getItemCount } from './inventorySystem';
 import { requirePlayer } from './playerSystem';
 import { DURABILITY_ORDER, type DurabilityState } from '../types';
-import { selectMenu } from '../utils/embeds';
 import { detailOpenButton } from './itemDetailSystem';
 import { townHubEmbed } from '../utils/townUi';
+import { buildPagedOwnedEquipmentSelectView } from './equipmentMenuPaging';
 
 const CONFIRM_LABELS: Record<UpgradeActionKind, string> = {
   enhance: '強化する',
@@ -186,14 +186,33 @@ export function buildUpgradeConfirmPayload(
   };
 }
 
-export function buildUpgradeSelectPayload(userId: string, action: UpgradeActionKind, facilityId: string): UiPayload {
-  const menuOpts = getUpgradeSelectMenuOptions(userId, action);
-  const rows = menuOpts.length ? [
-    selectMenu(`upgrade:${action}`, '装備を選ぶ', menuOpts),
-    detailOpenButton('upgrade'),
-  ] : [];
+export function buildUpgradeSelectPayload(
+  userId: string,
+  action: UpgradeActionKind,
+  facilityId: string,
+  page = 0,
+): UiPayload {
+  const rows = getUpgradeSelectOptions(userId, action);
+  if (!rows.length) {
+    return {
+      embeds: [townHubEmbed('工房', '対象となる装備がありません。')],
+      components: appendSelectNavigation([], 'upgrade', upgradeBackPayload(action, facilityId)),
+    };
+  }
+  const view = buildPagedOwnedEquipmentSelectView({
+    rows,
+    page,
+    selectMenuId: `upgrade:${action}`,
+    selectLabel: '装備を選ぶ',
+    pageButtonPrefix: `upgrade:page:${action}:${facilityId}`,
+    backContext: 'upgrade',
+    backPayload: upgradeBackPayload(action, facilityId),
+    embedBody: `${CONFIRM_LABELS[action].replace(/する$/, '')}する装備を選んでください`,
+    extraComponentRows: [detailOpenButton('upgrade')],
+    navTag: 'upgrade-select',
+  });
   return {
-    embeds: [townHubEmbed('工房', `${CONFIRM_LABELS[action].replace(/する$/, '')}する装備を選んでください`)],
-    components: appendSelectNavigation(rows, 'upgrade', upgradeBackPayload(action, facilityId)),
+    embeds: [townHubEmbed('工房', view.embedText)],
+    components: view.components,
   };
 }

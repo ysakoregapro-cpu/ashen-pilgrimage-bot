@@ -51,6 +51,16 @@ export function buildNavBackPayload(userId: string, base: string): UiPayload | n
     return buildShopDetailPickView(userId, town?.id ?? 'start_starfield', mode);
   }
 
+  if (parsed.context === 'weapon' && parsed.payload === 'cat') {
+    const { buildWeaponCategoryView } = require('../commands/weapon') as typeof import('../commands/weapon');
+    return buildWeaponCategoryView();
+  }
+
+  if (parsed.context === 'armor' && parsed.payload === 'cat') {
+    const { buildArmorCategoryView } = require('../commands/armor') as typeof import('../commands/armor');
+    return buildArmorCategoryView();
+  }
+
   if (parsed.context === 'upgrade') {
     const up = parseUpgradeBackPayload(parsed.payload);
     if (!up) return null;

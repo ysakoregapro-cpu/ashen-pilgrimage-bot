@@ -26,21 +26,16 @@ export function getHighestUnlockedTownTier(userId: string): number {
   return maxTier;
 }
 
-export function calcInnCost(userId: string, _townId: string): number {
-  const player = requirePlayer(userId);
-  const townTier = getHighestUnlockedTownTier(userId);
-  const lv = player.level;
+export function calcInnCostForProgressTier(townTier: number): number {
+  if (townTier >= 55) return 400;
+  if (townTier >= 40) return 340;
+  if (townTier >= 28) return 250;
+  if (townTier >= 15) return 180;
+  return 100;
+}
 
-  if (townTier >= 55) {
-    return Math.min(1500, 800 + Math.floor(lv * 8));
-  }
-  if (townTier >= 40 || lv >= 45) {
-    return Math.min(700, 300 + Math.floor(lv * 6));
-  }
-  if (townTier >= 20 || lv >= 25) {
-    return Math.min(250, 100 + Math.floor(lv * 4));
-  }
-  return Math.min(80, 30 + Math.floor(lv * 3));
+export function calcInnCost(userId: string, _townId: string): number {
+  return calcInnCostForProgressTier(getHighestUnlockedTownTier(userId));
 }
 
 export function calcShrineCost(userId: string, townId: string): number {

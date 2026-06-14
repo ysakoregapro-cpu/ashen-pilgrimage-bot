@@ -2,19 +2,17 @@ import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.j
 import { getPlayer } from '../systems/playerSystem';
 import {
   enhanceEquipment, dismantleEquipment, repairEquipment, getSrcUpgradeInfo,
-  enhanceSrcWeapon, listMaterials, getEnhanceableEquipment,
+  enhanceSrcWeapon, listMaterials,
 } from '../systems/upgradeSystem';
 import { getSrcManifestInfo, manifestSrcWeapon } from '../systems/srcWeaponSystem';
-import { awakenEquipment, getAwakeningInfo, getAwakeningCandidates } from '../systems/awakeningSystem';
+import { awakenEquipment, getAwakeningInfo } from '../systems/awakeningSystem';
 import { kaiUniqueTransform, kaiSrcTransform, getKaiUniqueInfo, getKaiSrcInfo } from '../systems/kaiForgeSystem';
 import { recalculatePlayerStats } from '../systems/playerSystem';
-import { detailOpenButton } from '../systems/itemDetailSystem';
-import {
-  mapInventoryRowToEquipmentSelect,
-  toOwnedEquipmentSelectOption,
-} from '../systems/equipmentLabelSystem';
-import { baseEmbed, errorEmbed, successEmbed, selectMenu } from '../utils/embeds';
+import { buildUpgradeSelectPayload, resolveUpgradeFacilityId } from '../systems/upgradeConfirmSystem';
+import { countUpgradeSelectOptions } from '../systems/facilitySystem';
+import { baseEmbed, errorEmbed, successEmbed } from '../utils/embeds';
 import { safeDefer, safeEdit } from '../utils/interaction';
+import type { UpgradeActionKind } from '../utils/nextActionButtons';
 
 export const data = new SlashCommandBuilder()
   .setName('upgrade')
@@ -38,41 +36,22 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  const items = getEnhanceableEquipment(userId) as Array<{
-    id: number; name: string; rarity: string; upgrade_level: number; src_level: number;
-    durability_state: string; is_equipped: number; awakening_level: number; slot: string;
-  }>;
-  const filter = sub === 'manifest'
-    ? items.filter((i) => i.rarity === 'SR')
-    : sub === 'awaken'
-      ? getAwakeningCandidates(userId).map((i) => ({
-        id: i.id, name: i.name, rarity: i.rarity, upgrade_level: i.upgrade_level,
-        src_level: 0, durability_state: '良好', is_equipped: 0, awakening_level: i.awakening_level, slot: i.slot,
-      }))
-      : sub === 'repair'
-        ? items.filter((i) => i.durability_state !== '良好')
-        : sub === 'src'
-          ? items.filter((i) => i.rarity === 'Src' || i.src_level > 0)
-          : items;
-
-  if (!filter.length) {
+  const actionMap: Record<string, UpgradeActionKind> = {
+    enhance: 'enhance', dismantle: 'dismantle', repair: 'repair',
+    src: 'src', manifest: 'manifest',
+  };
+  const action = actionMap[sub];
+  if (!action) {
+    await safeEdit(interaction, { embeds: [errorEmbed('不明なサブコマンドです。')] });
+    return;
+  }
+  if (countUpgradeSelectOptions(userId, action) === 0) {
     await safeEdit(interaction, { embeds: [errorEmbed('対象装備がありません。')] });
     return;
   }
-
-  const actionMap: Record<string, string> = {
-    enhance: 'upgrade:enhance', dismantle: 'upgrade:dismantle', repair: 'upgrade:repair',
-    src: 'upgrade:src', manifest: 'upgrade:manifest', awaken: 'upgrade:awaken',
-  };
-  await safeEdit(interaction, {
-    embeds: [baseEmbed('装備選択', `${sub} する装備を選んでください`)],
-    components: [
-      selectMenu(actionMap[sub]!, '装備を選択', filter.slice(0, 25).map((i) =>
-        toOwnedEquipmentSelectOption(mapInventoryRowToEquipmentSelect(i)),
-      )),
-      detailOpenButton('upgrade'),
-    ],
-  });
+  const fac = resolveUpgradeFacilityId(userId);
+  const payload = buildUpgradeSelectPayload(userId, action, fac, 0);
+  await safeEdit(interaction, payload);
 }
 
 export function handleUpgradeAction(userId: string, action: string, inventoryId: number): { embeds: ReturnType<typeof baseEmbed>[] } {

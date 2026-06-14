@@ -13,7 +13,6 @@ import {
 } from '../systems/townActionSystem';
 import {
   executeFacilityAction,
-  getUpgradeSelectMenuOptions,
   getSrcUniqueOptions,
   formatEquipSummary,
   getFacility,
@@ -474,21 +473,9 @@ async function handleFacilityResult(
       break;
     }
     case 'upgrade_select': {
-      const menuOpts = getUpgradeSelectMenuOptions(userId, result.extra ?? 'enhance');
-      if (!menuOpts.length) {
-        await sendJourneyLog(interaction, {
-          embeds: [townHubEmbed(getFacilityName(facId), '対象となる装備がない。')],
-          components: nextActionButtons('facility', { facilityId: facId }),
-        });
-        return;
-      }
-      await sendPanelAfterAction(interaction, userId, {
-        embeds: [townHubEmbed(facilityName, result.message)],
-        components: [
-          selectMenu(`upgrade:${result.extra}`, '装備を選ぶ', menuOpts),
-          detailOpenButton('upgrade'),
-        ],
-      });
+      const { buildUpgradeSelectPayload } = await import('../systems/upgradeConfirmSystem');
+      const action = (result.extra ?? 'enhance') as import('../utils/nextActionButtons').UpgradeActionKind;
+      await sendPanelAfterAction(interaction, userId, buildUpgradeSelectPayload(userId, action, facId, 0));
       break;
     }
     case 'src_select': {

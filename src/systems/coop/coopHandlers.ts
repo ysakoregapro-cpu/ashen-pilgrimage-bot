@@ -27,9 +27,11 @@ import {
 import { getOrCreatePublicChannel } from '../../utils/channels';
 import { getEnvOptional } from '../../utils/permissions';
 import { successEmbed, errorEmbed } from '../../utils/embeds';
-import type { CoopActionTarget, CoopMode, CoopContext } from './coopTypes';
+import type { CoopActionTarget, CoopContext, CoopMode } from './coopTypes';
 import { createCoopRecruit } from './coopRecruitSystem';
 import { getSkill } from '../skillSystem';
+import { enrichRescueContext } from './rescueMonsterContext';
+import { resolveSkillTargetSide } from '../skillTargetResolver';
 
 export async function postCoopRecruitToGuild(
   guild: Guild,
@@ -37,7 +39,9 @@ export async function postCoopRecruitToGuild(
   mode: CoopMode,
   context?: CoopContext,
 ): Promise<{ ok: boolean; message: string; recruitId?: string; channelId?: string }> {
-  const result = createCoopRecruit(guild.id, userId, mode, context ?? {});
+  let ctx = context ?? {};
+  if (mode === 'rescue') ctx = enrichRescueContext(ctx, userId);
+  const result = createCoopRecruit(guild.id, userId, mode, ctx);
   if (!result.ok || !result.recruitId) return { ok: false, message: result.message };
 
   const channelName = mode === 'valhalla_coop'
@@ -183,10 +187,13 @@ export async function handleCoopSkillSelect(interaction: StringSelectMenuInterac
     return true;
   }
   let target: CoopActionTarget = { kind: 'enemy', monster_id: 'boss' };
-  const tt = skill.target_type ?? 'single';
-  if (tt === 'self' || tt === 'taunt') target = { kind: 'self' };
-  if (tt === 'all_enemies' || tt === 'all') target = { kind: 'all_enemies' };
-  if (tt === 'all_allies') target = { kind: 'all_allies' };
+  const side = resolveSkillTargetSide(skill);
+  if (side === 'self' || skill.target_type === 'taunt') target = { kind: 'self' };
+  else if (side === 'ally' && skill.target_type === 'all_allies') target = { kind: 'all_allies' };
+  else if (side === 'enemy') {
+    if (skill.target_type === 'all_enemies' || skill.target_type === 'all') target = { kind: 'all_enemies' };
+    else target = { kind: 'enemy', monster_id: 'boss' };
+  }
 
   const result = submitCoopAction(battleId, userId, 'skill', { skillId, target });
   await replyCoopBattleAck(interaction, battleId, result.message);

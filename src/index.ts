@@ -253,6 +253,32 @@ async function handleSelect(interaction: StringSelectMenuInteraction): Promise<v
     return;
   }
 
+  if (prefix === 'weapon') {
+    if (action === 'cat') {
+      const { buildWeaponListView } = await import('./commands/weapon');
+      await sendSelectResultLog(interaction, buildWeaponListView(value, 0));
+      return;
+    }
+    if (action === 'pick') {
+      const { buildWeaponDetailView } = await import('./commands/weapon');
+      await sendSelectResultLog(interaction, buildWeaponDetailView(value, extra));
+      return;
+    }
+  }
+
+  if (prefix === 'armor') {
+    if (action === 'cat') {
+      const { buildArmorListView } = await import('./commands/armor');
+      await sendSelectResultLog(interaction, buildArmorListView(value, 0));
+      return;
+    }
+    if (action === 'pick') {
+      const { buildArmorDetailView } = await import('./commands/armor');
+      await sendSelectResultLog(interaction, buildArmorDetailView(value, extra));
+      return;
+    }
+  }
+
   const { session } = parseSessionCustomId(interaction.customId);
 
 
@@ -904,6 +930,42 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
 
 
 
+  if (parts[0] === 'weapon' && parts[1] === 'page') {
+    const categoryId = parts[2]!;
+    const page = Number(parts[3] ?? 0);
+    const { buildWeaponListView } = await import('./commands/weapon');
+    const payload = buildWeaponListView(categoryId, page);
+    await interaction.update(payload);
+    return;
+  }
+
+  if (parts[0] === 'armor' && parts[1] === 'page') {
+    const categoryId = parts[2]!;
+    const page = Number(parts[3] ?? 0);
+    const { buildArmorListView } = await import('./commands/armor');
+    const payload = buildArmorListView(categoryId, page);
+    await interaction.update(payload);
+    return;
+  }
+
+  if (parts[0] === 'detail' && parts[1] === 'page') {
+    const page = Number(parts[2] ?? 0);
+    const { buildInventoryDetailPickView } = await import('./systems/itemDetailSystem');
+    const payload = buildInventoryDetailPickView(userId, page);
+    await interaction.update(payload);
+    return;
+  }
+
+  if (parts[0] === 'upgrade' && parts[1] === 'page') {
+    const action = parts[2] as import('./utils/nextActionButtons').UpgradeActionKind;
+    const facilityId = parts[3] ?? 'unknown';
+    const page = Number(parts[4] ?? 0);
+    const { buildUpgradeSelectPayload } = await import('./systems/upgradeConfirmSystem');
+    const payload = buildUpgradeSelectPayload(userId, action, facilityId, page);
+    await interaction.update(payload);
+    return;
+  }
+
   if (parts[0] === 'equip' && parts[1] === 'page') {
     const slot = parts[2] as import('./types').EquipmentSlot;
     const page = Number(parts[3] ?? 0);
@@ -940,10 +1002,13 @@ async function handleButton(interaction: ButtonInteraction): Promise<void> {
         return;
       }
       const battle = getDb().prepare(`
-        SELECT id FROM battle_sessions WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1
-      `).get(userId) as { id: string } | undefined;
+        SELECT id, monster_id, enemy_hp FROM battle_sessions
+        WHERE user_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1
+      `).get(userId) as { id: string; monster_id: string; enemy_hp: number } | undefined;
       const posted = await postCoopRecruitToGuild(guild, userId, 'rescue', {
         battle_session_id: battle?.id,
+        monster_id: battle?.monster_id,
+        source_enemy_hp: battle?.enemy_hp,
         rescue_type: battle ? 'battle' : 'explore',
       });
       await interaction.reply({

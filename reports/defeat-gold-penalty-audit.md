@@ -1,0 +1,14 @@
+# defeat-gold-penalty-audit
+
+Generated: 2026-06-14T13:50:26.174Z
+
+## Summary
+
+- fails: 0
+
+| progress_tier | current_gold | penalty_percent | penalty_cap | actual_penalty | remaining_gold | too_heavy | balance_note |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| early | 5000 | 5% | 100 | 100 | 4900 | NO | capped |
+| mid | 20000 | 5% | 300 | 300 | 19700 | NO | capped |
+| late | 80000 | 5% | 800 | 800 | 79200 | NO | capped |
+| valhalla | 200000 | 5% | 1500 | 1500 | 198500 | NO | capped |

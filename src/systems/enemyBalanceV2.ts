@@ -33,6 +33,15 @@ export const ENEMY_OFFENSE_SCALE_BY_LEVEL: TierScaleRow[] = [
   { min: 71, max: 100, normal: 3.60, tough: 4.40, rare: 5.40, elite: 6.80, boss: 8.20 },
 ];
 
+/** 序盤〜中盤通常探索の継戦向け — boss/elite/rare は維持 */
+export const ENEMY_OFFENSE_SUSTAIN_MULT: Record<BalanceThreatTier, number> = {
+  normal: 0.88,
+  tough: 0.92,
+  rare: 1.0,
+  elite: 1.0,
+  boss: 1.0,
+};
+
 export const ENEMY_DEFENSE_SCALE_BY_LEVEL: TierScaleRow[] = [
   { min: 1, max: 10, normal: 1.10, tough: 1.20, rare: 1.30, elite: 1.45, boss: 1.60 },
   { min: 11, max: 25, normal: 1.25, tough: 1.45, rare: 1.65, elite: 1.90, boss: 2.20 },
@@ -54,13 +63,24 @@ export const ENEMY_SPEED_SCALE_BY_TYPE: Record<string, number> = {
 };
 
 export const REWARD_SCALE_BY_TYPE: Record<string, number> = {
-  normal: 1.10,
-  tough: 1.20,
-  rare: 1.35,
-  elite: 1.50,
-  boss: 1.60,
-  valhalla: 1.75,
-  raid: 2.00,
+  normal: 1.45,
+  tough: 1.55,
+  rare: 1.65,
+  elite: 1.75,
+  boss: 1.85,
+  valhalla: 2.05,
+  raid: 2.20,
+};
+
+/** 通常戦Gold — 序盤〜中盤の宿代回収向け（探索Goldは別） */
+export const BATTLE_GOLD_AREA_MULT: Record<string, number> = {
+  starfield: 2.0,
+  port: 1.85,
+  mine: 1.55,
+  forest: 1.45,
+  library: 1.4,
+  valhalla: 1.15,
+  trial: 1.1,
 };
 
 /** Damage formula tuning (Phase2 defense feel) */
@@ -87,7 +107,8 @@ export function getV2HpMult(level: number, threat: BalanceThreatTier): number {
 }
 
 export function getV2OffenseMult(level: number, threat: BalanceThreatTier): number {
-  return pickTierMult(level, threat, ENEMY_OFFENSE_SCALE_BY_LEVEL);
+  const base = pickTierMult(level, threat, ENEMY_OFFENSE_SCALE_BY_LEVEL);
+  return base * (ENEMY_OFFENSE_SUSTAIN_MULT[threat] ?? 1);
 }
 
 export function getV2DefenseMult(level: number, threat: BalanceThreatTier): number {
@@ -130,10 +151,11 @@ export function getBattleRewardMultipliers(opts: {
 
   if (isValhalla) base = Math.max(base, REWARD_SCALE_BY_TYPE.valhalla!);
 
-  // EXP slightly conservative; gold/material value emphasized
+  const areaGold = BATTLE_GOLD_AREA_MULT[opts.areaTag] ?? 1.2;
+
   return {
     expMult: base * 0.92 * party,
-    goldMult: base * 1.15 * party,
+    goldMult: base * 1.45 * areaGold * party,
   };
 }
 

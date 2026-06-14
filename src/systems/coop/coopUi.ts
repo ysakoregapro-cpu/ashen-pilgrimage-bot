@@ -15,7 +15,12 @@ import {
   isRecruitExpired,
 } from './coopRecruitSystem';
 import { formatCoopBattleStatus, getCoopBattle, needsTargetSelection } from './coopBattleSystem';
-import { getUsableBattleSkills } from '../skillSystem';
+import {
+  resolveSkillTargetSide,
+  needsSkillTargetSelection,
+  allyButtonLabel,
+} from '../skillTargetResolver';
+import { getUsableBattleSkills, getSkill } from '../skillSystem';
 import { getDb } from '../../db/database';
 import { nextActionButtons } from '../../utils/nextActionButtons';
 import type { CoopMode } from './coopTypes';
@@ -202,35 +207,68 @@ export function buildCoopTargetButtons(
   const participants = JSON.parse(battle.participant_states_json) as Array<{ user_id: string; hp: number; defeated: boolean }>;
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
-  const allyButtons = participants
-    .filter((p) => !p.defeated && p.hp > 0)
-    .slice(0, 4)
-    .map((p) => new ButtonBuilder()
-      .setCustomId(`coop:target:${battleId}:${actionKind}:${actionRef}:ally:${p.user_id}`)
-      .setLabel(p.user_id === userId ? '自分' : `味方`)
-      .setStyle(ButtonStyle.Primary));
+  if (actionKind === 'item') {
+    const allyButtons = participants
+      .filter((p) => !p.defeated && p.hp > 0)
+      .slice(0, 4)
+      .map((p) => {
+        const nameRow = getDb().prepare('SELECT name FROM players WHERE user_id = ?').get(p.user_id) as { name: string } | undefined;
+        return new ButtonBuilder()
+          .setCustomId(`coop:target:${battleId}:item:${actionRef}:ally:${p.user_id}`)
+          .setLabel(allyButtonLabel(p.user_id, userId, nameRow?.name))
+          .setStyle(ButtonStyle.Primary);
+      });
+    if (allyButtons.length) rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(...allyButtons));
+    return rows;
+  }
 
-  if (allyButtons.length) rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(...allyButtons));
+  const skill = getSkill(actionRef);
+  if (!skill) return rows;
+  const side = resolveSkillTargetSide(skill);
 
-  if (actionKind === 'skill') {
-    const skill = getDb().prepare('SELECT target_type FROM skills WHERE id = ?').get(actionRef) as { target_type: string } | undefined;
-    const tt = skill?.target_type ?? 'single';
-    if (['single', 'all_enemies', 'random_enemy'].includes(tt)) {
-      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`coop:target:${battleId}:skill:${actionRef}:enemy:boss`)
-          .setLabel('敵')
-          .setStyle(ButtonStyle.Danger),
-      ));
-    }
-    if (['self', 'taunt', 'all_enemies', 'all_allies'].includes(tt)) {
+  if (side === 'enemy') {
+    const enemy = JSON.parse(battle.enemy_json) as { name: string };
+    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`coop:target:${battleId}:skill:${actionRef}:enemy:boss`)
+        .setLabel(enemy.name.slice(0, 80) || '敵')
+        .setStyle(ButtonStyle.Danger),
+    ));
+    return rows;
+  }
+
+  if (side === 'self') {
+    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`coop:target:${battleId}:skill:${actionRef}:auto:confirm`)
+        .setLabel('自分')
+        .setStyle(ButtonStyle.Success),
+    ));
+    return rows;
+  }
+
+  if (side === 'ally') {
+    const tt = skill.target_type ?? 'ally';
+    if (tt === 'all_allies') {
       rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId(`coop:target:${battleId}:skill:${actionRef}:auto:confirm`)
-          .setLabel('確定')
+          .setLabel('味方全体')
           .setStyle(ButtonStyle.Success),
       ));
+      return rows;
     }
+    const allyButtons = participants
+      .filter((p) => !p.defeated && p.hp > 0)
+      .slice(0, 4)
+      .map((p) => {
+        const nameRow = getDb().prepare('SELECT name FROM players WHERE user_id = ?').get(p.user_id) as { name: string } | undefined;
+        return new ButtonBuilder()
+          .setCustomId(`coop:target:${battleId}:skill:${actionRef}:ally:${p.user_id}`)
+          .setLabel(allyButtonLabel(p.user_id, userId, nameRow?.name))
+          .setStyle(ButtonStyle.Primary);
+      });
+    if (allyButtons.length) rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(...allyButtons));
   }
 
   return rows;
